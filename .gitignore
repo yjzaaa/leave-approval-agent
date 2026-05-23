@@ -3,4 +3,5 @@ dist/
 .env
 *.log
 .DS_Store
-check-env.ts
+.autoclaw/
+.autoclaw/
