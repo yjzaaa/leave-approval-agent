@@ -1,10 +1,10 @@
-import React from 'react';
-import { Header } from './components/Header';
-import { StatusBar } from './components/StatusBar';
-import { ChatContainer } from './components/ChatContainer';
-import { ConfirmCard } from './components/ConfirmCard';
-import { InputBar } from './components/InputBar';
-import { useAgent } from './hooks/useAgent';
+﻿import React from 'react';
+import { Header } from './client/components/layout/Header';
+import { StatusBar } from './client/components/approval/StatusBar';
+import { ChatContainer } from './client/components/chat/ChatContainer';
+import { ConfirmCard } from './client/components/approval/ConfirmCard';
+import { InputBar } from './client/components/chat/InputBar';
+import { useAgent } from './client/hooks/useAgent';
 
 const App: React.FC = () => {
   const {

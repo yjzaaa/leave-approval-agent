@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Web 服务器 — Express + SSE 流式 Agent
  *
  * 架构: 浏览器 → Express → Pi Agent → DeepSeek API
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
 import { allTools, SYSTEM_PROMPT, getDefaultModel, getPendingConfirm, approveConfirm, rejectConfirm } from './agent.js';
-import type { ChatMessage } from './types.js';
+import type { ChatMessage } from '../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();

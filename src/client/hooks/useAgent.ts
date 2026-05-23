@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
-import type { Message, ConfirmRequest, AgentPhase } from '../client-types';
+﻿import { useCallback, useRef, useState } from 'react';
+import type { Message, ConfirmRequest, AgentPhase } from '../types';
 
 const FIELD_LABELS: Record<string, string> = {
   applicantName: '申请人', department: '部门', employeeId: '工号',

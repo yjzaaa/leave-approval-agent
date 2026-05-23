@@ -1,7 +1,7 @@
-/**
+﻿/**
  * 表单校验引擎
  */
-import type { LeaveForm, ValidationResult } from './types.js';
+import type { LeaveForm, ValidationResult } from '../shared/types.js';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 

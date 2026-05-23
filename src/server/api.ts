@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Mock API - 表单提交 & 流程发起
  */
-import type { LeaveForm, FormSubmitResult, ProcessResult } from './types.js';
+import type { LeaveForm, FormSubmitResult, ProcessResult } from '../shared/types.js';
 
 function mockId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;

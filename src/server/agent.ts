@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pi Agent 定义 — 基于 @earendil-works/pi-agent-core + @earendil-works/pi-ai
  * 
  * Provider: deepseek (DeepSeek) via DEEPSEEK_API_KEY
@@ -10,7 +10,7 @@ import { Type, getModel } from '@earendil-works/pi-ai';
 import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { validateForm } from './validator.js';
 import { submitForm, startProcess } from './api.js';
-import { config } from './config.js';
+import { config } from '../shared/config.js';
 
 // ─── 确认管理器 ───────────────────────────────────────
 interface PendingConfirm {

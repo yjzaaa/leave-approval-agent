@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import type { ConfirmRequest } from '../client-types';
+﻿import React, { useEffect, useRef } from 'react';
+import type { ConfirmRequest } from '../../types';
 
 interface Props {
   confirmRequest: ConfirmRequest;

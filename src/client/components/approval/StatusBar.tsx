@@ -1,5 +1,5 @@
-import React from 'react';
-import type { AgentPhase } from '../client-types';
+﻿import React from 'react';
+import type { AgentPhase } from '../../types';
 
 interface Props {
   phase: AgentPhase;

@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Message } from '../client-types';
+import type { Message } from '../../types';
 
 interface Props {
   message: Message;

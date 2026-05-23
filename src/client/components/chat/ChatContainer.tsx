@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { Message } from '../client-types';
+﻿import React, { useRef, useEffect, useState, useCallback } from 'react';
+import type { Message } from '../../types';
 import { MessageBubble } from './MessageBubble';
 
 interface Props {

@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "tsx src/server.ts",
+    "dev:server": "tsx src/server/index.ts",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "vite build",
-    "cli": "tsx src/index.ts",
+    "cli": "tsx src/server/cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
