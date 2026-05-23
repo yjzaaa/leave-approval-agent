@@ -1,32 +1,23 @@
 import React, { useRef, useEffect } from 'react';
-import type { Message, ConfirmRequest } from '../client-types';
+import type { Message } from '../client-types';
 import { MessageBubble } from './MessageBubble';
-import { ConfirmCard } from './ConfirmCard';
 
 interface Props {
   messages: Message[];
-  confirmRequest: ConfirmRequest | null;
-  onConfirm: (approved: boolean) => void;
 }
 
-export const ChatContainer: React.FC<Props> = ({ messages, confirmRequest, onConfirm }) => {
+export const ChatContainer: React.FC<Props> = ({ messages }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, confirmRequest]);
+  }, [messages]);
 
   return (
     <div className="chat-container">
       {messages.map(msg => (
         <MessageBubble key={msg.id} message={msg} />
       ))}
-      {confirmRequest && (
-        <>
-          {console.log('[ChatContainer] rendering ConfirmCard:', confirmRequest.tool)}
-          <ConfirmCard confirmRequest={confirmRequest} onConfirm={onConfirm} />
-        </>
-      )}
       <div ref={bottomRef} />
     </div>
   );
