@@ -1,3 +1,7 @@
+/**
+ * 顶部导航栏
+ * 展示应用标题、技术标签、在线状态和主题切换按钮
+ */
 import React from 'react';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -13,6 +17,7 @@ export const Header: React.FC = () => (
         <span className="tag">React 18</span>
       </div>
     </div>
+    {/* 弹性占位：将主题按钮推到右侧 */}
     <div style={{ flex: 1 }} />
     <ThemeToggle />
   </header>

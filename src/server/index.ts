@@ -1,8 +1,12 @@
-﻿/**
- * Web 服务器 — Express + SSE 流式 Agent
+/**
+ * Express Web 服务 — SSE 流式 Agent
  *
  * 架构: 浏览器 → Express → Pi Agent → DeepSeek API
  * Human-in-the-Loop: Agent Tool 内建确认等待，前端显示确认卡片
+ *
+ * 路由:
+ *   POST /api/chat    — SSE 流式对话
+ *   POST /api/confirm — 用户确认/拒绝
  */
 import express from 'express';
 import type { Request, Response } from 'express';
@@ -10,7 +14,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
-import { allTools, SYSTEM_PROMPT, getDefaultModel, getPendingConfirm, approveConfirm, rejectConfirm } from './agent.js';
+import {
+  allTools, SYSTEM_PROMPT, getDefaultModel,
+  getPendingConfirm, approveConfirm, rejectConfirm
+} from './agent.js';
 import type { ChatMessage } from '../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +27,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-/** SSE 辅助 */
+/** SSE 辅助：发送一条命名事件 */
 function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
@@ -35,11 +42,19 @@ const FIELD_LABELS: Record<string, string> = {
 
 /**
  * POST /api/chat — SSE 流式对话
+ *
+ * 流程：
+ * 1. 接收用户消息 + 对话历史
+ * 2. 创建 Pi Agent，订阅事件
+ * 3. 将 tool_execution_start 事件转为 SSE (confirm_required / tool_result)
+ * 4. 将 message_update 事件转为 SSE (text 流)
+ * 5. 轮询 pendingConfirm 状态，确认完成时发送 confirm_resolved
  */
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { message, history } = req.body as { message?: string; history?: ChatMessage[] };
   if (!message) return res.status(400).json({ error: 'message required' });
 
+  // 设置 SSE 响应头
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -47,7 +62,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     'X-Accel-Buffering': 'no',
   });
 
-  // 初始历史消息
+  // 转换历史消息格式
   const initialMessages = (history || []).map(m => ({
     role: m.role as 'user' | 'assistant',
     content: typeof m.content === 'string'
@@ -67,32 +82,32 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     streamFn: streamSimple,
   });
 
-  // 轮询确认状态
+  // 轮询确认状态的定时器
   let confirmTick: ReturnType<typeof setInterval> | null = null;
 
+  // 订阅 Agent 事件 → 转为 SSE
   agent.subscribe(async (event, _signal) => {
-    // 调试：打印所有事件
+    // 调试日志
     if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end') {
       const ev = event as any;
       console.log(`[Event] ${event.type}:`, ev.toolName, '| args keys:', ev.args ? Object.keys(ev.args) : 'none');
     } else if (event.type === 'message_update') {
-      // 太频繁，不打印
+      // text_delta 太频繁，不打印
     } else {
       console.log(`[Event] ${event.type}`);
     }
 
     switch (event.type) {
+      // ── Tool 开始执行 ──
       case 'tool_execution_start':
         console.log(`  → tool: ${event.toolName}, args:`, JSON.stringify((event as any).args).slice(0, 200));
+
+        // submit_form / start_process 需要用户确认 → 发送 confirm_required 事件
         if (event.toolName === 'submit_form' || event.toolName === 'start_process') {
           const tevent = event as any;
           const form = tevent.args?.form || tevent.args;
-          // 标记确认请求已就绪
-          setTimeout(() => {
-            const pc = getPendingConfirm();
-            console.log(`  → pendingConfirm exists:`, !!pc, '| tool:', pc?.tool);
-          }, 50);
 
+          // 启动轮询：检测确认是否完成
           confirmTick = setInterval(() => {
             const pc = getPendingConfirm();
             if (!pc) {
@@ -100,6 +115,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
               sendSSE(res, 'confirm_resolved', { tool: event.toolName });
             }
           }, 200);
+
+          // 推送确认请求到前端
           sendSSE(res, 'confirm_required', {
             tool: event.toolName,
             label: event.toolName === 'submit_form'
@@ -112,8 +129,10 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         }
         break;
 
+      // ── Tool 执行结束 ──
       case 'tool_execution_end':
         console.log(`  → tool_end: ${event.toolName}, isError: ${event.isError}`);
+        // 确认类 tool 的结果由 confirm_resolved 通知，这里只发送非确认 tool 的结果
         if (event.toolName !== 'submit_form' && event.toolName !== 'start_process') {
           sendSSE(res, 'tool_result', {
             tool: event.toolName,
@@ -122,6 +141,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         }
         break;
 
+      // ── AI 流式文本输出 ──
       case 'message_update': {
         const ev = event.assistantMessageEvent;
         if (ev.type === 'text_delta') {
@@ -133,6 +153,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       case 'message_end':
         break;
 
+      // ── Agent 执行完毕 ──
       case 'agent_end':
         if (confirmTick) clearInterval(confirmTick);
         sendSSE(res, 'done', {});
@@ -153,6 +174,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
 /**
  * POST /api/confirm — 用户确认/拒绝
+ *
+ * 前端的确认/拒绝按钮调用此接口，通知 Agent 继续或终止
  */
 app.post('/api/confirm', (req: Request, res: Response) => {
   const { approved } = req.body;
@@ -165,6 +188,7 @@ app.post('/api/confirm', (req: Request, res: Response) => {
   }
 });
 
+// ── 启动服务 ──
 app.listen(PORT, () => {
   console.log('');
   console.log('╔══════════════════════════════════════════════╗');

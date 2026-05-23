@@ -1,3 +1,8 @@
+/**
+ * 共享层 — 领域类型定义
+ * 远程办公申请的核心数据结构，被 client 和 server 共同引用
+ */
+
 /** 远程办公申请表单 */
 export interface LeaveForm {
   applicantName: string;
@@ -11,7 +16,7 @@ export interface LeaveForm {
   address: string;
 }
 
-/** 流程表单 (申请表单 + formId) */
+/** 流程表单（含 formId） */
 export interface ProcessForm extends LeaveForm {
   formId: string;
 }
@@ -32,7 +37,7 @@ export interface ProcessResult {
   error?: string;
 }
 
-/** 聊天消息 */
+/** 聊天消息（用于历史记录） */
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
