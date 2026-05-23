@@ -316,6 +316,14 @@ body {
   transform: scale(0.94);
 }
 
+/* Main Content Area */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 /* ── 6. Status Bar ── */
 .status-bar {
   display: flex;
@@ -396,6 +404,7 @@ body {
 /* ── 7. Chat Container ── */
 .chat-container {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
@@ -403,7 +412,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  scroll-behavior: smooth;
   background: var(--bg-sunken);
 }
 
