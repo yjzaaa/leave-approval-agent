@@ -1,21 +1,28 @@
 ﻿# 病假申请插件 (sick-leave)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md) · 📋 相关: [agent/](../../agent/AGENTS.md) · [shared/](../../shared/AGENTS.md)
+> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
 
-## 业务描述
+## 校验流程图
 
-处理病假申请：收集信息 → 校验诊断/日期 → 提交确认 → 流程确认。
+```mermaid
+flowchart TD
+    Input([表单数据]) --> Required{必填字段<br/>非空?}
+    Required -->|❌| Err1["'xxx 不能为空'"]
+    Required -->|✅| Diagnosis{诊断非空?}
+    Diagnosis -->|❌| Err2["'诊断不能为空'"]
+    Diagnosis -->|✅| DoctorNote{医嘱非空?}
+    DoctorNote -->|❌| Err3["'医嘱不能为空'"]
+    DoctorNote -->|✅| Date{开始 ≤ 结束<br/>且 ≤ 今天?}
+    Date -->|❌| Err4["'日期错误'"]
+    Date -->|✅| Pass["✅ { valid: true }"]
 
-## 文件说明
-
-| 文件 | 职责 |
-|------|------|
-| `index.ts` | BusinessPlugin 实例 |
-| `tools.ts` | ★ 全部 Tool 定义 |
-| `prompt.ts` | System Prompt |
-| `fields.ts` | 9 个表单字段 |
-| `validator.ts` | 校验（诊断/医嘱/日期） |
-| `api.ts` | Mock API (SL/SP 前缀) |
+    style Input fill:#dbe4ff,stroke:#495057
+    style Pass fill:#b2f2bb,stroke:#2b8a3e
+    style Err1 fill:#ffe3e3,stroke:#e03131
+    style Err2 fill:#ffe3e3,stroke:#e03131
+    style Err3 fill:#ffe3e3,stroke:#e03131
+    style Err4 fill:#ffe3e3,stroke:#e03131
+```
 
 ## Tool 列表
 
@@ -26,10 +33,14 @@
 | `sick_leave_submit` | ✅ | 提交确认 |
 | `sick_leave_start` | ✅ | 流程确认 |
 
-## 特殊校验
+## 校验规则
 
 - 诊断/医生建议: 非空
-- 日期: startDate ≤ endDate，不晚于今天
+- 日期: startDate ≤ endDate，≤ 今天
+
+## Mock API
+
+- 提交 → `SL-xxx` / 流程 → `SP-xxx`
 
 ---
 

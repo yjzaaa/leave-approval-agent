@@ -1,21 +1,28 @@
 ﻿# 远程办公审批插件 (leave-approval)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md) · 📋 相关: [agent/](../../agent/AGENTS.md) · [shared/](../../shared/AGENTS.md)
+> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
 
-## 业务描述
+## 审批流程图
 
-处理远程办公申请的完整审批流程：收集信息 → 校验 → 提交确认 → 发起流程确认。
+```mermaid
+flowchart TD
+    Start([👤 用户: 申请远程办公]) --> Collect[Agent 收集信息]
+    Collect --> Validate{校验通过?}
+    Validate -->|❌| Collect
+    Validate -->|✅| HITL1["📋 HITL #1: 确认提交"]
+    HITL1 -->|拒绝| Collect
+    HITL1 -->|确认| Submit["submitApi() → FM-xxx"]
+    Submit --> HITL2["🚀 HITL #2: 确认发起"]
+    HITL2 -->|拒绝| Collect
+    HITL2 -->|确认| Process["startProcessApi() → PS-xxx"]
+    Process --> Done([✅ 流程发起成功])
 
-## 文件说明
-
-| 文件 | 职责 |
-|------|------|
-| `index.ts` | BusinessPlugin 实例 |
-| `tools.ts` | ★ 全部 Tool 定义（含 HITL） |
-| `prompt.ts` | System Prompt |
-| `fields.ts` | 9 个表单字段 |
-| `validator.ts` | 校验规则 |
-| `api.ts` | Mock API (FM/PS 前缀) |
+    style Start fill:#dbe4ff,stroke:#495057
+    style HITL1 fill:#ffe3e3,stroke:#e03131
+    style HITL2 fill:#ffe3e3,stroke:#e03131
+    style Done fill:#b2f2bb,stroke:#2b8a3e
+    style Validate fill:#fff9db,stroke:#e67700
+```
 
 ## Tool 列表
 
@@ -26,16 +33,14 @@
 | `leave_approval_submit` | ✅ | 提交确认 |
 | `leave_approval_start` | ✅ | 流程确认 |
 
-## HITL 配置
-
-```typescript
-confirmTools: ['leave_approval_submit', 'leave_approval_start']
-```
-
 ## 表单字段 (9 个必填)
 
 applicantName, department, employeeId, remoteStartDate, remoteEndDate, reason, workPlan, emergencyContact, address
 
+## Mock API
+
+- 提交 → `FM-xxx` / 流程 → `PS-xxx`
+
 ---
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md) · 📊 [审批流程图](../../../docs/diagrams/approval-workflow.excalidraw)
+> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)

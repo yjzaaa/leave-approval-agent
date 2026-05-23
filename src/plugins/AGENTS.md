@@ -1,6 +1,6 @@
 ﻿# 业务插件层
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [agent/](../agent/AGENTS.md) · [shared/](../shared/AGENTS.md) · [client/](../client/AGENTS.md)
+> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [agent/](../agent/AGENTS.md) · [shared/](../shared/AGENTS.md)
 
 ## 子插件文档
 
@@ -10,116 +10,115 @@
 | 报销审批 | [expense-approval/AGENTS.md](expense-approval/AGENTS.md) | 审批类 | 2 步 |
 | 病假申请 | [sick-leave/AGENTS.md](sick-leave/AGENTS.md) | 审批类 | 2 步 |
 
----
-
 ## 职责
 
-每个业务插件是一个独立的、自包含的模块，完全拥有自己的 tool 定义、System Prompt、表单字段、校验规则和 API 调用。
+每个插件完全自主：自带 prompt + tools + api + validator。框架不假设插件有哪些 tool。
 
-**核心原则：插件完全自主，框架不假设插件有哪些 tool。**
+## 插件类型对比图
 
-## 架构
+```mermaid
+graph LR
+    subgraph Approval["📋 审批类"]
+        A1["tools: validate + submit + start"]
+        A2["confirmTools: submit, start"]
+        A3["fields: ✅ 有表单"]
+    end
 
-```
-plugins/
-├── AGENTS.md                # 本文档
-├── registry.ts              # 插件注册表 (getPlugin / getDefaultPlugin)
-├── leave-approval/          # 远程办公审批 → [文档](leave-approval/AGENTS.md)
-├── expense-approval/        # 报销审批     → [文档](expense-approval/AGENTS.md)
-└── sick-leave/              # 病假申请     → [文档](sick-leave/AGENTS.md)
+    subgraph Chat["💬 纯聊天"]
+        C1["tools: [] 空"]
+        C2["confirmTools: 无"]
+        C3["fields: ❌ 无"]
+    end
+
+    subgraph FAQ["🔍 FAQ 咨询"]
+        F1["tools: [searchKB]"]
+        F2["confirmTools: [] 空"]
+        F3["fields: ❌ 无"]
+    end
+
+    Interface["BusinessPlugin<br/>id + displayName +<br/>systemPrompt + tools"]
+
+    Interface -.-> Approval
+    Interface -.-> Chat
+    Interface -.-> FAQ
+
+    style Approval fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style Chat fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style FAQ fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Interface fill:#f3f3f0,stroke:#495057,color:#1a1a1a
 ```
 
 ## 单个插件内部结构
 
+```mermaid
+graph TD
+    Index["index.ts<br/>导出 BusinessPlugin"] --> Tools["tools.ts ★<br/>全部 Tool 定义"]
+    Index --> Prompt["prompt.ts<br/>System Prompt"]
+    Index --> Fields["fields.ts<br/>表单字段"]
+    Index --> Validator["validator.ts<br/>校验规则"]
+    Index --> API["api.ts<br/>后端 API"]
+
+    Tools -->|"可选 import"| Confirm["agent/confirm-state.ts<br/>requestConfirm()"]
+    Tools --> Validator
+    Tools --> API
+
+    style Tools fill:#ffc078,stroke:#495057,color:#1a1a1a
+    style Index fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style Confirm fill:#a5d8ff,stroke:#495057,color:#1a1a1a
 ```
-plugins/{name}/
-     │
-     ├── index.ts ── 导出 BusinessPlugin 实例
-     │                ├── import tools.ts     → tools: [...]
-     │                ├── import prompt.ts    → systemPrompt
-     │                ├── import fields.ts    → fields: [...]
-     │                ├── import validator.ts → validate()
-     │                └── import api.ts       → submitApi(), startProcessApi()
-     │
-     └── tools.ts ── 每个 tool 自主定义
-                      ├── import confirm-state.js → requestConfirm() (可选)
-                      ├── import validator.js     → 校验逻辑
-                      └── import api.js           → API 调用
+
+## 插件注册时序图
+
+```mermaid
+sequenceDiagram
+    participant Server as server/index.ts
+    participant Registry as registry.ts
+    participant Plugin as xxx/index.ts
+
+    Server->>Registry: getPlugin('leave_approval')
+    Registry->>Plugin: import
+    Plugin-->>Registry: BusinessPlugin 实例
+    Registry-->>Server: plugin {tools, systemPrompt, ...}
+    Server->>Server: plugin.tools → agent-factory
 ```
 
 ## BusinessPlugin 接口
 
 > 完整定义见 [shared/plugin.ts](../shared/AGENTS.md)
 
-```typescript
-interface BusinessPlugin {
-  id: string;                    // 必填
-  displayName: string;           // 必填
-  systemPrompt: string;          // 必填
-  tools: AgentTool[];            // 必填 (可以为空数组)
-  fields?: FieldMeta[];          // 可选
-  validate?: (form) => ...;      // 可选
-  submitApi?: (form) => ...;     // 可选
-  startProcessApi?: (...) => ...;// 可选
-  confirmTools?: string[];       // 可选: HITL tool 列表
-  confirmLabels?: Record<string, string>; // 可选
-  suggestions?: string[];        // 可选
-  pipeline?: PipelineStep[];     // 可选
-}
-```
-
-## 插件类型对比
-
-```
-┌──────────────────────┬─────────────┬─────────────┬─────────────┐
-│                      │  审批类      │  纯聊天      │  FAQ 咨询   │
-├──────────────────────┼─────────────┼─────────────┼─────────────┤
-│  tools               │ validate,   │ [] 空       │ [searchKB]  │
-│                      │ submit,     │             │             │
-│                      │ start       │             │             │
-├──────────────────────┼─────────────┼─────────────┼─────────────┤
-│  confirmTools        │ submit,     │ 无          │ [] 空       │
-│                      │ start       │             │             │
-├──────────────────────┼─────────────┼─────────────┼─────────────┤
-│  fields              │ ✅ 8-9 个   │ ❌          │ ❌          │
-├──────────────────────┼─────────────┼─────────────┼─────────────┤
-│  submitApi           │ ✅          │ ❌          │ ❌          │
-├──────────────────────┼─────────────┼─────────────┼─────────────┤
-│  HITL 模式           │ 两步确认    │ 无          │ 全自动      │
-└──────────────────────┴─────────────┴─────────────┴─────────────┘
-```
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `id` | ✅ | 唯一标识 |
+| `displayName` | ✅ | UI 标题 |
+| `systemPrompt` | ✅ | Agent Prompt |
+| `tools` | ✅ | Tool 列表 (可以为空) |
+| `fields` | ❌ | 表单字段 |
+| `validate` | ❌ | 校验函数 |
+| `submitApi` | ❌ | 提交 API |
+| `startProcessApi` | ❌ | 流程 API |
+| `confirmTools` | ❌ | HITL tool 列表 |
+| `confirmLabels` | ❌ | 确认文案 |
+| `suggestions` | ❌ | 空状态建议 |
+| `pipeline` | ❌ | 流水线阶段 |
 
 ## 新增插件步骤
 
 1. 创建 `plugins/{name}/` 目录
-2. 实现必要文件（index.ts 必填，其他按需）
-3. 在 `registry.ts` 中注册
-4. 前端自动发现，无需改动
-
-## HITL 使用方式
-
-插件 tool 中 import [agent/confirm-state.ts](../agent/AGENTS.md)：
-
-```typescript
-import { requestConfirm } from '../../agent/confirm-state.js';
-const approved = await requestConfirm('xxx_submit', formData);
-if (!approved) throw new Error('用户拒绝');
-```
+2. 实现必要文件
+3. 在 `registry.ts` 注册
+4. 前端零改动
 
 ## 依赖
 
-- [agent/confirm-state.ts](../agent/AGENTS.md) — HITL 状态机（按需使用）
-- [shared/plugin.ts](../shared/AGENTS.md) — BusinessPlugin 接口
-- `@earendil-works/pi-ai` — Tool schema 定义
-- `@earendil-works/pi-agent-core` — AgentTool 类型
+- [agent/confirm-state.ts](../agent/AGENTS.md) — 按需使用
+- [shared/plugin.ts](../shared/AGENTS.md) — BusinessPlugin
 
 ## 约束
 
-- ❌ 不允许 import `../../server/`
-- ❌ 不允许 import `../../client/`
-- ✅ 可以 import `../../agent/confirm-state.js`
-- ✅ 可以 import `../../shared/`
+- ❌ 不 import `../../server/` `../../client/`
+- ✅ 可 import `../../agent/confirm-state.js`
+- ✅ 可 import `../../shared/`
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · ⬇️ [leave-approval](leave-approval/AGENTS.md) · [expense-approval](expense-approval/AGENTS.md) · [sick-leave](sick-leave/AGENTS.md) · 📊 [架构图](../../docs/diagrams/README.md)
+> ⬆️ [返回项目根目录](../../AGENTS.md) · ⬇️ [leave-approval](leave-approval/AGENTS.md) · [expense-approval](expense-approval/AGENTS.md) · [sick-leave](sick-leave/AGENTS.md)
