@@ -20,10 +20,10 @@ interface Props {
 }
 
 /** 格式化时间戳：今日显示 HH:MM，跨日显示 M月D日 HH:MM */
-function formatTime(isoString?: string): string {
-  if (!isoString) return '';
+function formatTime(ts?: number): string {
+  if (!ts) return '';
   try {
-    const date = new Date(isoString);
+    const date = new Date(ts);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -47,7 +47,7 @@ export const MessageBubble: React.FC<Props> = ({ message }) => {
     );
   }
 
-  const time = formatTime(message.id);
+  const time = formatTime(message.timestamp);
 
   return (
     <div
@@ -80,7 +80,7 @@ export const MessageBubble: React.FC<Props> = ({ message }) => {
 
         {/* 时间戳 */}
         {time && (
-          <time className="msg-time" dateTime={message.id}>
+          <time className="msg-time" dateTime={new Date(message.timestamp).toISOString()}>
             {time}
           </time>
         )}

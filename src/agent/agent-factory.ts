@@ -146,7 +146,20 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
         break;
       case 'message_update': {
         const ev = event.assistantMessageEvent;
-        if (ev.type === 'text_delta') onSSE('text', { content: ev.delta });
+        if (ev.type === 'text_delta') {
+          const delta = ev.delta;
+          // 过滤掉模型输出的 function call XML 标签
+          const cleaned = delta
+            .replace(/<function_calls>/g, '')
+            .replace(/<\/function_calls>/g, '')
+            .replace(/<invoke name="[^"]*">/g, '')
+            .replace(/<\/invoke>/g, '')
+            .replace(/<parameter name="[^"]*">/g, '')
+            .replace(/<\/parameter>/g, '')
+            .replace(/<function_calls>/g, '')
+            .replace(/<\/function_calls>/g, '');
+          if (cleaned.trim()) onSSE('text', { content: cleaned });
+        }
         break;
       }
       case 'message_end': break;
