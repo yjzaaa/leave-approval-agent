@@ -9,6 +9,9 @@
 | 远程办公审批 | [leave-approval/AGENTS.md](leave-approval/AGENTS.md) | 审批类 | 2 步 |
 | 报销审批 | [expense-approval/AGENTS.md](expense-approval/AGENTS.md) | 审批类 | 2 步 |
 | 病假申请 | [sick-leave/AGENTS.md](sick-leave/AGENTS.md) | 审批类 | 2 步 |
+| 智能助手 | [pure-chat/AGENTS.md](pure-chat/AGENTS.md) | 纯聊天 | 无 |
+| 政策咨询 | [faq/AGENTS.md](faq/AGENTS.md) | FAQ 咨询 | 无 |
+| 值班排班 | [oncall/AGENTS.md](oncall/AGENTS.md) | 混合型 | 1 步 |
 
 ## 职责
 
@@ -121,4 +124,4 @@ sequenceDiagram
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · ⬇️ [leave-approval](leave-approval/AGENTS.md) · [expense-approval](expense-approval/AGENTS.md) · [sick-leave](sick-leave/AGENTS.md)
+> ⬆️ [返回项目根目录](../../AGENTS.md) · ⬇️ [leave-approval](leave-approval/AGENTS.md) · [expense-approval](expense-approval/AGENTS.md) · [sick-leave](sick-leave/AGENTS.md) · [pure-chat](pure-chat/AGENTS.md) · [faq](faq/AGENTS.md) · [oncall](oncall/AGENTS.md)
