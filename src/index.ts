@@ -19,6 +19,19 @@ function banner(): void {
   console.log('');
 }
 
+/** 从 AgentMessage 中提取 assistant 文本内容 */
+function extractText(messages: any[]): string {
+  const parts: string[] = [];
+  for (const msg of messages) {
+    if (msg.role === 'assistant' && msg.content) {
+      for (const block of msg.content) {
+        if (block.type === 'text') parts.push(block.text);
+      }
+    }
+  }
+  return parts.join('\n');
+}
+
 async function main(): Promise<void> {
   banner();
   const rl = readline.createInterface({ input, output });
@@ -38,24 +51,39 @@ async function main(): Promise<void> {
     streamFn: streamSimple,
   });
 
-  // 订阅事件输出
+  // 事件订阅 — 输出 Agent 过程
+  let lastAssistantText = '';
   agent.subscribe(async (event, _signal) => {
     switch (event.type) {
+      case 'agent_start':
+        lastAssistantText = '';
+        break;
       case 'tool_execution_start':
         console.log(`  🔧 ${event.toolName}`);
         break;
       case 'tool_execution_end':
         if (event.isError) console.log(`  ❌ ${event.toolName} 失败`);
         break;
+      case 'message_start':
+        lastAssistantText = '';
+        break;
       case 'message_update': {
         const ev = event.assistantMessageEvent;
         if (ev.type === 'text_delta') {
           process.stdout.write(ev.delta);
+          lastAssistantText += ev.delta;
         }
         break;
       }
       case 'message_end':
         console.log('');
+        break;
+      case 'agent_end':
+        if (!lastAssistantText && event.messages) {
+          // 流式输出失败时，回退展示完整消息
+          const text = extractText(event.messages);
+          if (text) console.log(text);
+        }
         break;
     }
   });
@@ -72,8 +100,21 @@ async function main(): Promise<void> {
         console.log('\n🤖');
         await agent.prompt(userInput);
         await agent.waitForIdle();
+
+        // 兜底：如果没有任何流式/事件输出，直接显示最新 assistant 消息
+        if (!lastAssistantText) {
+          const messages = agent.state.messages;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+              const text = extractText([messages[i]]);
+              if (text) console.log(text);
+              break;
+            }
+          }
+        }
       } catch (err: any) {
         console.error(`\n❌ 错误: ${err.message ?? err}`);
+        if (err.cause) console.error(`   原因: ${err.cause}`);
       }
 
       console.log('\n' + '─'.repeat(50) + '\n');
