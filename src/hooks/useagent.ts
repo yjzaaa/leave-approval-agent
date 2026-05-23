@@ -16,9 +16,14 @@ export function useAgent() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /** 记录最近一次处理过的 confirm tool 名称，防止 SSE 重复推送同一确认 */
+  const lastConfirmToolRef = useRef<string | null>(null);
 
   const addMessage = useCallback((role: Message['role'], content: string) => {
-    const msg: Message = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), role, content, timestamp: Date.now() };
+    const msg: Message = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      role, content, timestamp: Date.now(),
+    };
     setMessages(prev => [...prev, msg]);
     return msg;
   }, []);
@@ -27,7 +32,9 @@ export function useAgent() {
     setMessages(prev => {
       if (prev.length === 0) return prev;
       const last = prev[prev.length - 1];
-      if (last.role !== 'assistant') return [...prev, { id: Date.now().toString(36), role: 'assistant', content, timestamp: Date.now() }];
+      if (last.role !== 'assistant') {
+        return [...prev, { id: Date.now().toString(36), role: 'assistant', content, timestamp: Date.now() }];
+      }
       return [...prev.slice(0, -1), { ...last, content }];
     });
   }, []);
@@ -38,6 +45,7 @@ export function useAgent() {
     setIsStreaming(true);
     setError(null);
     setConfirmRequest(null);
+    lastConfirmToolRef.current = null;
     addMessage('user', text);
 
     const history = messages
@@ -47,7 +55,7 @@ export function useAgent() {
 
     addMessage('assistant', '');
     setPhase('thinking');
-    setPhaseText('Agent 正在分析…');
+    setPhaseText('Agent 正在分析...');
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -75,17 +83,28 @@ export function useAgent() {
 
         let eventType = '';
         for (const line of lines) {
-          if (line.startsWith('event: ')) { eventType = line.slice(7).trim(); continue; }
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+            continue;
+          }
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (eventType !== 'text') console.log('[SSE] event:', eventType, JSON.stringify(data).slice(0, 100));
+            if (eventType !== 'text') {
+              console.log('[SSE] event:', eventType, JSON.stringify(data).slice(0, 100));
+            }
             switch (eventType) {
               case 'text':
                 fullText += data.content;
                 updateLastAssistant(fullText);
                 break;
+
               case 'confirm_required':
+                // 如果这个 tool 已经处理过（用户刚拒绝/确认），忽略重复推送
+                if (lastConfirmToolRef.current === data.tool) {
+                  console.log('[SSE] confirm_required ignored: duplicate for', data.tool);
+                  break;
+                }
                 console.log('[SSE] confirm_required received:', data);
                 setConfirmRequest({
                   tool: data.tool,
@@ -94,25 +113,36 @@ export function useAgent() {
                   fieldLabels: data.fieldLabels || FIELD_LABELS,
                 });
                 setPhase('confirming');
-                setPhaseText(data.tool === 'submit_form' ? '请确认表单信息' : '请确认发起审批流程');
-                console.log('[SSE] confirmRequest set, phase: confirming');
+                setPhaseText(
+                  data.tool === 'submit_form' ? '请确认表单信息' : '请确认发起审批流程'
+                );
                 break;
+
               case 'confirm_resolved':
                 setConfirmRequest(null);
                 if (!fullText.includes('发起')) {
                   setPhase('thinking');
-                  setPhaseText('Agent 正在处理…');
+                  setPhaseText('Agent 正在处理...');
                 }
                 break;
+
               case 'tool_result':
-                if (data.tool === 'get_current_date') { setPhase('filling'); setPhaseText('正在填写表单…'); }
-                else if (data.tool === 'validate_form') { setPhase('validating'); setPhaseText('校验表单中…'); }
+                if (data.tool === 'get_current_date') {
+                  setPhase('filling');
+                  setPhaseText('正在填写表单...');
+                } else if (data.tool === 'validate_form') {
+                  setPhase('validating');
+                  setPhaseText('校验表单中...');
+                }
                 break;
+
               case 'done':
                 setPhase('done');
                 setPhaseText('流程结束');
                 setConfirmRequest(null);
+                lastConfirmToolRef.current = null;
                 break;
+
               case 'error':
                 updateLastAssistant(fullText + '\n\n⚠️ ' + data.message);
                 setPhase('error');
@@ -138,6 +168,11 @@ export function useAgent() {
 
   const confirm = useCallback(async (approved: boolean) => {
     if (!confirmRequest) return;
+
+    // 记录当前确认的 tool，防止 SSE 重复推送同一个确认
+    lastConfirmToolRef.current = confirmRequest.tool;
+    setConfirmRequest(null);
+
     try {
       await fetch('/api/confirm', {
         method: 'POST',
@@ -148,9 +183,8 @@ export function useAgent() {
 
     const toolLabel = confirmRequest.tool === 'submit_form' ? '提交表单' : '发起审批流程';
     addMessage('system', approved
-      ? `✅ 已确认${toolLabel}`
-      : `❌ 已拒绝${toolLabel}`);
-    setConfirmRequest(null);
+      ? `✓ 已确认${toolLabel}`
+      : `✕ 已拒绝${toolLabel}`);
   }, [confirmRequest, addMessage]);
 
   const reset = useCallback(() => {
@@ -161,7 +195,12 @@ export function useAgent() {
     setConfirmRequest(null);
     setIsStreaming(false);
     setError(null);
+    lastConfirmToolRef.current = null;
   }, []);
 
-  return { messages, phase, phaseText, confirmRequest, isStreaming, error, sendMessage, confirm, reset };
+  return {
+    messages, phase, phaseText, confirmRequest,
+    isStreaming, error,
+    sendMessage, confirm, reset,
+  };
 }

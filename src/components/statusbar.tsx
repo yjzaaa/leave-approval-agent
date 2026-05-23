@@ -6,22 +6,59 @@ interface Props {
   text: string;
 }
 
-const PHASE_MAP: Record<AgentPhase, { label: string; className: string }> = {
-  idle: { label: '就绪', className: '' },
-  thinking: { label: '思考中', className: '' },
-  filling: { label: '填表中', className: '' },
-  validating: { label: '校验中', className: '' },
-  confirming: { label: '等待确认', className: 'confirm' },
-  done: { label: '完成', className: '' },
-  error: { label: '错误', className: 'error' },
-};
+interface StepInfo {
+  key: AgentPhase;
+  label: string;
+}
+
+const PIPELINE_STEPS: StepInfo[] = [
+  { key: 'idle', label: '就绪' },
+  { key: 'thinking', label: '分析' },
+  { key: 'filling', label: '填表' },
+  { key: 'validating', label: '校验' },
+  { key: 'confirming', label: '确认' },
+  { key: 'done', label: '完成' },
+];
+
+function getStepState(step: StepInfo, currentPhase: AgentPhase): 'completed' | 'active' | 'pending' | 'error' {
+  const stepIndex = PIPELINE_STEPS.findIndex(s => s.key === step.key);
+  const currentIndex = PIPELINE_STEPS.findIndex(s => s.key === currentPhase);
+
+  if (currentPhase === 'error') {
+    if (stepIndex < currentIndex) return 'completed';
+    if (stepIndex === currentIndex) return 'error';
+    return 'pending';
+  }
+
+  if (stepIndex < currentIndex) return 'completed';
+  if (stepIndex === currentIndex) return 'active';
+  return 'pending';
+}
 
 export const StatusBar: React.FC<Props> = ({ phase, text }) => {
-  const info = PHASE_MAP[phase];
+  const visibleSteps = phase === 'idle'
+    ? PIPELINE_STEPS.slice(0, 1)
+    : PIPELINE_STEPS.slice(1);
+
   return (
-    <div className="status-bar">
-      <span className={`phase-badge ${info.className}`}>{info.label}</span>
-      <span className="phase-text">{text}</span>
+    <div className="status-bar" role="status" aria-live="polite" aria-label={`当前状态: ${text}`}>
+      <div className="pipeline">
+        {visibleSteps.map((step, i) => {
+          const state = getStepState(step, phase);
+          return (
+            <React.Fragment key={step.key}>
+              {i > 0 && <span className="pipeline-arrow" aria-hidden="true">›</span>}
+              <span
+                className={`pipeline-step ${state}`}
+                aria-current={state === 'active' ? 'step' : undefined}
+              >
+                <span className="pipeline-step-dot" aria-hidden="true" />
+                {step.label}
+              </span>
+            </React.Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 };

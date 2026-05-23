@@ -19,7 +19,6 @@ const App: React.FC = () => {
       <ChatContainer messages={messages} />
       <InputBar onSend={sendMessage} disabled={isStreaming} />
 
-      {/* Modal 遮罩层 — 渲染在最顶层 */}
       {confirmRequest && (
         <ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />
       )}
