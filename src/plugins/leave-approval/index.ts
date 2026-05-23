@@ -30,8 +30,9 @@ export const leavePlugin: BusinessPlugin = {
     '家人住院需要照顾',
     '身体不适在家办公',
   ],
+  confirmTools: ['leave_approval_submit', 'leave_approval_start'],
   confirmLabels: {
-    submit: '📋 确认提交表单',
-    start: '🚀 确认发起审批流程',
+    leave_approval_submit: '📋 确认提交表单',
+    leave_approval_start: '🚀 确认发起审批流程',
   },
 };

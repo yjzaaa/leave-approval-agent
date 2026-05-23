@@ -73,10 +73,10 @@ export interface BusinessPlugin {
   startProcessApi: (resultId: string, form: Record<string, string>) => Promise<{ success: boolean; processId?: string; message?: string }>;
 
   /** 确认阶段的文案 */
-  confirmLabels?: {
-    submit?: string;
-    start?: string;
-  };
+confirmLabels?: Record<string, string>;
+
+  /** HITL: 需要用户确认的 tool 名称列表。空数组 = 全自动无确认。 */
+  confirmTools?: string[];
 
   /** 流水线阶段定义（可选，使用默认则从 fields 推导） */
   pipeline?: PipelineStep[];

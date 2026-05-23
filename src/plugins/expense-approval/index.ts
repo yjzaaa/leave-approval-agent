@@ -21,8 +21,9 @@ export const expensePlugin: BusinessPlugin = {
     '办公用品报销申请',
     '客户招待费用报销',
   ],
+  confirmTools: ['expense_approval_submit', 'expense_approval_start'],
   confirmLabels: {
-    submit: '📋 确认报销信息',
-    start: '🚀 确认发起报销审批',
+    expense_approval_submit: '📋 确认报销信息',
+    expense_approval_start: '🚀 确认发起报销审批',
   },
 };

@@ -21,8 +21,9 @@ export const sickLeavePlugin: BusinessPlugin = {
     '身体不适请 3 天病假',
     '急性肠胃炎需要休息',
   ],
+  confirmTools: ['sick_leave_submit', 'sick_leave_start'],
   confirmLabels: {
-    submit: '📋 确认病假信息',
-    start: '🚀 确认发起病假审批',
+    sick_leave_submit: '📋 确认病假信息',
+    sick_leave_start: '🚀 确认发起病假审批',
   },
 };
