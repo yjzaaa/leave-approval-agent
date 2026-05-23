@@ -1,11 +1,10 @@
 /**
  * ChatContainer — 聊天消息列表容器
  *
- * 滚动策略：
- *   - 默认自动滚到底部（跟随新消息）
- *   - 用户上翻 > 60px 后停止自动跟随
- *   - 点击"回到底部"按钮恢复自动跟随
- *   - 消息内容高度变化时（Markdown渲染完成），如果在底部则继续跟随
+ * 滚动策略 v3：
+ *   - 只在消息数量增加时（新消息）自动滚到底部
+ *   - 消息内容更新（SSE流式文字）不触发滚动 → 用户可自由上翻
+ *   - 用户点击"回到底部"才恢复跟随
  */
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Message } from '../../types';
@@ -20,43 +19,32 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const shouldAutoScrollRef = useRef(true);
-  const prevMessageCountRef = useRef(0);
+  const prevCountRef = useRef(0);
+  const autoScrollRef = useRef(true);
 
-  /** 立即滚到底部（无动画） */
-  const scrollToBottomInstant = useCallback(() => {
+  /** 立即滚到底部 */
+  const scrollToBottom = useCallback(() => {
     const el = containerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
-  /** 平滑滚到底部 */
-  const scrollToBottomSmooth = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, []);
-
-  /** 回到对话末尾：恢复自动跟随 + 平滑滚动 */
-  const goToBottom = useCallback(() => {
-    shouldAutoScrollRef.current = true;
+  /** 用户点击回到底部 */
+  const handleGoToBottom = useCallback(() => {
+    autoScrollRef.current = true;
     setShowScrollBtn(false);
-    scrollToBottomInstant();
-  }, [scrollToBottomInstant]);
+    scrollToBottom();
+  }, [scrollToBottom]);
 
-  // 监听用户滚动：判断是否离开了底部
+  // 监听滚动：判断用户是否离开了底部
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const onScroll = () => {
-      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      if (distance > 60) {
-        // 用户手动上翻了
-        shouldAutoScrollRef.current = false;
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      if (!atBottom && autoScrollRef.current) {
+        autoScrollRef.current = false;
         setShowScrollBtn(true);
-      } else {
-        // 用户回到或接近底部
-        shouldAutoScrollRef.current = true;
-        setShowScrollBtn(false);
       }
     };
 
@@ -64,23 +52,25 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 新消息到达时自动滚动
+  // 只在消息数量增加时自动滚动（不是每次内容更新）
   useEffect(() => {
-    if (shouldAutoScrollRef.current) {
-      // requestAnimationFrame 确保 DOM 已更新
-      requestAnimationFrame(() => {
-        if (shouldAutoScrollRef.current) {
-          scrollToBottomInstant();
-        }
-      });
+    if (messages.length > prevCountRef.current) {
+      // 新消息到达
+      if (autoScrollRef.current) {
+        // 延迟到下一帧，等 DOM 更新
+        const id = requestAnimationFrame(() => {
+          if (autoScrollRef.current) scrollToBottom();
+        });
+        return () => cancelAnimationFrame(id);
+      }
     }
-    prevMessageCountRef.current = messages.length;
-  }, [messages, scrollToBottomInstant]);
+    prevCountRef.current = messages.length;
+  }, [messages.length, scrollToBottom]);
 
-  // 初始化时滚到底部
+  // 首次渲染时滚到底部
   useEffect(() => {
-    shouldAutoScrollRef.current = true;
-    scrollToBottomInstant();
+    prevCountRef.current = messages.length;
+    scrollToBottom();
   }, []);
 
   const isEmpty = messages.length === 0;
@@ -115,7 +105,7 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
       <div ref={bottomRef} />
 
       {showScrollBtn && (
-        <button className="scroll-bottom-btn" onClick={goToBottom} aria-label="回到底部">
+        <button className="scroll-bottom-btn" onClick={handleGoToBottom} aria-label="回到底部">
           ↓
         </button>
       )}
