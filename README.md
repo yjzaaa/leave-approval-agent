@@ -1,33 +1,44 @@
-﻿# 远程办公申请自动化审批 Agent (Pi Framework)
+﻿# 远程办公申请自动化审批 Agent
 
-基于 [Pi Agent Framework](https://github.com/earendil-works/pi) (53k ⭐) 的智能审批助手。
+基于 [Pi Agent Framework](https://github.com/earendil-works/pi) (53k ⭐) + DeepSeek V4 Pro 的智能审批助手。
 
 ## 架构
 
 ```
-用户输入 → Pi Agent → 决策调用 Tool → 校验/提交/发起 → 返回结果
+用户 → CLI / Web UI → Pi Agent 自主决策 → Tool 调用 → Mock API
+                     ↑                    ↑
+              Human-in-the-Loop     确认卡点 ×2
 ```
 
 ## 快速开始
 
 ```bash
 npm install
-cp .env.example .env   # 配置 OPENAI_API_KEY
+```
+
+### CLI 模式
+
+```bash
 npx tsx src/index.ts
 ```
 
-## Provider 配置
+### Web UI 模式
 
-默认使用智谱 GLM (zai provider)：
-
-```env
-OPENAI_API_KEY=your-zhipu-api-key
+```bash
+npm run web
+# 打开 http://localhost:3000
 ```
 
-Pi 框架支持 30+ 提供商切换。
+## Provider
+
+DeepSeek (Pi 内置)，环境变量 `DEEPSEEK_API_KEY`。
 
 ## 测试
 
 ```bash
 npx vitest run
 ```
+
+## 设计文档
+
+[docs/DESIGN.md](docs/DESIGN.md) — 完整架构图 + Human-in-the-Loop 序列图。
