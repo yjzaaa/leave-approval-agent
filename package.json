@@ -1,24 +1,23 @@
 {
   "name": "leave-approval-agent",
-  "version": "1.0.0",
-  "description": "远程办公申请自动化审批 Agent - 基于 OpenAI Agents SDK",
+  "version": "2.0.0",
+  "description": "远程办公申请自动化审批 Agent - 基于 Pi Framework",
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "demo": "tsx src/demo.ts"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.98.0",
-    "@openai/agents": "^0.1",
-    "dotenv": "^17.4.2",
-    "openai": "^4.95",
-    "zod": "^3.24"
+    "@earendil-works/pi-agent-core": "^0.75.4",
+    "@earendil-works/pi-ai": "^0.75.4",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
     "@types/node": "^22",
     "tsx": "^4.19",
-    "typescript": "^5.7"
+    "typescript": "^5.7",
+    "vitest": "^3.2.4"
   }
 }

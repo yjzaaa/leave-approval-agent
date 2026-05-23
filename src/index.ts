@@ -1,75 +1,79 @@
 /**
- * CLI 入口 - 命令行交互主程序
+ * CLI 入口 — 基于 Pi Agent Framework
  */
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { WorkflowEngine, type ProcessForm } from './workflow/index.js';
-import { config } from './config.js';
-import type { LeaveForm } from './types.js';
+import { Agent } from '@earendil-works/pi-agent-core';
+import { streamSimple } from '@earendil-works/pi-ai';
+import { allTools, SYSTEM_PROMPT, getDefaultModel } from './agent.js';
 
 function banner(): void {
   console.log('');
   console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║      远程办公申请自动化审批 Agent v1.0.0         ║');
+  console.log('║   远程办公申请自动化审批 Agent v2.0.0 (Pi)       ║');
   console.log('╠══════════════════════════════════════════════════╣');
-  console.log('║  输入您的远程办公需求，Agent 将自动完成：        ║');
-  console.log('║    1. 解析并填写申请表单                         ║');
-  console.log('║    2. 校验表单合法性（自动修正）                 ║');
-  console.log('║    3. 确认表单 → 提交获取 ID                     ║');
-  console.log('║    4. 确认流程表单 → 发起审批流程                ║');
-  console.log('║                                                 ║');
-  console.log('║  输入 "exit" 退出                                ║');
+  console.log('║   基于 Pi Agent Framework (53k ⭐)               ║');
+  console.log('║   Agent 自主决策调用工具完成审批流程              ║');
+  console.log('║  输入 "exit" 退出 | "reset" 重置对话             ║');
   console.log('╚══════════════════════════════════════════════════╝');
   console.log('');
 }
 
-async function confirmYesNo(rl: readline.Interface, prompt: string): Promise<boolean> {
-  while (true) {
-    const answer = (await rl.question(prompt)).trim().toLowerCase();
-    if (['yes', 'y', '是'].includes(answer)) return true;
-    if (['no', 'n', '否', '取消'].includes(answer)) return false;
-    console.log('请输入 yes 或 no');
-  }
-}
-
 async function main(): Promise<void> {
-  if (!config.llmApiKey) {
-    console.error('❌ 错误: 请设置环境变量 LLM_API_KEY');
-    console.error('   创建 .env 文件并写入:');
-    console.error('   LLM_API_KEY=your-api-key');
+  banner();
+  const rl = readline.createInterface({ input, output });
+
+  let model;
+  try {
+    model = getDefaultModel();
+    console.log(`🤖 模型: ${model.name} | Provider: ${model.provider} | API: ${model.api}`);
+  } catch (err: any) {
+    console.error(`❌ 模型加载失败: ${err.message}`);
+    console.error('   请确保 .env 中配置了 OPENAI_API_KEY');
     process.exit(1);
   }
 
-  banner();
-  const rl = readline.createInterface({ input, output });
+  const agent = new Agent({
+    initialState: { systemPrompt: SYSTEM_PROMPT, tools: allTools, model },
+    streamFn: streamSimple,
+  });
+
+  // 订阅事件输出
+  agent.subscribe(async (event, _signal) => {
+    switch (event.type) {
+      case 'tool_execution_start':
+        console.log(`  🔧 ${event.toolName}`);
+        break;
+      case 'tool_execution_end':
+        if (event.isError) console.log(`  ❌ ${event.toolName} 失败`);
+        break;
+      case 'message_update': {
+        const ev = event.assistantMessageEvent;
+        if (ev.type === 'text_delta') {
+          process.stdout.write(ev.delta);
+        }
+        break;
+      }
+      case 'message_end':
+        console.log('');
+        break;
+    }
+  });
 
   try {
     while (true) {
       const userInput = (await rl.question('📝 请描述您的远程办公需求:\n> ')).trim();
 
-      if (!userInput || userInput.toLowerCase() === 'exit') {
-        console.log('\n👋 再见！');
-        break;
-      }
-
-      const engine = new WorkflowEngine(config.maxFormRetries);
+      if (!userInput) continue;
+      if (userInput.toLowerCase() === 'exit') { console.log('\n👋 再见！'); break; }
+      if (userInput.toLowerCase() === 'reset') { agent.reset(); console.log('🔄 对话已重置\n'); continue; }
 
       try {
-        const result = await engine.run(
-          userInput,
-          // 第一次确认：申请表单
-          async (_form: LeaveForm) => {
-            return confirmYesNo(rl, '\n❓ 确认以上申请表单无误？(yes/no): ');
-          },
-          // 第二次确认：流程表单（含 formId）
-          async (_processForm: ProcessForm) => {
-            return confirmYesNo(rl, '\n❓ 确认发起以上审批流程？(yes/no): ');
-          },
-        );
-
-        console.log('\n' + (result.success ? '✅' : '❌') + ' ' + result.message);
+        console.log('\n🤖');
+        await agent.prompt(userInput);
+        await agent.waitForIdle();
       } catch (err: any) {
-        console.error(`\n❌ 流程异常: ${err.message ?? err}`);
+        console.error(`\n❌ 错误: ${err.message ?? err}`);
       }
 
       console.log('\n' + '─'.repeat(50) + '\n');

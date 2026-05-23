@@ -1,15 +1,33 @@
-# 远程办公申请自动化审批 Agent
+﻿# 远程办公申请自动化审批 Agent (Pi Framework)
 
-基于 `@openai/agents` 的轻量级 TypeScript Agent，实现远程办公申请的自动化管理。
+基于 [Pi Agent Framework](https://github.com/earendil-works/pi) (53k ⭐) 的智能审批助手。
+
+## 架构
+
+```
+用户输入 → Pi Agent → 决策调用 Tool → 校验/提交/发起 → 返回结果
+```
 
 ## 快速开始
 
 ```bash
 npm install
-cp .env.example .env   # 填入 OPENAI_API_KEY
-npm run dev
+cp .env.example .env   # 配置 OPENAI_API_KEY
+npx tsx src/index.ts
 ```
 
-## 架构
+## Provider 配置
 
-详见 [docs/DESIGN.md](./docs/DESIGN.md)
+默认使用智谱 GLM (zai provider)：
+
+```env
+OPENAI_API_KEY=your-zhipu-api-key
+```
+
+Pi 框架支持 30+ 提供商切换。
+
+## 测试
+
+```bash
+npx vitest run
+```
