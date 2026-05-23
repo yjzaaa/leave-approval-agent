@@ -121,6 +121,7 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
   let confirmTick: ReturnType<typeof setInterval> | null = null;
 
   agent.subscribe(async (event, _signal) => {
+    console.log('[Agent Event]', event.type, event.type.includes('tool') ? (event as any).toolName : '');
     switch (event.type) {
       case 'tool_execution_start': {
         if (isConfirmTool(event.toolName, plugin)) {
@@ -147,18 +148,7 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
       case 'message_update': {
         const ev = event.assistantMessageEvent;
         if (ev.type === 'text_delta') {
-          const delta = ev.delta;
-          // 过滤掉模型输出的 function call XML 标签
-          const cleaned = delta
-            .replace(/<function_calls>/g, '')
-            .replace(/<\/function_calls>/g, '')
-            .replace(/<invoke name="[^"]*">/g, '')
-            .replace(/<\/invoke>/g, '')
-            .replace(/<parameter name="[^"]*">/g, '')
-            .replace(/<\/parameter>/g, '')
-            .replace(/<function_calls>/g, '')
-            .replace(/<\/function_calls>/g, '');
-          if (cleaned.trim()) onSSE('text', { content: cleaned });
+          onSSE('text', { content: ev.delta });
         }
         break;
       }
