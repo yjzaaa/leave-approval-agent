@@ -397,6 +397,7 @@ body {
 .chat-container {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
   padding: var(--space-5) var(--space-6);
   display: flex;
@@ -818,6 +819,7 @@ body {
 .confirm-modal-body {
   padding: var(--space-5) var(--space-6);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
 }
