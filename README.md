@@ -8,8 +8,7 @@
 用户 → CLI / Web UI → Express SSE → Agent 框架 → 业务插件 → DeepSeek API
                                           ↕
                                     Human-in-the-Loop
-                                          ↕
-                                    确认卡片 ←→ 用户确认/拒绝
+                                    (业务决定，框架提供能力)
 ```
 
 ### 三层架构
@@ -24,6 +23,18 @@
 └──────────────────────────────────────────────┘
 ```
 
+### HITL 设计
+
+Human-in-the-Loop 不由框架硬编码，而是由业务插件通过 `confirmTools` 决定：
+
+| 模式 | `confirmTools` 配置 | 场景 |
+|------|---------------------|------|
+| 两步确认 | `['xxx_submit', 'xxx_start']` | 高风险审批 |
+| 单步确认 | `['xxx_submit']` | 低风险操作 |
+| 全自动 | `[]` | 无需人工干预 |
+
+框架只提供 HITL 能力（confirm-state 状态机 + ConfirmCard 组件），使用与否完全由业务决定。
+
 ### 目录结构
 
 ```
@@ -32,22 +43,19 @@ src/
 │
 ├── agent/                          # ⚙️ Agent 框架层（业务无关）
 │   ├── agent-factory.ts            #   Agent 工厂：根据 plugin 创建/运行 Agent
-│   ├── confirm-state.ts            #   HITL 确认状态机
+│   ├── confirm-state.ts            #   HITL 确认状态机（通用能力，非硬编码）
 │   ├── types.ts                    #   框架级类型
 │   └── tools/                      #   通用 Tool 工厂
 │       ├── get-current-date.ts     #   获取当前日期
 │       ├── validate-form.ts        #   校验表单（注入 plugin.validate）
-│       ├── submit-form.ts          #   提交表单（注入 plugin.submitApi）
-│       └── start-process.ts       #   发起流程（注入 plugin.startProcessApi）
+│       ├── submit-form.ts          #   提交表单（检查 plugin.confirmTools 决定 HITL）
+│       └── start-process.ts       #   发起流程（检查 plugin.confirmTools 决定 HITL）
 │
 ├── plugins/                        # 📦 业务插件层
 │   ├── registry.ts                 #   插件注册表
-│   └── leave-approval/             #   远程办公审批插件
-│       ├── index.ts                #   导出 BusinessPlugin 实例
-│       ├── fields.ts               #   表单字段元数据
-│       ├── prompt.ts               #   System Prompt
-│       ├── validator.ts            #   校验规则
-│       └── api.ts                  #   Mock API
+│   ├── leave-approval/             #   远程办公审批 (两步 HITL)
+│   ├── expense-approval/           #   报销审批 (两步 HITL)
+│   └── sick-leave/                 #   病假申请 (两步 HITL)
 │
 ├── client/                         # 🖥️ 前端 UI
 │   ├── types.ts
@@ -62,7 +70,7 @@ src/
 │   └── cli.ts                      #   CLI 入口（支持 --plugin=xxx）
 │
 └── shared/                         # 📋 共享类型
-    ├── plugin.ts                   #   BusinessPlugin 接口
+    ├── plugin.ts                   #   BusinessPlugin 接口（含 confirmTools）
     ├── types.ts                    #   领域类型
     └── config.ts                   #   全局配置
 ```
@@ -73,12 +81,8 @@ src/
 server → agent → plugins → shared
 client → shared
 agent → shared
+agent 不依赖任何具体业务
 ```
-
-- **agent/** 不依赖任何具体业务
-- **server/** 选择并注入活动插件
-- **client/** 通过 shared 泛化类型通信
-- **plugins/** 只依赖 shared
 
 ## 🚀 快速开始
 
@@ -118,27 +122,46 @@ npm run dev                     # Vite   → http://localhost:5173
 
 ## 📦 扩展新业务
 
-接入新的审批类型只需创建 4-5 个文件：
+### 创建插件
 
-```
-src/plugins/expense-approval/
-├── index.ts      # export const expensePlugin: BusinessPlugin = { ... }
-├── fields.ts     # FieldMeta[]
-├── prompt.ts     # System Prompt
-├── validator.ts  # validate(form) → { valid, errors[] }
-└── api.ts        # submit / start API
+```bash
+mkdir src/plugins/my-business
 ```
 
-然后在 `plugins/registry.ts` 注册：
+### 文件清单
+
+| 文件 | 内容 | 必填 |
+|------|------|------|
+| `index.ts` | 导出 `BusinessPlugin` 实例 | 是 |
+| `fields.ts` | 表单字段 `FieldMeta[]` | 是 |
+| `prompt.ts` | System Prompt | 是 |
+| `validator.ts` | 校验规则 | 是 |
+| `api.ts` | 后端 API 调用 | 是（可用 Mock） |
+
+### HITL 配置
+
+```typescript
+// 两步确认
+confirmTools: ['my_business_submit', 'my_business_start'],
+confirmLabels: {
+  my_business_submit: '📋 确认提交',
+  my_business_start: '🚀 确认发起',
+},
+
+// 全自动（无需人工确认）
+confirmTools: [],
+```
+
+### 注册
 
 ```typescript
 export const registry: PluginRegistry = {
   leave_approval: leavePlugin,
-  expense_approval: expensePlugin,  // ← 新增
+  my_business: myPlugin,  // ← 新增
 };
 ```
 
-前端**零改动**，通过 URL 参数 `/?plugin=expense_approval` 自动切换。
+**前端零改动**，通过 URL 参数 `/?plugin=my_business` 自动切换。
 
 ## 🎨 前端设计
 
@@ -146,9 +169,9 @@ export const registry: PluginRegistry = {
 |------|------|
 | **Slate 极简主题** | 无渐变色，纯灰度排版构建层级 |
 | **暗色/亮色/系统** | 三段式主题切换，localStorage 持久化 |
-| **Markdown 渲染** | react-markdown + remark-gfm，完整 GFM 支持 |
+| **Markdown 渲染** | react-markdown + remark-gfm |
 | **流水线指示器** | 就绪 → 处理中 → 等待确认 → 完成 |
-| **两步确认** | 表单确认 + 流程确认，防重复推送 |
+| **HITL 通用弹窗** | ConfirmCard 由 confirmLabels 驱动，业务决定何时弹出 |
 | **无障碍访问** | 焦点陷阱、ESC 关闭、aria 全覆盖 |
 
 ## 🛠️ 技术栈
@@ -160,20 +183,6 @@ export const registry: PluginRegistry = {
 | AI | DeepSeek API (via Pi Framework) |
 | Markdown | react-markdown, remark-gfm |
 | 字体 | Inter + Noto Sans SC |
-
-## 📊 业务流程图
-
-```
-用户描述需求
-   ↓
-Agent 收集信息
-   ↓
-提交确认 ──→ 🔒 用户确认表单内容
-   ↓
-流程确认 ──→ 🔒 用户确认发起流程
-   ↓
-完成 → 返回流程 ID
-```
 
 ## 📄 License
 
