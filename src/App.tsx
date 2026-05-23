@@ -14,6 +14,8 @@ import { StatusBar } from './client/components/approval/StatusBar';
 import { ChatContainer } from './client/components/chat/ChatContainer';
 import { InputBar } from './client/components/chat/InputBar';
 import { ConfirmCard } from './client/components/approval/ConfirmCard';
+import { MemoryPanel } from './client/components/memory/MemoryPanel';
+import { useMemory } from './client/hooks/useMemory';
 import { useAgent } from './client/hooks/useAgent';
 import type { PluginInfo } from './client/types';
 
@@ -42,6 +44,19 @@ export default function App() {
     isStreaming, error,
     sendMessage, confirm, reset,
   } = useAgent({ pluginId: activePluginId });
+
+  // 记忆系统
+  const {
+    store: memoryStore,
+    getMemories: getMemoriesForPlugin,
+    addSharedMemory,
+    addPluginMemory,
+    removeMemory,
+    setSummary,
+    clearAll,
+  } = useMemory();
+  const [showMemory, setShowMemory] = useState(false);
+  const pluginMemories = getMemoriesForPlugin(activePluginId);
 
   // 尝试从服务端加载插件列表（含 suggestions）
   useEffect(() => {
@@ -108,6 +123,9 @@ export default function App() {
             ))}
           </select>
         </div>
+        <button className="memory-toggle-btn" onClick={() => setShowMemory(true)} title="查看记忆">
+          🧠
+        </button>
       </Header>
 
       <main className="main-content">
