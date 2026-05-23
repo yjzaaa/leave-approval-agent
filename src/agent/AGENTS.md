@@ -37,6 +37,72 @@ agent/
 
 - 框架级类型定义（AgentFactoryParams 等）
 
+## Agent 运行时序图
+
+```
+server/index.ts           agent-factory.ts              Pi Agent               DeepSeek API
+     │                          │                          │                        │
+     │  runAgent(params)        │                          │                        │
+     │─────────────────────────→│                          │                        │
+     │                          │  new Agent({             │                        │
+     │                          │    tools: plugin.tools,  │                        │
+     │                          │    systemPrompt })       │                        │
+     │                          │─────────────────────────→│                        │
+     │                          │                          │                        │
+     │                          │  agent.subscribe(...)    │                        │
+     │                          │─────────────────────────→│                        │
+     │                          │                          │                        │
+     │                          │  agent.prompt(message)   │                        │
+     │                          │─────────────────────────→│                        │
+     │                          │                          │  API 请求              │
+     │                          │                          │───────────────────────→│
+     │                          │                          │                        │
+     │  ◄─── onSSE('text') ──── │◄── text_delta ────────── │◄── text_delta ────────│
+     │                          │                          │                        │
+     │  ◄─── onSSE('confirm') ─ │◄── tool_execution_start │                        │
+     │                          │   (if isConfirmTool)     │                        │
+     │                          │                          │                        │
+     │  ◄─── onSSE('done') ──── │◄── agent_end ────────── │                        │
+     │                          │                          │                        │
+     │                          │  agent.waitForIdle()     │                        │
+     │                          │─────────────────────────→│                        │
+```
+
+## HITL 状态机流程
+
+```
+                    requestConfirm()
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │   PENDING    │  Promise 挂起，等待用户决策
+                  │  (阻塞中)    │
+                  └──┬───────┬───┘
+                     │       │
+          approveConfirm()  rejectConfirm()
+                     │       │
+                     ▼       ▼
+              ┌──────────┐ ┌──────────┐
+              │ RESOLVED │ │ REJECTED │
+              │ (true)   │ │ (false)  │
+              └──────────┘ └──────────┘
+
+注意: 同一时刻最多一个 PENDING 状态。
+     confirm-state 是全局单例。
+```
+
+## SSE 事件转换映射
+
+```
+Pi Agent 事件                    SSE 事件名              前端行为
+─────────────────────────────────────────────────────────────────
+message_update (text_delta)  →   text { content }     → 流式渲染文字
+tool_execution_start         →   confirm_required     → 弹确认卡片
+                                (仅 confirmTools 中的)
+tool_execution_end           →   tool_result          → 显示工具结果
+agent_end                    →   done {}              → 回到 idle
+```
+
 ## 依赖
 
 - `@earendil-works/pi-agent-core` — Agent 运行时

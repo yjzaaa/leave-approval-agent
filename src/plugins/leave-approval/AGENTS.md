@@ -11,9 +11,67 @@
 | `index.ts` | BusinessPlugin 实例，组装所有配置 |
 | `tools.ts` | 全部 Tool 定义（get_current_date, validate, submit, start） |
 | `prompt.ts` | System Prompt，指导 Agent 收集远程办公信息 |
-| `fields.ts` | 8 个表单字段元数据 |
+| `fields.ts` | 9 个表单字段元数据 |
 | `validator.ts` | 字段校验规则（日期、必填等） |
 | `api.ts` | Mock API（提交 → FM 前缀，流程 → PS 前缀） |
+
+## 审批流程时序图
+
+```
+用户                     Agent (DeepSeek)              Tools                    confirm-state
+ │                           │                           │                           │
+ │  "我要申请远程办公"       │                           │                           │
+ │──────────────────────────→│                           │                           │
+ │                           │  调用 get_current_date    │                           │
+ │                           │──────────────────────────→│                           │
+ │                           │  ◄── 2026-05-23 ──────────│                           │
+ │                           │                           │                           │
+ │  ◄── "请提供姓名、部门..."│                           │                           │
+ │                           │                           │                           │
+ │  "张三 技术部 ..."        │                           │                           │
+ │──────────────────────────→│                           │                           │
+ │                           │                           │                           │
+ │                           │  调用 leave_approval_     │                           │
+ │                           │  validate                 │                           │
+ │                           │──────────────────────────→│                           │
+ │                           │  ◄── { valid: true } ────│                           │
+ │                           │                           │                           │
+ │                           │  调用 leave_approval_     │                           │
+ │                           │  submit                   │                           │
+ │                           │──────────────────────────→│                           │
+ │                           │                           │  requestConfirm()         │
+ │                           │                           │──────────────────────────→│
+ │                           │                           │  Promise 挂起 ⏳          │
+ │                           │                           │                           │
+ │  ◄── confirm_required ────│◄── SSE 事件 ─────────────│  ◄── pending ───────────│
+ │  (📋 确认提交表单)        │                           │                           │
+ │                           │                           │                           │
+ │  POST /api/confirm        │                           │                           │
+ │  { approved: true }       │                           │                           │
+ │───────────────────────────────────────────────────────────────────────────────→│
+ │                           │                           │  Promise resolve(true)   │
+ │                           │                           │  ◄────────────────────────│
+ │                           │                           │                           │
+ │                           │                           │  submitApi() → FM-xxx    │
+ │                           │  ◄── { resultId: FM-xxx }│                           │
+ │                           │                           │                           │
+ │                           │  调用 leave_approval_     │                           │
+ │                           │  start                    │                           │
+ │                           │──────────────────────────→│                           │
+ │                           │                           │  requestConfirm()         │
+ │                           │                           │──────────────────────────→│
+ │  ◄── confirm_required ────│◄── SSE 事件 ─────────────│  Promise 挂起 ⏳          │
+ │  (🚀 确认发起审批流程)    │                           │                           │
+ │                           │                           │                           │
+ │  POST /api/confirm        │                           │                           │
+ │  { approved: true }       │                           │                           │
+ │───────────────────────────────────────────────────────────────────────────────→│
+ │                           │                           │  ◄── resolve(true) ──────│
+ │                           │                           │  startProcessApi → PS-xxx│
+ │                           │  ◄── { processId: PS-xxx}│                           │
+ │                           │                           │                           │
+ │  ◄── "流程已发起 PS-xxx"  │                           │                           │
+```
 
 ## Tool 列表
 

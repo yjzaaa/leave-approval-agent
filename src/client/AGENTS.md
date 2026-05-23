@@ -27,25 +27,84 @@ client/
         └── ThemeToggle.tsx            # 三态主题切换 (系统/暗色/亮色)
 ```
 
+## 前端状态机
+
+```
+                    用户发送消息
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │  processing  │  Agent 工作中，流式渲染文字
+                  └──────┬───────┘
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+     收到 confirm_required    收到 done / error
+              │                     │
+              ▼                     ▼
+    ┌──────────────────┐    ┌──────────────┐
+    │ awaiting_confirm │    │     done     │
+    │ 弹出确认卡片     │    │   或 error   │
+    └────────┬─────────┘    └──────────────┘
+             │
+     用户确认/拒绝
+     POST /api/confirm
+             │
+             ▼
+    ┌──────────────────┐
+    │   processing     │  继续等待 Agent
+    └──────────────────┘
+```
+
+## SSE 事件处理流程
+
+```
+浏览器 EventSource          useAgent.ts             UI 组件
+     │                          │                       │
+     │  SSE: text { content }   │                       │
+     │─────────────────────────→│  appendMessage()      │
+     │                          │──────────────────────→│  MessageBubble 渲染
+     │                          │                       │
+     │  SSE: confirm_required   │                       │
+     │  { tool, label, form }   │                       │
+     │─────────────────────────→│  setConfirmRequest()  │
+     │                          │  setPhase('awaiting') │
+     │                          │──────────────────────→│  ConfirmCard 弹出
+     │                          │                       │
+     │  SSE: confirm_resolved   │                       │
+     │─────────────────────────→│  setConfirmReq(null)  │
+     │                          │──────────────────────→│  ConfirmCard 关闭
+     │                          │                       │
+     │  SSE: tool_result        │                       │
+     │  { tool, error }         │                       │
+     │─────────────────────────→│  appendMessage()      │
+     │                          │──────────────────────→│  显示工具结果
+     │                          │                       │
+     │  SSE: done {}            │                       │
+     │─────────────────────────→│  setPhase('done')     │
+     │                          │──────────────────────→│  回到就绪态
+```
+
+## 组件层级
+
+```
+App.tsx
+ ├── Header.tsx
+ │    ├── ThemeToggle.tsx
+ │    └── Plugin 下拉选择器
+ │
+ ├── StatusBar.tsx (流水线指示器)
+ │
+ ├── ChatContainer.tsx
+ │    └── MessageBubble.tsx × N
+ │         └── react-markdown (Markdown 渲染)
+ │
+ ├── ConfirmCard.tsx (条件渲染, phase=awaiting_confirm)
+ │
+ └── InputBar.tsx
+```
+
 ## 文件说明
-
-### types.ts
-
-泛化类型定义，与具体业务解耦：
-- `AgentPhase`: `idle | processing | awaiting_confirm | done | error`
-- `ConfirmRequest`: `{ tool, label, form, fieldLabels }` — tool 名为 string，不硬编码
-- `PluginInfo`: `{ id, displayName, fieldCount }`
-
-### hooks/useAgent.ts
-
-核心聊天状态机 Hook：
-- SSE 连接管理（POST `/api/chat`，接收 EventSource 流）
-- 状态转换: idle → processing → awaiting_confirm → done
-- 消息列表管理（流式追加）
-- 确认请求处理（`lastConfirmToolRef` 去重）
-- 插件切换时重置对话
-
-### 组件
 
 | 组件 | 说明 |
 |------|------|
@@ -64,11 +123,6 @@ client/
 - **响应式**: `640px` 移动端断点
 - **主题**: dark/light/system，`prefers-color-scheme` 检测
 - **字体**: Inter + Noto Sans SC
-
-## 依赖
-
-- `react-markdown`, `remark-gfm` — Markdown 渲染
-- `../shared/types.js` — 无（使用本地 types.ts）
 
 ## 约束
 

@@ -24,6 +24,50 @@ plugins/
 └── sick-leave/              # 病假申请
 ```
 
+## 单个插件内部结构
+
+```
+plugins/{name}/
+     │
+     │  index.ts ──── 导出 BusinessPlugin 实例
+     │                   │
+     │                   ├── import tools.ts        → tools: [...]
+     │                   ├── import prompt.ts       → systemPrompt
+     │                   ├── import fields.ts       → fields: [...]
+     │                   ├── import validator.ts    → validate()
+     │                   ├── import api.ts          → submitApi(), startProcessApi()
+     │                   │
+     │                   └── 手动配置:
+     │                       ├── confirmTools: ['x_submit', 'x_start']
+     │                       ├── confirmLabels: { ... }
+     │                       ├── suggestions: [...]
+     │                       └── pipeline: [...]
+     │
+     └── tools.ts ──── 每个 tool 自主定义
+                        │
+                        ├── import confirm-state.js  → requestConfirm() (可选)
+                        ├── import validator.js       → 校验逻辑
+                        └── import api.js             → API 调用
+```
+
+## 插件注册表时序图
+
+```
+server/index.ts          registry.ts          leave-approval/index.ts
+     │                       │                        │
+     │  getPlugin('leave_approval')                  │
+     │──────────────────────→│                        │
+     │                       │  import leavePlugin    │
+     │                       │───────────────────────→│
+     │                       │  ◄── BusinessPlugin ───│
+     │  ◄── plugin ──────────│                        │
+     │                       │                        │
+     │  plugin.tools         │                        │
+     │  plugin.systemPrompt  │                        │
+     │  plugin.confirmTools  │                        │
+     │                       │                        │
+```
+
 ## BusinessPlugin 接口
 
 ```typescript
@@ -43,34 +87,56 @@ interface BusinessPlugin {
 }
 ```
 
+## 插件类型对比
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  审批类 (leave / expense / sick-leave)                          │
+│  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
+│  │validate │  │ submit   │  │ start    │  │get_current_date│   │
+│  │(无HITL) │  │(有HITL)  │  │(有HITL)  │  │(无HITL)       │   │
+│  └─────────┘  └──────────┘  └──────────┘  └───────────────┘   │
+│  confirmTools: ['x_submit', 'x_start']                         │
+│  fields: ✓ | validate: ✓ | submitApi: ✓ | startProcessApi: ✓  │
+├─────────────────────────────────────────────────────────────────┤
+│  纯聊天                                                         │
+│  tools: []                                                      │
+│  confirmTools: 无                                               │
+│  fields: ✗ | validate: ✗ | submitApi: ✗ | startProcessApi: ✗  │
+├─────────────────────────────────────────────────────────────────┤
+│  FAQ 咨询                                                       │
+│  ┌──────────────────────┐                                      │
+│  │ searchKnowledgeBase  │                                      │
+│  │ (无HITL)             │                                      │
+│  └──────────────────────┘                                      │
+│  confirmTools: []                                               │
+│  fields: ✗ | validate: ✗ | submitApi: ✗ | startProcessApi: ✗  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## 新增插件步骤
 
 1. 创建 `plugins/{name}/` 目录
-2. 实现 `index.ts` 导出 `BusinessPlugin` 实例
+2. 实现必要文件（index.ts 必填，其他按需）
 3. 在 `registry.ts` 中注册
 4. 前端自动发现，无需改动
 
-## 插件类型示例
+## HITL 使用方式
 
-| 类型 | tools | confirmTools | fields | 场景 |
-|------|-------|-------------|--------|------|
-| 审批类 | validate + submit + start | submit, start | 有 | 远程办公、报销 |
-| 纯聊天 | [] | 无 | 无 | 智能助手 |
-| FAQ 咨询 | search | 无 | 无 | 知识库问答 |
-
-## HITL 使用
-
-需要确认的 tool 直接调用 `requestConfirm()`:
 ```typescript
+// plugins/xxx/tools.ts
 import { requestConfirm } from '../../agent/confirm-state.js';
-const approved = await requestConfirm('xxx_submit', form);
+
+// 在 tool.execute() 中调用
+const approved = await requestConfirm('xxx_submit', formData);
+if (!approved) throw new Error('用户拒绝');
 ```
 
 ## 依赖
 
 - `../../agent/confirm-state.js` — HITL 状态机（按需使用）
 - `../../shared/plugin.js` — BusinessPlugin 接口
-- `@earendil-works/pi-ai` — Tool schema 定义
+- `@earendil-works/pi-ai` — Tool schema 定义 (Type.Object 等)
 - `@earendil-works/pi-agent-core` — AgentTool 类型
 
 ## 约束

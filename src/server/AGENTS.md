@@ -13,13 +13,92 @@ server/
 └── cli.ts          # CLI 交互入口 (--plugin=xxx)
 ```
 
+## 请求处理时序图
+
+### 聊天请求 (POST /api/chat)
+
+```
+浏览器                 Express (index.ts)        agent-factory         confirm-state
+  │                          │                        │                      │
+  │  POST /api/chat          │                        │                      │
+  │  { message, history,     │                        │                      │
+  │    plugin }              │                        │                      │
+  │─────────────────────────→│                        │                      │
+  │                          │                        │                      │
+  │                          │  设置 SSE 响应头:       │                      │
+  │                          │  Content-Type: text/   │                      │
+  │                          │  event-stream           │                      │
+  │                          │                        │                      │
+  │                          │  getPlugin(pluginId)   │                      │
+  │                          │  ────────┐              │                      │
+  │                          │  ◄───────┘              │                      │
+  │                          │                        │                      │
+  │                          │  runAgent({            │                      │
+  │                          │    plugin, message,    │                      │
+  │                          │    onSSE: (evt,data)=> │                      │
+  │                          │      res.write(...)    │                      │
+  │                          │  })                    │                      │
+  │                          │───────────────────────→│                      │
+  │                          │                        │                      │
+  │  SSE event stream ◄──── │◄─── onSSE callbacks ── │                      │
+  │                          │                        │                      │
+  │                          │                        │  (HITL 发生时)       │
+  │                          │                        │─────────────────────→│
+  │                          │                        │  requestConfirm()    │
+  │                          │                        │  ◄───────────────────│
+  │                          │                        │                      │
+```
+
+### 确认请求 (POST /api/confirm)
+
+```
+浏览器                 Express (index.ts)        confirm-state         插件 Tool
+  │                          │                        │                      │
+  │  POST /api/confirm       │                        │                      │
+  │  { approved: true }      │                        │                      │
+  │─────────────────────────→│                        │                      │
+  │                          │  approveConfirm()      │                      │
+  │                          │───────────────────────→│                      │
+  │                          │                        │  Promise resolve     │
+  │                          │                        │─────────────────────→│
+  │                          │                        │                      │  继续执行
+  │  ◄── 200 OK ────────────│                        │                      │
+```
+
+### 插件列表 (GET /api/plugins)
+
+```
+浏览器                 Express (index.ts)        registry
+  │                          │                        │
+  │  GET /api/plugins        │                        │
+  │─────────────────────────→│                        │
+  │                          │  遍历 registry         │
+  │                          │───────────────────────→│
+  │                          │  ◄── plugin list ──────│
+  │                          │                        │
+  │                          │  过滤: id, displayName │
+  │                          │  fieldCount            │
+  │                          │                        │
+  │  ◄── JSON [{id, name,   │                        │
+  │       fieldCount}] ──────│                        │
+```
+
+## API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/plugins` | 返回所有可用插件列表 |
+| POST | `/api/chat` | 创建 SSE 流，运行 Agent |
+| POST | `/api/confirm` | 用户确认/拒绝 HITL 请求 |
+| GET | `/*` | 静态文件 (生产模式从 dist/) |
+
 ## 文件说明
 
 ### index.ts
 
-- `GET /api/plugins` — 返回所有可用插件列表
-- `POST /api/chat` — 接收 `{ message, history, plugin }`，创建 SSE 流，调用 `runAgent()`
-- `POST /api/confirm` — 接收 `{ approved }`，调用 `approveConfirm()` 或 `rejectConfirm()`
+- `GET /api/plugins` — 遍历 registry 返回插件信息
+- `POST /api/chat` — 接收 `{ message, history, plugin }`，创建 SSE 流
+- `POST /api/confirm` — 接收 `{ approved }`，操作 confirm-state
 - 静态文件: 生产模式从 `dist/` 提供
 - Vite 代理: 开发模式 `/api` → Express
 
