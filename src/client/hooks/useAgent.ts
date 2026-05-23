@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useAgent — 聊天状态机 Hook v3.0
  *
  * 与业务解耦的版本：
@@ -15,7 +15,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { Message, ConfirmRequest, AgentPhase } from '../types';
 
-export function useAgent() {
+export function useAgent(pluginId?: string) {
   // ── 状态 ──
   const [messages, setMessages] = useState<Message[]>([]);
   const [phase, setPhase] = useState<AgentPhase>('idle');
@@ -27,6 +27,10 @@ export function useAgent() {
   // ── Refs ──
   const abortRef = useRef<AbortController | null>(null);
   const lastConfirmToolRef = useRef<string | null>(null);
+  const pluginIdRef = useRef<string>(pluginId || 'leave_approval');
+
+  // 同步外部 pluginId 变化
+  pluginIdRef.current = pluginId || 'leave_approval';
 
   // ── 消息管理 ──
 
@@ -77,7 +81,7 @@ export function useAgent() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text, history, plugin: pluginIdRef.current }),
         signal: controller.signal,
       });
 

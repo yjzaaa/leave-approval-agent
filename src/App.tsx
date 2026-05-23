@@ -1,4 +1,4 @@
-/**
+﻿/**
  * App 根组件 v3.0
  *
  * 五大视觉区域：
@@ -32,16 +32,16 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
 };
 
 export default function App() {
-  const {
-    messages, phase, phaseText, confirmRequest,
-    isStreaming, error,
-    sendMessage, confirm, reset,
-  } = useAgent();
-
   const [plugins, setPlugins] = useState<PluginInfo[]>(FALLBACK_PLUGINS);
   const [activePluginId, setActivePluginId] = useState('leave_approval');
   const [appTitle, setAppTitle] = useState('远程办公申请审批');
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS.leave_approval);
+
+  const {
+    messages, phase, phaseText, confirmRequest,
+    isStreaming, error,
+    sendMessage, confirm, reset,
+  } = useAgent(activePluginId);
 
   // 尝试从服务端加载插件列表（含 suggestions）
   useEffect(() => {
