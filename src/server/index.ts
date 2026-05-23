@@ -154,10 +154,12 @@ ${messagesText}`;
   }
 });
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { message, history, plugin: pluginId } = req.body as {
+  const { message, history, plugin: pluginId, memories, summary } = req.body as {
     message?: string;
     history?: ChatMessage[];
     plugin?: string;
+    memories?: any[];
+    summary?: string;
   };
 
   if (!message) return res.status(400).json({ error: 'message required' });
@@ -178,6 +180,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       plugin,
       message,
       history,
+      memories,
+      summary,
       onSSE: (event, data) => sendSSE(res, event, data),
     });
   } catch (err: any) {
