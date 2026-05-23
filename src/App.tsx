@@ -106,7 +106,7 @@ export default function App() {
   }, [plugins]);
 
   return (
-    <div className="app">
+    <div className={`app${showMemory ? " has-memory-open" : ""}`}>
       <Header title={appTitle}>
         {/* 业务插件下拉选择器（始终显示） */}
         <div className="plugin-selector">
