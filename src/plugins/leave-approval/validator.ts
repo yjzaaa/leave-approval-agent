@@ -1,20 +1,15 @@
 /**
- * 表单校验模块
- *
- * 对 LeaveForm 的 9 个字段执行全面校验：
- *   非空检查 → 日期格式 → 日期逻辑 → 长度检查 → 联系方式格式
- *
- * 返回 { valid, errors[] }，Agent 根据 errors 自主修复表单。
+ * 远程办公审批 — 表单校验规则
  */
-import type { LeaveForm, ValidationResult } from '../shared/types.js';
+import type { ValidationResult } from '../../shared/plugin.js';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-export function validateForm(form: LeaveForm): ValidationResult {
+export function validateLeaveForm(form: Record<string, string>): ValidationResult {
   const errors: string[] = [];
 
   // ── 1. 非空检查 ──
-  const required: [keyof LeaveForm, string][] = [
+  const required: Array<[string, string]> = [
     ['applicantName', '申请人姓名'],
     ['department', '部门'],
     ['employeeId', '工号'],
@@ -25,8 +20,8 @@ export function validateForm(form: LeaveForm): ValidationResult {
     ['emergencyContact', '紧急联系方式'],
     ['address', '远程办公地址'],
   ];
-  for (const [f, label] of required) {
-    if (!form[f] || form[f].trim() === '') {
+  for (const [key, label] of required) {
+    if (!form[key] || form[key].trim() === '') {
       errors.push(`【必填】${label} 不能为空`);
     }
   }
@@ -61,7 +56,7 @@ export function validateForm(form: LeaveForm): ValidationResult {
   if (form.workPlan && form.workPlan.length < 20)
     errors.push('工作安排至少 20 字');
 
-  // ── 5. 联系方式校验 (手机号 或 邮箱) ──
+  // ── 5. 联系方式校验 ──
   if (form.emergencyContact) {
     const ok = /^1[3-9]\d{9}$/.test(form.emergencyContact)
       || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emergencyContact);

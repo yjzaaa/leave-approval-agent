@@ -1,63 +1,84 @@
-# 远程办公申请自动化审批 Agent
+# 插件化审批 Agent
 
-基于 **Pi Agent Framework** + **DeepSeek API** 的智能审批助手，支持 CLI 和 Web UI 两种交互模式。
+基于 **Pi Agent Framework** + **DeepSeek API** 的多业务审批助手，支持 CLI 和 Web UI 两种交互模式。
 
 ## 🏗️ 架构
 
 ```
-用户 → CLI / Web UI → Express SSE → Pi Agent → DeepSeek API
-                              ↑            ↓
-                         Human-in-the-Loop  Tool 调用
-                              ↓            ↓
-                         确认卡片 ←── submit_form / start_process
+用户 → CLI / Web UI → Express SSE → Agent 框架 → 业务插件 → DeepSeek API
+                                          ↕
+                                    Human-in-the-Loop
+                                          ↕
+                                    确认卡片 ←→ 用户确认/拒绝
+```
+
+### 三层架构
+
+```
+┌──────────────────────────────────────────────┐
+│  🖥️ UI 壳层 (React)    聊天/审批/布局组件     │
+├──────────────────────────────────────────────┤
+│  ⚙️ Agent 框架层        创建/调度/SSE/HITL    │
+├──────────────────────────────────────────────┤
+│  📦 业务插件层          远程办公/报销/请假...  │
+└──────────────────────────────────────────────┘
 ```
 
 ### 目录结构
 
 ```
 src/
-├── main.tsx                     # React 入口
-├── App.tsx / App.css            # 根组件 & 全局样式
+├── main.tsx / App.tsx / App.css
 │
-├── client/                      # ── 前端层 ──
-│   ├── types.ts                 #   前端类型 (Message, ConfirmRequest, AgentPhase)
-│   ├── hooks/
-│   │   └── useAgent.ts         #   聊天状态机 (SSE 流处理, 确认逻辑)
+├── agent/                          # ⚙️ Agent 框架层（业务无关）
+│   ├── agent-factory.ts            #   Agent 工厂：根据 plugin 创建/运行 Agent
+│   ├── confirm-state.ts            #   HITL 确认状态机
+│   ├── types.ts                    #   框架级类型
+│   └── tools/                      #   通用 Tool 工厂
+│       ├── get-current-date.ts     #   获取当前日期
+│       ├── validate-form.ts        #   校验表单（注入 plugin.validate）
+│       ├── submit-form.ts          #   提交表单（注入 plugin.submitApi）
+│       └── start-process.ts       #   发起流程（注入 plugin.startProcessApi）
+│
+├── plugins/                        # 📦 业务插件层
+│   ├── registry.ts                 #   插件注册表
+│   └── leave-approval/             #   远程办公审批插件
+│       ├── index.ts                #   导出 BusinessPlugin 实例
+│       ├── fields.ts               #   表单字段元数据
+│       ├── prompt.ts               #   System Prompt
+│       ├── validator.ts            #   校验规则
+│       └── api.ts                  #   Mock API
+│
+├── client/                         # 🖥️ 前端 UI
+│   ├── types.ts
+│   ├── hooks/useAgent.ts
 │   └── components/
-│       ├── chat/                #   聊天功能
-│       │   ├── ChatContainer.tsx
-│       │   ├── MessageBubble.tsx  # Markdown 渲染 (react-markdown)
-│       │   └── InputBar.tsx
-│       ├── approval/            #   审批功能
-│       │   ├── StatusBar.tsx    #   流水线步骤 (就绪→分析→填表→校验→确认→完成)
-│       │   └── ConfirmCard.tsx  #   确认弹窗 (焦点陷阱/ESC/遮罩关闭)
-│       └── layout/              #   布局
-│           ├── Header.tsx
-│           └── ThemeToggle.tsx  #   主题切换 (跟随系统/暗色/亮色)
+│       ├── chat/      (ChatContainer, MessageBubble, InputBar)
+│       ├── approval/  (StatusBar, ConfirmCard)
+│       └── layout/    (Header, ThemeToggle)
 │
-├── server/                      # ── 后端层 ──
-│   ├── index.ts                 #   Express 服务 + SSE 流式
-│   ├── agent.ts                 #   Agent 工具定义 & 系统提示词
-│   ├── api.ts                   #   Mock API (表单提交/流程发起)
-│   ├── validator.ts             #   表单校验逻辑
-│   └── cli.ts                   #   CLI 入口
+├── server/                         # 🔧 服务端
+│   ├── index.ts                    #   Express 路由（插件注入）
+│   └── cli.ts                      #   CLI 入口（支持 --plugin=xxx）
 │
-└── shared/                      # ── 共享层 ──
-    ├── types.ts                 #   领域类型 (LeaveForm, ProcessForm 等)
-    └── config.ts                #   全局配置
+└── shared/                         # 📋 共享类型
+    ├── plugin.ts                   #   BusinessPlugin 接口
+    ├── types.ts                    #   领域类型
+    └── config.ts                   #   全局配置
 ```
 
-### 分层原则
+### 依赖方向
 
 ```
-client → shared ← server
-   ↑                 ↑
-   └── 不互相依赖 ──┘
+server → agent → plugins → shared
+client → shared
+agent → shared
 ```
 
-- **shared** — 纯类型和配置，零依赖
-- **client** — React 前端，仅依赖 shared
-- **server** — Express 后端，仅依赖 shared
+- **agent/** 不依赖任何具体业务
+- **server/** 选择并注入活动插件
+- **client/** 通过 shared 泛化类型通信
+- **plugins/** 只依赖 shared
 
 ## 🚀 快速开始
 
@@ -83,34 +104,54 @@ PORT=3000
 ### CLI 模式
 
 ```bash
-npm run cli
+npm run cli                     # 默认远程办公审批
+npm run cli -- --plugin=xxx     # 指定插件
 ```
 
 ### Web UI 模式
 
 ```bash
-# 同时启动前端 + 后端
-npm run dev:all
-
-# 或分别启动
-npm run dev:server   # Express → http://localhost:3000
-npm run dev          # Vite    → http://localhost:5173
+npm run dev:all                 # 同时启动前后端
+npm run dev:server              # Express → http://localhost:3000
+npm run dev                     # Vite   → http://localhost:5173
 ```
 
-## 🎨 前端特性
+## 📦 扩展新业务
+
+接入新的审批类型只需创建 4-5 个文件：
+
+```
+src/plugins/expense-approval/
+├── index.ts      # export const expensePlugin: BusinessPlugin = { ... }
+├── fields.ts     # FieldMeta[]
+├── prompt.ts     # System Prompt
+├── validator.ts  # validate(form) → { valid, errors[] }
+└── api.ts        # submit / start API
+```
+
+然后在 `plugins/registry.ts` 注册：
+
+```typescript
+export const registry: PluginRegistry = {
+  leave_approval: leavePlugin,
+  expense_approval: expensePlugin,  // ← 新增
+};
+```
+
+前端**零改动**，通过 URL 参数 `/?plugin=expense_approval` 自动切换。
+
+## 🎨 前端设计
 
 | 特性 | 说明 |
 |------|------|
-| **Slate 极简主题** | 无渐变色，靠表面层次和文字排版构建层级 |
+| **Slate 极简主题** | 无渐变色，纯灰度排版构建层级 |
 | **暗色/亮色/系统** | 三段式主题切换，localStorage 持久化 |
 | **Markdown 渲染** | react-markdown + remark-gfm，完整 GFM 支持 |
-| **流水线进度** | 就绪 → 分析 → 填表 → 校验 → 确认 → 完成 |
-| **两步确认** | 表单确认 → 审批流程确认，弹窗不重复 |
-| **焦点陷阱** | 确认弹窗内 Tab 循环、ESC 关闭 |
-| **响应式** | 640px 断点、iOS 防缩放、safe-area-inset-bottom |
-| **无障碍** | aria 全覆盖、focus-visible、prefers-reduced-motion |
+| **流水线指示器** | 就绪 → 处理中 → 等待确认 → 完成 |
+| **两步确认** | 表单确认 + 流程确认，防重复推送 |
+| **无障碍访问** | 焦点陷阱、ESC 关闭、aria 全覆盖 |
 
-## 🔧 技术栈
+## 🛠️ 技术栈
 
 | 层 | 技术 |
 |----|------|
@@ -120,26 +161,16 @@ npm run dev          # Vite    → http://localhost:5173
 | Markdown | react-markdown, remark-gfm |
 | 字体 | Inter + Noto Sans SC |
 
-## 🧪 测试
-
-```bash
-npm test
-```
-
-## 📖 工作流程
+## 📊 业务流程图
 
 ```
-用户输入需求
+用户描述需求
    ↓
-Agent 对话收集信息
+Agent 收集信息
    ↓
-提交表单 (submit_form)
+提交确认 ──→ 🔒 用户确认表单内容
    ↓
-🔒 用户确认表单内容
-   ↓
-发起审批流程 (start_process)
-   ↓
-🔒 用户确认发起
+流程确认 ──→ 🔒 用户确认发起流程
    ↓
 完成 → 返回流程 ID
 ```

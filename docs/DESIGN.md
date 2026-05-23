@@ -1,313 +1,314 @@
-# 远程办公申请自动化审批 Agent — 设计文档 v2.1
+# 远程办公申请自动化审批 Agent — 设计文档 v3.0
 
 > **框架**: Pi Agent Framework (`@earendil-works/pi-agent-core` + `@earendil-works/pi-ai`)  
 > **模型**: DeepSeek V4 Pro  
 > **分支**: `feature/pi-framework`  
-> **前端**: React 18 + Vite 6 + TypeScript
+> **前端**: React 18 + Vite 6 + TypeScript  
+> **架构**: 插件化三层分离（Agent 框架 / 业务插件 / UI 壳）
 
 ---
 
 ## 1. 系统架构全景
 
+### 1.1 三层架构
+
 ```mermaid
 graph TB
-    subgraph User["👤 用户"]
-        U1["描述远程办公需求"]
-        U2["确认表单 ✓/✗"]
-        U3["确认发起 ✓/✗"]
+    subgraph UI["🖥️ UI 壳层 (React + Vite)"]
+        direction LR
+        Chat["聊天组件<br/>ChatContainer/MessageBubble/InputBar"]
+        Approval["审批组件<br/>StatusBar/ConfirmCard"]
+        Layout["布局组件<br/>Header/ThemeToggle"]
     end
 
-    subgraph Frontend["🖥️ 前端 (React 18 + Vite)"]
+    subgraph Framework["⚙️ Agent 框架层 (与业务无关)"]
         direction TB
-        WebUI["Web UI<br/>Slate 极简主题<br/>主题切换<br/>Markdown 渲染"]
-        Components["组件分层<br/>chat / approval / layout"]
-        Hook["useAgent Hook<br/>SSE 流处理<br/>状态机"]
-        StatusBar["StatusBar<br/>流水线进度"]
-        ConfirmCard["ConfirmCard<br/>焦点陷阱 / ESC"]
+        Runtime["Agent Runtime<br/>创建/销毁/事件订阅"]
+        SSE["SSE 桥接<br/>Agent 事件 → SSE 流"]
+        HITL["Human-in-the-Loop<br/>确认状态机"]
+        ToolFactory["Tool 工厂<br/>通用校验/提交/流程"]
     end
 
-    subgraph Backend["⚙️ 后端 (Express + SSE)"]
-        Server["Express Server<br/>POST /api/chat (SSE)<br/>POST /api/confirm"]
+    subgraph Plugins["📦 业务插件层"]
+        direction LR
+        Leave["远程办公审批<br/>leave-approval"]
+        Future["报销审批<br/>expense-approval<br/>(未来扩展)"]
     end
 
-    subgraph Agent["🧠 Pi Agent"]
-        direction TB
-        SysPrompt["System Prompt<br/>3 阶段工作流<br/>推断→校验→确认→提交<br/>确认→发起"]
-        Model["模型: deepseek-v4-pro<br/>Temperature: 0.1"]
-        AgentLoop["Agent 自主决策循环<br/>prompt() → streamFn →<br/>LLM 响应 → 调用 Tool → 循环"]
-    end
+    UI --> Framework
+    Framework --> Plugins
+    Plugins --> Framework
+```
 
-    subgraph Tools["🔧 Agent Tools"]
-        T1["get_current_date<br/>📅 获取当前日期"]
-        T2["validate_form<br/>✓ 校验表单<br/>🔄 最多重试 5 次"]
-        T3["submit_form<br/>📤 提交表单<br/>🔒 需用户确认"]
-        T4["start_process<br/>🚀 发起审批流程<br/>🔒 需用户二次确认"]
-    end
+### 1.2 解耦核心：BusinessPlugin 接口
 
-    subgraph BackendLayer["📡 后端服务 (Mock)"]
-        API["Mock API<br/>submitForm → formId<br/>startProcess → processId"]
-        Validator["Validator<br/>字段校验规则<br/>类型/长度/格式"]
-    end
+所有业务逻辑通过单一接口注入框架：
 
-    U1 --> WebUI
-    WebUI --> Hook
-    Hook -->|"SSE stream"| Server
-    Server --> Agent
-    Agent --> AgentLoop
-    AgentLoop --> Model
-    AgentLoop --> Tools
-    U2 --> ConfirmCard
-    U3 --> ConfirmCard
-    ConfirmCard -->|"POST /api/confirm"| Server
-    StatusBar --> Hook
-    T1 --> AgentLoop
-    T2 --> Validator
-    T3 --> API
-    T4 --> API
-
-    style User fill:#e1f5fe,stroke:#0288d1
-    style Frontend fill:#fff3e0,stroke:#e65100
-    style Backend fill:#e8f5e9,stroke:#388e3c
-    style Agent fill:#f3e5f5,stroke:#7b1fa2
-    style Tools fill:#e8eaf6,stroke:#283593
-    style BackendLayer fill:#fce4ec,stroke:#c62828
+```typescript
+interface BusinessPlugin {
+  id: string;                    // 唯一标识
+  displayName: string;           // UI 标题
+  fields: FieldMeta[];           // 表单字段定义
+  systemPrompt: string;          // Agent System Prompt
+  tools: AgentTool[];            // Tool 列表
+  validate(form): ValidationResult;  // 表单校验
+  formatFormForDisplay?(form): Record<string, string>;  // 展示格式化
+  confirmLabels?: {              // 确认阶段文案
+    submit?: string;
+    start?: string;
+  };
+}
 ```
 
 ---
 
-## 2. 前端架构 (Clean Architecture)
+## 2. 目录结构
 
 ```
 src/
-├── main.tsx                     # Vite/React 入口
-├── App.tsx / App.css            # 根组件 & 设计系统
+├── main.tsx                          # React 入口
+├── App.tsx                           # 根组件
+├── App.css                           # 全局样式 (CSS Token 体系)
 │
-├── client/                      # ── 🖥️ 前端层 ──
-│   ├── types.ts                 #   前端类型
-│   ├── hooks/
-│   │   └── useAgent.ts         #   状态机 (SSE + 确认 + 去重)
+├── agent/                            # ⚙️ Agent 框架层（业务无关）
+│   ├── runtime.ts                    # Agent 创建/事件订阅/SSE 转换
+│   ├── agent-factory.ts              # Agent 工厂：根据 plugin 创建 Agent
+│   ├── confirm-state.ts              # HITL 确认状态机
+│   ├── tools/                        # 通用 Tool 工厂
+│   │   ├── get-current-date.ts       # 获取当前日期（所有业务通用）
+│   │   ├── validate-form.ts          # 通用校验 Tool（注入 plugin.validate）
+│   │   ├── submit-form.ts            # 通用提交 Tool（注入 plugin API）
+│   │   └── start-process.ts          # 通用流程 Tool（注入 plugin API）
+│   └── types.ts                      # 框架级类型定义
+│
+├── plugins/                          # 📦 业务插件层
+│   ├── registry.ts                   # 插件注册表
+│   └── leave-approval/               # 远程办公审批插件
+│       ├── index.ts                  # 导出一个 BusinessPlugin 实例
+│       ├── fields.ts                 # 表单字段元数据
+│       ├── prompt.ts                 # System Prompt 模板
+│       ├── validator.ts              # 字段校验规则
+│       ├── api.ts                    # 后端 Mock/真实 API
+│       └── tools.ts                  # Tool 列表组装
+│
+├── client/                           # 🖥️ 前端 UI
+│   ├── types.ts                      # 泛化类型 (Message/AgentPhase/ConfirmRequest)
+│   ├── hooks/useAgent.ts             # 聊天状态机 Hook（不再关心具体业务）
 │   └── components/
-│       ├── chat/                #   聊天功能
-│       │   ├── ChatContainer   #   消息列表 + 空状态 + 滚动到底
-│       │   ├── MessageBubble   #   Markdown 渲染
-│       │   └── InputBar        #   输入框 + 字符计数
-│       ├── approval/            #   审批功能
-│       │   ├── StatusBar       #   流水线步骤指示器
-│       │   └── ConfirmCard     #   确认弹窗 (焦点陷阱)
-│       └── layout/              #   布局
-│           ├── Header          #   顶部导航
-│           └── ThemeToggle     #   主题切换
+│       ├── chat/                     # 聊天组件
+│       │   ├── ChatContainer.tsx
+│       │   ├── MessageBubble.tsx
+│       │   └── InputBar.tsx
+│       ├── approval/                 # 审批组件
+│       │   ├── StatusBar.tsx
+│       │   └── ConfirmCard.tsx
+│       └── layout/                   # 布局组件
+│           ├── Header.tsx
+│           └── ThemeToggle.tsx
 │
-├── server/                      # ── ⚙️ 后端层 ──
-│   ├── index.ts                 #   Express + SSE
-│   ├── agent.ts                 #   Agent 工具 & 提示词
-│   ├── api.ts                   #   Mock API
-│   ├── validator.ts             #   校验规则
-│   └── cli.ts                   #   CLI 入口
+├── server/                           # 🔧 服务端
+│   ├── index.ts                      # Express 路由（注入 plugin）
+│   └── cli.ts                        # CLI 交互入口
 │
-└── shared/                      # ── 🔗 共享层 ──
-    ├── types.ts                 #   领域类型
-    └── config.ts                #   全局配置
+└── shared/                           # 📋 共享类型
+    ├── plugin.ts                     # BusinessPlugin 接口定义
+    ├── types.ts                      # 领域类型（LeaveForm 保留兼容）
+    └── config.ts                     # 全局配置
 ```
 
-**分层依赖**: `client → shared ← server`，client 和 server 互不依赖。
+### 依赖方向
+
+```
+server → agent → plugins → shared
+client → shared
+agent → shared
+```
+
+- **agent/** 不依赖任何具体业务（不 import plugins/leave-approval）
+- **server/** 负责选择并注入当前活动的 plugin
+- **client/** 只通过 shared 的泛化类型通信，不关心 plugin 细节
+- **plugins/** 只依赖 shared 的类型定义
 
 ---
 
-## 3. 前端设计系统
+## 3. 数据流
 
-### 3.1 色彩体系
+### 3.1 SSE 事件流
 
-| 角色 | 亮色 | 暗色 |
-|------|------|------|
-| 根背景 | `#fcfcfb` | `#0c0c0b` |
-| 默认表面 | `#ffffff` | `#181817` |
-| 悬浮表面 | `#f3f3f0` | `#262625` |
-| 主文字 | `#141413` | `#ededec` |
-| 次文字 | `#63635e` | `#a1a09c` |
-| 边框 | `#ebebe8` | `rgba(255,255,255,0.08)` |
-| 强调色 | `#334155` (slate) | `#94a3b8` (slate) |
+```
+用户输入
+  │
+  ▼
+POST /api/chat ────────────────────────────────────────┐
+  │                                                     │
+  ▼                                                     │
+agent-factory.createAgent(plugin)                       │
+  │                                                     │
+  ▼                                                     │
+Agent.prompt(message)                                   │
+  │                                                     │
+  ├── text_delta ──→ SSE: text { content }       ──→ 前端流式渲染
+  │                                                        │
+  ├── tool_execution_start (submit_form/start_process)     │
+  │     │                                                  │
+  │     ├── confirm-state.request() ──→ SSE:               │
+  │     │   confirm_required { tool, label, form,          │
+  │     │   fieldLabels }                            ──→ 弹出确认卡片
+  │     │                                                  │
+  │     └── 定时轮询 confirm-state.getPending()            │
+  │           │                                            │
+  │           └── resolved ──→ SSE: confirm_resolved ─→ 关闭确认卡片
+  │                                                        │
+  └── agent_end ──→ SSE: done                        ──→ 流程结束
+```
 
-### 3.2 组件设计
-
-| 组件 | 功能 | 关键实现 |
-|------|------|---------|
-| **ThemeToggle** | 三段循环 (系统→暗→亮) | localStorage 持久化，`data-theme` 属性 |
-| **StatusBar** | 流水线步骤 | `idle→thinking→filling→validating→confirming→done` |
-| **ChatContainer** | 空状态 + 滚动 | 快捷建议语、滚动偏离按钮 |
-| **MessageBubble** | Markdown 渲染 | react-markdown + remark-gfm |
-| **ConfirmCard** | 确认弹窗 | 焦点陷阱、ESC关闭、遮罩点击关闭 |
-| **InputBar** | 输入框 | 字数计数、SVG 发送图标、快捷语联动 |
-
-### 3.3 Markdown 渲染支持
-
-- 标题 (h1-h4)、加粗、斜体、删除线
-- 行内代码 + 代码块
-- 有序/无序列表、嵌套列表
-- 引用块、分割线
-- 表格 (GFM)
-- 链接
-- 用户/助手双模式颜色适配
-
----
-
-## 4. Human-in-the-Loop 流程
+### 3.2 Human-in-the-Loop 确认流程
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor User as 👤 用户
-    participant UI as 🖥️ Web UI
-    participant SSE as 📡 SSE Stream
-    participant Agent as 🧠 Pi Agent
-    participant Tools as 🔧 Tools
-    participant API as 📡 Mock API
+    participant U as 用户
+    participant F as 前端 UI
+    participant S as Express Server
+    participant A as Agent Runtime
+    participant C as Confirm State
+    participant P as Plugin
 
-    %% Phase 1: 填写 & 校验
-    rect rgb(232, 245, 233)
-        Note over User,API: Phase 1 — 信息收集 & 校验
-        User->>UI: "我需要远程办公3天"
-        UI->>SSE: POST /api/chat
-        SSE->>Agent: prompt()
-        Agent->>Tools: get_current_date()
-        Tools-->>Agent: "2026-05-23"
-        Agent->>Agent: LLM 推断补全表单
-        Agent->>Tools: validate_form(form)
-        Tools-->>Agent: ✗ { valid: false, errors: [...] }
-        Agent->>Agent: 根据 errors 修复
-        Agent->>Tools: validate_form(form)
-        Tools-->>Agent: ✓ { valid: true, errors: [] }
-    end
-
-    %% 第一次确认
-    rect rgb(232, 234, 246)
-        Note over User,API: 🔒 第一次确认 — 表单提交
-        Agent-->>SSE: event: confirm_required (submit_form)
-        SSE-->>UI: ConfirmCard 弹出
-        UI-->>User: 表单预览 + "确认提交?"
-        User->>UI: 确认 ✓
-        UI->>SSE: POST /api/confirm { approved: true }
-        Agent->>Tools: submit_form(form)
-        Tools->>API: submitForm()
-        API-->>Tools: { formId: "FM-xxx" }
-    end
-
-    %% 第二次确认
-    rect rgb(255, 243, 224)
-        Note over User,API: 🔒 第二次确认 — 发起流程
-        Agent-->>SSE: event: confirm_required (start_process)
-        SSE-->>UI: ConfirmCard 弹出
-        UI-->>User: 流程预览 + "确认发起?"
-        User->>UI: 确认 ✓
-        UI->>SSE: POST /api/confirm { approved: true }
-        Agent->>Tools: start_process(formId, form)
-        Tools->>API: startProcess()
-        API-->>Tools: { processId: "PS-xxx" }
-    end
-
-    Agent-->>SSE: event: done
-    SSE-->>UI: "流程发起成功"
-    UI-->>User: ✓ formId + processId
+    U->>F: 输入需求
+    F->>S: POST /api/chat
+    S->>A: Agent.prompt(message)
+    A->>P: 依次调用 Tools
+    A-->>F: SSE: text_delta (流式)
+    A->>P: submit_form Tool 执行
+    P->>C: requestConfirm('submit_form', form)
+    A-->>F: SSE: confirm_required
+    F->>U: 弹出确认卡片
+    U->>F: 点击"确认提交"
+    F->>S: POST /api/confirm { approved: true }
+    S->>C: approveConfirm()
+    C->>P: Promise.resolve(true)
+    P->>A: Tool 结果返回
+    A-->>F: SSE: confirm_resolved + text_delta
+    A->>P: start_process Tool 执行
+    P->>C: requestConfirm('start_process', ...)
+    A-->>F: SSE: confirm_required (二次确认)
+    U->>F: 点击"确认发起"
+    S->>C: approveConfirm()
+    C->>P: Promise.resolve(true)
+    A-->>F: SSE: done
+    F->>U: 显示最终结果
 ```
 
 ---
 
-## 5. Agent 决策流程
+## 4. 前端状态机
 
-```mermaid
-flowchart TD
-    Start(["👤 用户输入需求"]) --> GetDate["📅 get_current_date"]
-    GetDate --> Infer["🧠 LLM 推断表单<br/>• 补全缺失字段<br/>• 格式化 YYYY-MM-DD<br/>• 原因 ≥10 字<br/>• 工作安排 ≥20 字"]
+### 4.1 阶段定义 (AgentPhase)
 
-    Infer --> Validate["✓ validate_form"]
-
-    Validate -->|"✗ invalid"| Fix["🔄 LLM 根据 errors 修复"]
-    Fix -->|"已达 5 次上限"| Fail(["❌ 提示用户<br/>手动修正"])
-    Fix --> Validate
-
-    Validate -->|"✓ valid"| Show1["📋 展示表单<br/>等待确认"]
-
-    Show1 --> Confirm1{"🔒 用户确认?"}
-    Confirm1 -->|"✗ 拒绝"| Infer
-    Confirm1 -->|"✓ 确认"| Submit["📤 submit_form"]
-    Submit -->|"获取 formId"| Show2["📋 展示流程单<br/>等待二次确认"]
-
-    Show2 --> Confirm2{"🔒 用户确认?"}
-    Confirm2 -->|"✗ 拒绝"| Show1
-    Confirm2 -->|"✓ 确认"| StartProc["🚀 start_process"]
-    StartProc --> Done(["✅ 完成<br/>formId + processId"])
-
-    style Confirm1 fill:#fff9c4,stroke:#f9a825,stroke-width:3px
-    style Confirm2 fill:#fff9c4,stroke:#f9a825,stroke-width:3px
-    style Done fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+```typescript
+type AgentPhase =
+  | 'idle'              // 就绪，等待用户输入
+  | 'processing'        // Agent 工作中
+  | 'awaiting_confirm'  // 等待用户确认（无业务特化）
+  | 'done'              // 流程结束
+  | 'error';            // 出错
 ```
 
----
+### 4.2 StatusBar 阶段映射
 
-## 6. SSE 事件流
+StatusBar 不再固定显示"填表→校验→确认→完成"，而是从插件的阶段定义动态渲染：
 
-| 事件 | 方向 | 数据 | 说明 |
-|------|------|------|------|
-| `text` | server→client | `{ content: string }` | AI 流式文本输出 |
-| `tool_result` | server→client | `{ tool, error }` | Tool 执行结果 |
-| `confirm_required` | server→client | `{ tool, label, form, fieldLabels }` | 弹出确认卡片 |
-| `confirm_resolved` | server→client | `{ tool }` | 确认已处理 |
-| `done` | server→client | `{}` | Agent 执行完毕 |
-| `error` | server→client | `{ message }` | 错误信息 |
+```typescript
+// plugin 可提供自定义阶段映射
+interface BusinessPlugin {
+  // ...
+  pipeline?: PipelineStep[];
+}
 
-**确认去重机制**: 前端 `useAgent` 使用 `lastConfirmToolRef` 按 tool 名去重，防止 SSE 重复推送同一确认。
-
----
-
-## 7. Tool 详情
-
-| Tool | 输入 | 输出 | 确认 |
-|------|------|------|------|
-| `get_current_date` | 无 | `2026-05-23 17:00:00` | 否 |
-| `validate_form` | `{ form: LeaveForm }` | `{ valid, errors[] }` | 否 |
-| `submit_form` | `{ form: LeaveForm }` | `{ formId }` | **是 (第一次)** |
-| `start_process` | `{ formId, form }` | `{ processId }` | **是 (第二次)** |
-
-### 校验规则
-
-| 字段 | 规则 |
-|------|------|
-| `applicantName` | 非空 |
-| `department` | 非空 |
-| `employeeId` | 非空 |
-| `remoteStartDate` | YYYY-MM-DD，≥ 当前日期 |
-| `remoteEndDate` | YYYY-MM-DD，≥ 开始日期，≤ 30 天 |
-| `reason` | ≥ 10 字 |
-| `workPlan` | ≥ 20 字 |
-| `emergencyContact` | 手机号格式 |
-| `address` | 非空 |
-
----
-
-## 8. 确认流程防重复
-
-```mermaid
-flowchart LR
-    SSE["📡 SSE 推送<br/>confirm_required"] --> Check{"lastConfirmToolRef<br/>=== data.tool ?"}
-    Check -->|"否 (新确认)"| Show["✅ 显示弹窗"]
-    Check -->|"是 (重复)"| Skip["🚫 忽略"]
-    Show --> UserAction{"用户操作"}
-    UserAction -->|"确认/拒绝"| Set["lastConfirmToolRef = tool<br/>关闭弹窗"]
+interface PipelineStep {
+  key: string;
+  label: string;
+  toolName?: string;  // 关联的 tool 名称，用于自动切换阶段
+}
 ```
 
+前端 StatusBar 读取 `plugin.pipeline` 渲染相应的步骤胶囊。
+
 ---
 
-## 9. 关键设计决策
+## 5. 设计系统
 
-| 决策 | 理由 |
-|------|------|
-| **两次确认** | 表单提交和流程发起分开确认，防止误操作 |
-| **Slate 极简主题** | 去蓝紫渐变，以文字层级和表面层次区分信息 |
-| **SSE 流式** | 实时展示 AI 思考过程，提升交互感 |
-| **Pi Agent 框架** | 53k token 上下文，Agent 自主决策循环，事件系统 |
-| **Typebox Schema** | Pi 原生支持，类型安全 + 运行时校验 |
-| **校验重试** | Agent 自主根据 errors 修复，最多 5 次 |
-| **LLM 推断** | 用户只需描述需求，Agent 推断补全所有字段 |
-| **Markdown 渲染** | 格式化 AI 回复，表格/代码/列表清晰可读 |
-| **主题切换** | 系统/暗色/亮色三段式，localStorage 持久化 |
-| **Clean Architecture** | client/server/shared 三层分离，单向依赖 |
+### 5.1 CSS Token 体系
+
+| Token | 用途 | Light | Dark |
+|-------|------|-------|------|
+| `--bg-primary` | 主背景 | `#fcfcfb` | `#0c0c0b` |
+| `--bg-secondary` | 次背景 | `#f3f2f0` | `#1a1a19` |
+| `--text-primary` | 主文字 | `#334155` | `#e2e2e0` |
+| `--text-secondary` | 次文字 | `#64748b` | `#8b8b89` |
+| `--accent` | 强调色 | `#334155` | `#94a3b8` |
+| `--border` | 边框 | `#e2e2e0` | `#2a2a29` |
+| `--radius` | 圆角 | `12px` | `12px` |
+
+### 5.2 主题切换
+
+三段式循环：**跟随系统 → 暗色 → 亮色**，持久化到 `localStorage`。
+
+---
+
+## 6. 扩展新业务指南
+
+接入新业务只需 4-5 个文件：
+
+### 创建新插件
+
+```bash
+mkdir src/plugins/expense-approval
+```
+
+### 文件清单
+
+| 文件 | 内容 | 必填 |
+|------|------|------|
+| `index.ts` | 导出 `BusinessPlugin` 实例 | 是 |
+| `fields.ts` | 表单字段 `FieldMeta[]` | 是 |
+| `prompt.ts` | System Prompt | 是 |
+| `validator.ts` | 校验规则 | 是 |
+| `api.ts` | 后端 API 调用 | 是（可用 Mock） |
+| `tools.ts` | Tool 列表组装 | 可选（默认用框架工厂） |
+
+### 注册插件
+
+```typescript
+// plugins/registry.ts
+import { leavePlugin } from './leave-approval/index.js';
+import { expensePlugin } from './expense-approval/index.js';
+
+export const pluginRegistry: Record<string, BusinessPlugin> = {
+  leave_approval: leavePlugin,
+  expense_approval: expensePlugin,
+};
+
+export function getPlugin(id: string): BusinessPlugin | undefined {
+  return pluginRegistry[id];
+}
+```
+
+### 前端零改动
+
+- 通过 URL 参数指定插件：`/?plugin=expense_approval`
+- StatusBar 自动读取 `plugin.pipeline` 渲染阶段
+- ConfirmCard 自动读取 `plugin.fields` 渲染表单表格
+- Header 自动读取 `plugin.displayName` 显示标题
+
+---
+
+## 7. 关键决策记录
+
+| 决策 | 原因 | 日期 |
+|------|------|------|
+| Slate/Warm Gray 主题 | 用户明确拒绝蓝紫渐变，选择中性无渐变风格 | 2026-05-23 |
+| `lastConfirmToolRef` 按 tool 名去重 | 允许两次不同确认，防止 SSE 重复推送同一确认 | 2026-05-23 |
+| Clean Architecture 三层 | 清晰的依赖方向，client/server 只依赖 shared | 2026-05-23 |
+| `react-markdown` + `remark-gfm` | 完整的 Markdown/GFM 支持，比正则稳定 | 2026-05-23 |
+| 插件化架构 | 将业务逻辑从 Agent 框架解耦，支持多业务扩展 | 2026-05-23 |
+| BusinessPlugin 接口 | 新业务只需实现一个接口，前端零改动 | 2026-05-23 |

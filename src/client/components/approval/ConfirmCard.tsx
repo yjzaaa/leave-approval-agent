@@ -1,14 +1,16 @@
 /**
- * ConfirmCard — 确认弹窗
+ * ConfirmCard — 确认弹窗 v3.0
  *
- * 当 Agent 需要用户确认时弹出（submit_form 或 start_process）
+ * 完全与业务解耦：
+ *   - 不再判断 tool === 'submit_form' 来决定文案
+ *   - 标题和副标题由插件通过 SSE confirm_required 事件动态提供
+ *   - 字段表格由 fieldLabels + form 动态渲染
  *
  * 特性：
- * 1. 模态遮罩 + 毛玻璃模糊背景
- * 2. 表单信息表格展示
- * 3. 焦点陷阱 — Tab 在弹窗内循环，不会跑到背后页面
- * 4. ESC 关闭 / 点击遮罩关闭 / 拒绝按钮关闭
- * 5. 入场/退场动画
+ *   1. 模态遮罩 + 毛玻璃模糊背景
+ *   2. 焦点陷阱（Tab 在弹窗内循环）
+ *   3. ESC 关闭 / 遮罩点击关闭 / 拒绝按钮关闭
+ *   4. 入场/退场动画
  */
 import React, { useEffect, useRef } from 'react';
 import type { ConfirmRequest } from '../../types';
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
-  const { tool, label, form, fieldLabels } = confirmRequest;
+  const { label, form, fieldLabels } = confirmRequest;
   // 只显示有值的字段
   const entries = Object.entries(fieldLabels).filter(([key]) => form[key] !== undefined);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -27,9 +29,7 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
 
   // ── 副作用：锁背景 + 焦点管理 + ESC 关闭 ──
   useEffect(() => {
-    // 阻止背景页面滚动
     document.body.style.overflow = 'hidden';
-    // 自动聚焦确认按钮
     approveBtnRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,7 +38,7 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
         onConfirm(false);
         return;
       }
-      // 焦点陷阱：Tab 在弹窗内循环
+      // 焦点陷阱
       if (e.key === 'Tab' && overlayRef.current) {
         const focusable = overlayRef.current.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -63,14 +63,12 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
     };
   }, [onConfirm]);
 
-  /** 点击遮罩层关闭 */
+  /** 点击遮罩关闭 */
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) {
       onConfirm(false);
     }
   };
-
-  const isSubmit = tool === 'submit_form';
 
   return (
     <div
@@ -83,7 +81,7 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
       aria-describedby="confirm-modal-desc"
     >
       <div className="confirm-modal">
-        {/* Header — 标题 & 说明 */}
+        {/* Header — 标题由插件提供 */}
         <div className="confirm-modal-header">
           <div className="confirm-modal-icon" aria-hidden="true">🔒</div>
           <div>
@@ -91,14 +89,12 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
               {label}
             </div>
             <div className="confirm-modal-subtitle" id="confirm-modal-desc">
-              {isSubmit
-                ? '请仔细核对以下信息，确认无误后提交'
-                : '请确认发起审批流程'}
+              请仔细核对以下信息，确认无误后提交
             </div>
           </div>
         </div>
 
-        {/* Body — 表单信息表格 */}
+        {/* Body — 动态表单信息表格 */}
         <div className="confirm-modal-body">
           <table className="form-table" role="table" aria-label="申请信息摘要">
             <tbody>
@@ -125,7 +121,7 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
             onClick={() => onConfirm(true)}
             ref={approveBtnRef}
           >
-            ✓ {isSubmit ? '确认提交' : '确认发起'}
+            ✓ 确认提交
           </button>
         </div>
       </div>
