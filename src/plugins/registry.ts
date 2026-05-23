@@ -6,10 +6,13 @@
  */
 import type { PluginRegistry } from '../shared/plugin.js';
 import { leavePlugin } from './leave-approval/index.js';
+import { expensePlugin } from './expense-approval/index.js';
+import { sickLeavePlugin } from './sick-leave/index.js';
 
 export const registry: PluginRegistry = {
   leave_approval: leavePlugin,
-  // 未来扩展：expense_approval, sick_leave 等
+  expense_approval: expensePlugin,
+  sick_leave: sickLeavePlugin,
 };
 
 /** 根据 ID 获取插件 */
