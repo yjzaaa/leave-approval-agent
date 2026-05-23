@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 报销审批 — 插件入口
  */
 import type { BusinessPlugin } from '../../shared/plugin.js';
@@ -16,6 +16,11 @@ export const expensePlugin: BusinessPlugin = {
   validate: validateExpenseForm,
   submitApi: submitExpense,
   startProcessApi: startExpenseProcess,
+  suggestions: [
+    '我需要报销差旅费',
+    '办公用品报销申请',
+    '客户招待费用报销',
+  ],
   confirmLabels: {
     submit: '📋 确认报销信息',
     start: '🚀 确认发起报销审批',

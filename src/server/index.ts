@@ -104,6 +104,7 @@ app.get('/api/plugins', (_req: Request, res: Response) => {
     id,
     displayName: p.displayName,
     fieldCount: p.fields.length,
+    suggestions: p.suggestions || [],
   }));
   res.json({ plugins: list });
 });

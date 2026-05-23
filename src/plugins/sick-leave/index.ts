@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 病假申请 — 插件入口
  */
 import type { BusinessPlugin } from '../../shared/plugin.js';
@@ -16,6 +16,11 @@ export const sickLeavePlugin: BusinessPlugin = {
   validate: validateSickLeaveForm,
   submitApi: submitSickLeave,
   startProcessApi: startSickLeaveProcess,
+  suggestions: [
+    '我发烧了需要请病假',
+    '身体不适请 3 天病假',
+    '急性肠胃炎需要休息',
+  ],
   confirmLabels: {
     submit: '📋 确认病假信息',
     start: '🚀 确认发起病假审批',

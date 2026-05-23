@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 业务插件接口 — Agent 框架与业务逻辑的唯一契约
  *
  * 每接入一个新业务类型，只需实现此接口并注册到 registry 即可。
@@ -83,6 +83,9 @@ export interface BusinessPlugin {
 
   /** 展示前格式化表单数据（可选） */
   formatFormForDisplay?(form: Record<string, string>): Record<string, string>;
+
+  /** 空状态快捷建议语（可选，3-4 条） */
+  suggestions?: string[];
 }
 
 /** 插件注册表类型 */

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 远程办公审批 — 插件入口
  *
  * 导出一个完整的 BusinessPlugin 实例，包含：
@@ -25,6 +25,11 @@ export const leavePlugin: BusinessPlugin = {
   validate: validateLeaveForm,
   submitApi: submitLeaveForm,
   startProcessApi: startLeaveProcess,
+  suggestions: [
+    '我需要申请远程办公',
+    '家人住院需要照顾',
+    '身体不适在家办公',
+  ],
   confirmLabels: {
     submit: '📋 确认提交表单',
     start: '🚀 确认发起审批流程',
