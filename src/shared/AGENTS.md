@@ -16,6 +16,7 @@ shared/ 不依赖任何其他层，所有层都依赖 shared。
 shared/
 ├── plugin.ts    # BusinessPlugin 核心契约
 ├── types.ts     # 领域类型
+├── memory.ts    # 记忆系统类型和常量
 └── config.ts    # 全局配置
 ```
 
@@ -71,6 +72,15 @@ classDiagram
 
 - `MAX_FORM_RETRIES` = 5
 - `PORT` = 3000
+
+### memory.ts
+
+- `MemoryType` — 记忆类型枚举 (user / feedback / project / reference)
+- `MemoryItem` — 单条记忆 (content + type + timestamps)
+- `MemoryStore` — 完整存储 (shared + byPlugin + summary)
+- `MEMORY_LIMITS` — 容量限制常量 (maxUserMemories=20 等)
+- `createEmptyStore()` — 创建空存储
+- `getPluginMemories()` — 获取指定插件的全部记忆 (含共享)
 
 ## 约束
 

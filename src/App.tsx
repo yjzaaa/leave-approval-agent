@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './client/components/layout/Header';
 import { StatusBar } from './client/components/approval/StatusBar';
 import { ChatContainer } from './client/components/chat/ChatContainer';
@@ -65,10 +65,12 @@ export default function App() {
       <div className={`app${showMemory ? " has-memory-open" : ""}`}>
         <Header title={appTitle}>
           <div className="plugin-selector">
-            <label htmlFor="plugin-select" className="plugin-selector-label">📋</label>
-            <select id="plugin-select" className="plugin-select" value={activePluginId} onChange={e => switchPlugin(e.target.value)} aria-label="选择审批类型">
-              {plugins.map(p => (<option key={p.id} value={p.id}>{p.displayName}</option>))}
-            </select>
+            <label className="plugin-selector-label">📋</label>
+            <PluginDropdown
+              plugins={plugins}
+              value={activePluginId}
+              onChange={switchPlugin}
+            />
           </div>
           <button className={`memory-toggle-btn${showMemory ? " active" : ""}`} onClick={() => setShowMemory(v => !v)} title="查看记忆">🧠</button>
         </Header>
@@ -83,5 +85,62 @@ export default function App() {
         <MemoryPanel store={memoryStore} pluginId={activePluginId} onRemove={removeMemory} onClearAll={clearAll} onClose={() => setShowMemory(false)} />
       )}
     </>
+  );
+};
+
+/* ── Custom Dropdown (replaces native <select> for theme consistency) ── */
+
+const PluginDropdown: React.FC<{
+  plugins: PluginInfo[];
+  value: string;
+  onChange: (id: string) => void;
+}> = ({ plugins, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = plugins.find(p => p.id === value);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onClick); };
+  }, [open, close]);
+
+  return (
+    <div className="plugin-dropdown" ref={ref}>
+      <button
+        type="button"
+        className={`plugin-dropdown-trigger${open ? ' open' : ''}`}
+        onClick={() => setOpen(v => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="plugin-dropdown-text">{active?.displayName ?? ''}</span>
+        <svg className="plugin-dropdown-arrow" width="12" height="12" viewBox="0 0 12 12">
+          <path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <ul className="plugin-dropdown-menu" role="listbox">
+          {plugins.map(p => (
+            <li
+              key={p.id}
+              role="option"
+              aria-selected={p.id === value}
+              className={`plugin-dropdown-item${p.id === value ? ' active' : ''}`}
+              onClick={() => { onChange(p.id); close(); }}
+            >
+              {p.displayName}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 };

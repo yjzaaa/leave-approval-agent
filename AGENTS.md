@@ -10,7 +10,7 @@
 > | 📦 | `src/plugins/` | [AGENTS.md](src/plugins/AGENTS.md) | 业务插件层 |
 > | 📋 | `src/shared/` | [AGENTS.md](src/shared/AGENTS.md) | 共享类型和接口 |
 >
-> **延伸阅读:** [DESIGN.md](DESIGN.md)
+> **延伸阅读:** 各子目录 [AGENTS.md](src/client/AGENTS.md) 包含层内详细文档
 
 ---
 
@@ -81,6 +81,44 @@ graph TD
     style Client fill:#dbe4ff,stroke:#495057,color:#1a1a1a
     style Shared fill:#ebfbee,stroke:#495057,color:#1a1a1a
 ```
+
+## 记忆系统
+
+```mermaid
+graph LR
+    subgraph Frontend["🖥️ 前端"]
+        LS["localStorage<br/>MemoryStore"]
+        Hook["useMemory.ts"]
+        Panel["MemoryPanel.tsx"]
+    end
+
+    subgraph Agent["⚙️ 框架层"]
+        Format["memory-prompt.ts<br/>格式化注入"]
+    end
+
+    subgraph Shared["📋 共享层"]
+        Types["memory.ts<br/>类型 + 常量"]
+    end
+
+    Hook --> LS
+    Hook --> Panel
+    Hook --> Types
+    Format --> Types
+    Agent --> Format
+
+    style Frontend fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+    style Shared fill:#ebfbee,stroke:#495057,color:#1a1a1a
+```
+
+**设计原则**: 服务端无状态，前端 localStorage 持久化。
+
+| 记忆类型 | 作用域 | 说明 |
+|---------|--------|------|
+| user | 跨插件共享 | 用户画像/偏好 |
+| feedback | 跨插件共享 | 用户纠正/确认 |
+| project | 按插件隔离 | 业务上下文 |
+| reference | 按插件隔离 | 外部资源指针 |
 
 ## 聊天请求时序图
 
@@ -159,8 +197,9 @@ sequenceDiagram
 - 文件编码: UTF-8 (无 BOM)
 - 命名: TypeScript camelCase，文件 kebab-case
 - 组件: React 函数式组件 + Hooks
-- 样式: CSS Variables token，禁止蓝紫渐变
-- 主题: Slate/Warm Gray 极简，dark/light/system
+- 样式: 墨韵设计系统，CSS Variables token，禁止蓝紫渐变
+- 字体: Crimson Pro + Noto Serif SC + IBM Plex Mono + Noto Sans SC
+- 主题: 墨韵 (warm paper + ink-dark + vermillion accent)，dark/light/system
 - 依赖注入: 通过 `BusinessPlugin` 接口，禁止直接 import 具体业务
 
 ## 构建和运行
@@ -186,4 +225,4 @@ npm run cli -- --plugin=xxx  # 指定插件
 
 ---
 
-> **延伸阅读:** [DESIGN.md](DESIGN.md)
+> **延伸阅读:** 各子目录 [AGENTS.md](src/client/AGENTS.md) 包含层内详细文档

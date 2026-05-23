@@ -15,6 +15,7 @@ agent/
 ├── AGENTS.md           # 本文档
 ├── agent-factory.ts    # 创建 Agent、SSE 转发
 ├── confirm-state.ts    # HITL 通用状态机
+├── memory-prompt.ts    # 记忆格式化注入 system prompt
 └── types.ts            # 框架级类型
 ```
 
@@ -98,6 +99,12 @@ stateDiagram-v2
 - `approveConfirm()` / `rejectConfirm()` — 解除挂起
 - `getPending()` — 获取当前请求
 - 通用工具库，插件按需 import
+
+### memory-prompt.ts
+
+- `formatMemoriesForPrompt(memories)` — 将记忆列表格式化为 system prompt 区块
+- `formatSummaryForHistory(summary)` — 将对话摘要格式化为 history 注入
+- 按 user/feedback/project/reference 分组输出
 
 ## 依赖
 
