@@ -1,26 +1,35 @@
 {
   "name": "leave-approval-agent",
-  "version": "2.0.0",
-  "description": "远程办公申请自动化审批 Agent - 基于 Pi Framework",
+  "version": "2.1.0",
+  "description": "远程办公申请自动化审批 Agent - 基于 Pi Framework + React",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "web": "tsx src/server.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "vitest run"
+    "dev": "vite",
+    "dev:server": "tsx src/server.ts",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "build": "vite build",
+    "cli": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.75.4",
     "@earendil-works/pi-ai": "^0.75.4",
     "dotenv": "^16.6.1",
-    "express": "^4.21"
+    "express": "^4.21",
+    "react": "^18.3",
+    "react-dom": "^18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22",
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.3",
+    "@vitejs/plugin-react": "^4.3",
+    "concurrently": "^9.1",
     "tsx": "^4.19",
     "typescript": "^5.7",
+    "vite": "^6.0",
     "vitest": "^3.2.4"
   }
 }
