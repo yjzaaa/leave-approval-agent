@@ -1,70 +1,36 @@
 ﻿# 病假申请插件 (sick-leave)
 
+> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md) · 📋 相关: [agent/](../../agent/AGENTS.md) · [shared/](../../shared/AGENTS.md)
+
 ## 业务描述
 
-处理病假申请的审批流程：收集病假信息 → 校验诊断/日期 → 提交确认 → 发起流程确认。
+处理病假申请：收集信息 → 校验诊断/日期 → 提交确认 → 流程确认。
 
 ## 文件说明
 
 | 文件 | 职责 |
 |------|------|
 | `index.ts` | BusinessPlugin 实例 |
-| `tools.ts` | 全部 Tool 定义 |
+| `tools.ts` | ★ 全部 Tool 定义 |
 | `prompt.ts` | System Prompt |
 | `fields.ts` | 9 个表单字段 |
-| `validator.ts` | 校验规则（诊断、医生建议、日期） |
-| `api.ts` | Mock API（SL/SP 前缀） |
+| `validator.ts` | 校验（诊断/医嘱/日期） |
+| `api.ts` | Mock API (SL/SP 前缀) |
 
 ## Tool 列表
 
-| Tool 名称 | HITL | 说明 |
-|-----------|------|------|
-| `get_current_date` | ❌ | 获取当前日期 |
-| `sick_leave_validate` | ❌ | 校验病假表单 |
-| `sick_leave_submit` | ✅ | 提交申请，需确认 |
-| `sick_leave_start` | ✅ | 发起审批，需确认 |
+| Tool | HITL | 说明 |
+|------|------|------|
+| `get_current_date` | ❌ | 获取日期 |
+| `sick_leave_validate` | ❌ | 校验 |
+| `sick_leave_submit` | ✅ | 提交确认 |
+| `sick_leave_start` | ✅ | 流程确认 |
 
-## 校验流程图
+## 特殊校验
 
-```
-输入表单
-    │
-    ▼
-┌─────────────┐    ┌─────────────────────────────┐
-│ 必填校验    │───→│ 所有必填字段非空 ?           │
-└─────────────┘    └──────────┬──────────────────┘
-                              │ 通过
-                              ▼
-┌─────────────┐    ┌─────────────────────────────┐
-│ 诊断校验    │───→│ diagnosis 非空 ?             │
-└─────────────┘    └──────────┬──────────────────┘
-                              │ 通过
-                              ▼
-┌─────────────┐    ┌─────────────────────────────┐
-│ 医嘱校验    │───→│ doctorNote 非空 ?            │
-└─────────────┘    └──────────┬──────────────────┘
-                              │ 通过
-                              ▼
-┌─────────────┐    ┌─────────────────────────────┐
-│ 日期校验    │───→│ startDate ≤ endDate ?        │
-│             │    │ 且不晚于今天 ?               │
-└─────────────┘    └──────────┬──────────────────┘
-                              │ 通过
-                              ▼
-                   { valid: true, errors: [] }
-```
+- 诊断/医生建议: 非空
+- 日期: startDate ≤ endDate，不晚于今天
 
-## HITL 配置
+---
 
-```typescript
-confirmTools: ['sick_leave_submit', 'sick_leave_start']
-confirmLabels: {
-  sick_leave_submit: '📋 确认病假信息',
-  sick_leave_start: '🚀 确认发起病假审批',
-}
-```
-
-## Mock API
-
-- 提交: 返回 `SL` 前缀 ID
-- 流程: 返回 `SP` 前缀 ID
+> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)

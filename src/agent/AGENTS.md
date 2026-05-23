@@ -1,5 +1,7 @@
 ﻿# Agent 框架层
 
+> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [plugins/](../plugins/AGENTS.md) · [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md)
+
 ## 职责
 
 Agent 框架层是整个系统的运行时核心，负责创建和管理 Pi Agent 实例、SSE 事件桥接、以及 HITL 确认状态机。
@@ -52,16 +54,8 @@ server/index.ts           agent-factory.ts              Pi Agent               D
      │                          │  agent.subscribe(...)    │                        │
      │                          │─────────────────────────→│                        │
      │                          │                          │                        │
-     │                          │  agent.prompt(message)   │                        │
-     │                          │─────────────────────────→│                        │
-     │                          │                          │  API 请求              │
-     │                          │                          │───────────────────────→│
-     │                          │                          │                        │
-     │  ◄─── onSSE('text') ──── │◄── text_delta ────────── │◄── text_delta ────────│
-     │                          │                          │                        │
+     │  ◄─── onSSE('text') ──── │◄── text_delta ────────── │                        │
      │  ◄─── onSSE('confirm') ─ │◄── tool_execution_start │                        │
-     │                          │   (if isConfirmTool)     │                        │
-     │                          │                          │                        │
      │  ◄─── onSSE('done') ──── │◄── agent_end ────────── │                        │
      │                          │                          │                        │
      │                          │  agent.waitForIdle()     │                        │
@@ -75,40 +69,34 @@ server/index.ts           agent-factory.ts              Pi Agent               D
                          │
                          ▼
                   ┌──────────────┐
-                  │   PENDING    │  Promise 挂起，等待用户决策
-                  │  (阻塞中)    │
+                  │   PENDING    │  Promise 挂起
                   └──┬───────┬───┘
                      │       │
           approveConfirm()  rejectConfirm()
                      │       │
                      ▼       ▼
-              ┌──────────┐ ┌──────────┐
-              │ RESOLVED │ │ REJECTED │
-              │ (true)   │ │ (false)  │
-              └──────────┘ └──────────┘
-
-注意: 同一时刻最多一个 PENDING 状态。
-     confirm-state 是全局单例。
+              RESOLVED     REJECTED
+              (true)       (false)
 ```
 
 ## SSE 事件转换映射
 
 ```
-Pi Agent 事件                    SSE 事件名              前端行为
-─────────────────────────────────────────────────────────────────
-message_update (text_delta)  →   text { content }     → 流式渲染文字
-tool_execution_start         →   confirm_required     → 弹确认卡片
-                                (仅 confirmTools 中的)
-tool_execution_end           →   tool_result          → 显示工具结果
-agent_end                    →   done {}              → 回到 idle
+Pi Agent 事件                 SSE 事件名           前端行为
+──────────────────────────────────────────────────────────
+message_update (text_delta) → text { content }  → 流式渲染
+tool_execution_start        → confirm_required  → 弹确认卡片
+                               (仅 confirmTools)
+tool_execution_end          → tool_result       → 显示结果
+agent_end                   → done {}           → 回到 idle
 ```
 
 ## 依赖
 
 - `@earendil-works/pi-agent-core` — Agent 运行时
 - `@earendil-works/pi-ai` — 模型和流式输出
-- `../shared/plugin.js` — BusinessPlugin 接口
-- `../shared/types.js` — 领域类型
+- [shared/plugin.ts](../shared/AGENTS.md) — BusinessPlugin 接口
+- [shared/types.ts](../shared/AGENTS.md) — 领域类型
 
 ## 约束
 
@@ -116,4 +104,7 @@ agent_end                    →   done {}              → 回到 idle
 - ❌ 不允许定义任何 tool
 - ❌ 不允许包含业务逻辑
 - ✅ 只通过 `BusinessPlugin` 接口与业务层通信
-- ✅ HITL 状态机是通用能力，使用与否由插件决定
+
+---
+
+> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [plugins/](../plugins/AGENTS.md) · [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md) · 📊 [架构图](../../docs/diagrams/README.md)

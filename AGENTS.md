@@ -1,5 +1,19 @@
 ﻿# 项目规范 — Leave Approval Agent
 
+> **⬇️ 子目录文档导航**
+> 
+> | 层 | 目录 | 文档 | 说明 |
+> |---|------|------|------|
+> | 🎨 | `src/client/` | [AGENTS.md](src/client/AGENTS.md) | 前端 UI 壳层 |
+> | 🔧 | `src/server/` | [AGENTS.md](src/server/AGENTS.md) | Express 服务端 |
+> | ⚙️ | `src/agent/` | [AGENTS.md](src/agent/AGENTS.md) | Agent 框架层 (业务无关) |
+> | 📦 | `src/plugins/` | [AGENTS.md](src/plugins/AGENTS.md) | 业务插件层 |
+> | 📋 | `src/shared/` | [AGENTS.md](src/shared/AGENTS.md) | 共享类型和接口 |
+> 
+> **延伸阅读:** [DESIGN.md](docs/DESIGN.md) · [架构图](docs/diagrams/README.md)
+
+---
+
 ## 项目概述
 
 插件化审批 Agent 系统，基于 Pi Agent Framework。支持多种业务（审批、聊天、咨询）接入，框架层完全业务无关。
@@ -43,151 +57,26 @@
 │  ┌──────────────────┐  ┌──────────────────────┐ │                 │
 │  │  agent-factory   │  │  confirm-state       │◄┘                 │
 │  │  创建 Agent      │  │  HITL 状态机         │                    │
-│  │  订阅事件        │  │  requestConfirm()    │                    │
-│  │  SSE 事件转换    │  │  approveConfirm()    │                    │
-│  └────────┬─────────┘  │  rejectConfirm()    │                    │
-│           │            └──────────────────────┘                    │
-│           │ 读取 plugin.tools                                       │
-│           │ plugin.confirmTools → 判断 HITL                        │
+│  └────────┬─────────┘  └──────────────────────┘                    │
+│           │ 读取 plugin.tools / plugin.confirmTools                │
 └───────────┼────────────────────────────────────────────────────────┘
             │
             ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │                    业务插件层 (plugins/)                            │
-│                                                                   │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
 │  │ leave-approval  │  │expense-approval │  │   sick-leave    │   │
-│  │                 │  │                 │  │                 │   │
-│  │ tools.ts ★      │  │ tools.ts ★      │  │ tools.ts ★      │   │
-│  │ prompt.ts       │  │ prompt.ts       │  │ prompt.ts       │   │
-│  │ fields.ts       │  │ fields.ts       │  │ fields.ts       │   │
-│  │ validator.ts    │  │ validator.ts    │  │ validator.ts    │   │
-│  │ api.ts          │  │ api.ts          │  │ api.ts          │   │
+│  │ tools ★         │  │ tools ★         │  │ tools ★         │   │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘   │
-│                                                                   │
-│  每个插件: 自主定义 tools + 自主决定 HITL + 自主实现 API          │
 └───────────────────────────────────────────────────────────────────┘
             │
             ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│                      共享层 (shared/)                              │
-│  plugin.ts (BusinessPlugin 接口) │ types.ts │ config.ts           │
+│  shared/ — BusinessPlugin 接口 │ types.ts │ config.ts             │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 三层依赖方向图
-
-```
-                    ┌──────────┐
-                    │  server  │  Express 路由、SSE 桥接
-                    └────┬─────┘
-                         │ 依赖
-                    ┌────▼─────┐
-                    │  agent   │  Agent 运行时、HITL 状态机
-                    └────┬─────┘
-                         │ 依赖
-                ┌────────▼────────┐
-                │    plugins      │  业务插件 (tools + prompt + api)
-                └────────┬────────┘
-                         │ 依赖
-                    ┌────▼─────┐
-                    │  shared  │  接口、类型、配置 (终点，无依赖)
-                    └──────────┘
-
-         ┌──────────┐
-         │  client  │ ──────────→ shared (前端只依赖共享类型)
-         └──────────┘
-
-规则: 依赖严格单向，禁止反向依赖。
-      agent/ 不 import plugins/ 下的任何具体模块。
-      agent/ 不定义任何 tool。
-```
-
----
-
-## 数据流向图
-
-### 聊天请求 (POST /api/chat)
-
-```
-浏览器                     Express                  Agent Framework           DeepSeek API
-  │                          │                          │                        │
-  │  POST /api/chat          │                          │                        │
-  │  { message, history,     │                          │                        │
-  │    plugin }              │                          │                        │
-  │─────────────────────────→│                          │                        │
-  │                          │  getPlugin(id)           │                        │
-  │                          │ ──────────┐              │                        │
-  │                          │           │ registry     │                        │
-  │                          │  ◄─────────┘              │                        │
-  │                          │                          │                        │
-  │                          │  runAgent({plugin,       │                        │
-  │                          │    message, onSSE})      │                        │
-  │                          │─────────────────────────→│                        │
-  │                          │                          │  new Agent({           │
-  │                          │                          │    tools: plugin.tools,│
-  │                          │                          │    systemPrompt })     │
-  │                          │                          │                        │
-  │                          │                          │  agent.prompt(msg)     │
-  │                          │                          │───────────────────────→│
-  │                          │                          │                        │
-  │                          │                          │  ◄── text_delta ───────│
-  │  SSE: text { content }   │  ◄── onSSE('text') ──── │                        │
-  │◄─────────────────────────│                          │                        │
-  │                          │                          │                        │
-  │                          │                          │  ◄── tool_call ────────│
-  │                          │                          │                        │
-  │                          │                          │  execute tool          │
-```
-
-### HITL 确认流程
-
-```
-浏览器                     Express                  confirm-state             插件 Tool
-  │                          │                          │                        │
-  │                          │                          │                        │
-  │                          │        tool.execute() ──→│                        │
-  │                          │                          │  requestConfirm()      │
-  │                          │                          │  ◄─────────────────────│
-  │                          │                          │  Promise 挂起 ⏳        │
-  │                          │                          │                        │
-  │  SSE: confirm_required   │  ◄── onSSE() ────────── │                        │
-  │  { tool, label, form }   │                          │  getPending() ≠ null   │
-  │◄─────────────────────────│                          │                        │
-  │                          │                          │                        │
-  │  用户点击 确认/拒绝       │                          │                        │
-  │  POST /api/confirm       │                          │                        │
-  │  { approved: true }      │                          │                        │
-  │─────────────────────────→│                          │                        │
-  │                          │  approveConfirm()        │                        │
-  │                          │─────────────────────────→│                        │
-  │                          │                          │  Promise resolve(true) │
-  │                          │                          │───────────────────────→│
-  │                          │                          │                        │
-  │                          │                          │        tool 继续 ──────→│ submitApi()
-  │  SSE: confirm_resolved   │  ◄── onSSE() ────────── │                        │
-  │◄─────────────────────────│                          │                        │
-  │                          │                          │                        │
-  │  SSE: tool_result        │  ◄── onSSE() ────────── │                        │
-  │◄─────────────────────────│                          │                        │
-```
-
-### 插件发现流程 (GET /api/plugins)
-
-```
-浏览器                     Express                  registry
-  │                          │                          │
-  │  GET /api/plugins        │                          │
-  │─────────────────────────→│                          │
-  │                          │  遍历 registry 所有 key  │
-  │                          │─────────────────────────→│
-  │                          │  ◄── [{id, displayName,  │
-  │                          │       fieldCount}]       │
-  │  JSON response           │                          │
-  │◄─────────────────────────│                          │
-```
+> 📊 **可视化版本:** [system-architecture.excalidraw](docs/diagrams/system-architecture.excalidraw)
 
 ---
 
@@ -202,11 +91,11 @@
 
 | 目录 | 职责 | 详细文档 |
 |------|------|---------|
-| `src/agent/` | Agent 框架层（业务无关） | `src/agent/AGENTS.md` |
-| `src/plugins/` | 业务插件层（完全自主） | `src/plugins/AGENTS.md` |
-| `src/client/` | 前端 UI 壳 | `src/client/AGENTS.md` |
-| `src/server/` | Express 服务端 | `src/server/AGENTS.md` |
-| `src/shared/` | 共享类型和接口 | `src/shared/AGENTS.md` |
+| `src/agent/` | Agent 框架层（业务无关） | [AGENTS.md](src/agent/AGENTS.md) |
+| `src/plugins/` | 业务插件层（完全自主） | [AGENTS.md](src/plugins/AGENTS.md) |
+| `src/client/` | 前端 UI 壳 | [AGENTS.md](src/client/AGENTS.md) |
+| `src/server/` | Express 服务端 | [AGENTS.md](src/server/AGENTS.md) |
+| `src/shared/` | 共享类型和接口 | [AGENTS.md](src/shared/AGENTS.md) |
 
 ## 编码规范
 
@@ -242,3 +131,7 @@ npm run cli -- --plugin=xxx  # 指定插件
 - Express: `3000`
 - Vite dev: `5173`
 - Vite 代理 `/api` → `http://localhost:3000`
+
+---
+
+> **延伸阅读:** [DESIGN.md](docs/DESIGN.md) · [架构图索引](docs/diagrams/README.md)
