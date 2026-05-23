@@ -1,16 +1,15 @@
-﻿/**
+/**
  * App 根组件 v3.0
  *
  * 五大视觉区域：
- *   1. Header  — 顶部导航（支持动态标题）
- *   2. StatusBar — 流水线步骤指示器
- *   3. ChatContainer — 聊天消息列表
- *   4. InputBar — 消息输入框
- *   5. ConfirmCard — 确认弹窗（条件渲染）
+ *   1. Header/插件下拉  — 顶部导航 + 业务插件选择器
+ *   2. StatusBar       — 流水线步骤指示器
+ *   3. ChatContainer   — 聊天消息列表
+ *   4. InputBar        — 消息输入框
+ *   5. ConfirmCard     — 确认弹窗（条件渲染）
  */
 import React, { useState, useEffect } from 'react';
 import { Header } from './client/components/layout/Header';
-import { ThemeToggle } from './client/components/layout/ThemeToggle';
 import { StatusBar } from './client/components/approval/StatusBar';
 import { ChatContainer } from './client/components/chat/ChatContainer';
 import { InputBar } from './client/components/chat/InputBar';
@@ -27,15 +26,16 @@ export default function App() {
 
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [activePluginId, setActivePluginId] = useState('leave_approval');
-  const [appTitle, setAppTitle] = useState('远程办公申请审批');
+  const [appTitle, setAppTitle] = useState('审批助手');
 
   // 加载可用插件列表
   useEffect(() => {
     fetch('/api/plugins')
       .then(r => r.json())
       .then(data => {
-        setPlugins(data.plugins || []);
-        const active = data.plugins?.find((p: PluginInfo) => p.id === activePluginId);
+        const list = data.plugins || [];
+        setPlugins(list);
+        const active = list.find((p: PluginInfo) => p.id === activePluginId);
         if (active) setAppTitle(active.displayName);
       })
       .catch(() => {});
@@ -53,24 +53,31 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header title={appTitle} />
-
-      <main className="main-content">
-        {/* 插件选择器 */}
+      <Header title={appTitle}>
+        {/* 业务插件下拉选择器 */}
         {plugins.length > 1 && (
           <div className="plugin-selector">
-            {plugins.map(p => (
-              <button
-                key={p.id}
-                className={`plugin-btn ${p.id === activePluginId ? 'active' : ''}`}
-                onClick={() => switchPlugin(p.id)}
-              >
-                {p.displayName}
-              </button>
-            ))}
+            <label htmlFor="plugin-select" className="plugin-selector-label">
+              📋
+            </label>
+            <select
+              id="plugin-select"
+              className="plugin-select"
+              value={activePluginId}
+              onChange={e => switchPlugin(e.target.value)}
+              aria-label="选择审批类型"
+            >
+              {plugins.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.displayName}
+                </option>
+              ))}
+            </select>
           </div>
         )}
+      </Header>
 
+      <main className="main-content">
         <StatusBar phase={phase} text={phaseText} />
 
         <ChatContainer messages={messages} />
