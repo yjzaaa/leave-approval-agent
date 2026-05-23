@@ -205,7 +205,8 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  max-width: 760px;
+  width: 100%;
+  max-width: 960px;
   margin: 0 auto;
   background: var(--bg-default);
   border-left: 1px solid var(--border-subtle);
@@ -216,6 +217,12 @@ body {
 
 @media (max-width: 780px) {
   .app { max-width: 100%; border: none; }
+}
+@media (min-width: 1200px) {
+  .app { max-width: 1080px; }
+}
+@media (min-width: 1600px) {
+  .app { max-width: 1200px; }
 }
 
 /* ── 5. Header �?Clean, flat, dark ── */
@@ -1094,11 +1101,19 @@ body {
     border-right: none;
   }
   .app.has-memory-open .header {
-    max-width: 760px;
+    max-width: 960px;
     margin: 0 auto;
   }
 }
-
+@media (min-width: 1200px) {
+  .memory-drawer { width: 380px; }
+  .app.has-memory-open { padding-right: 380px; }
+}
+@media (min-width: 1600px) {
+  .memory-drawer { width: 400px; }
+  .app.has-memory-open { padding-right: 400px; }
+  .app.has-memory-open .header { max-width: 1080px; }
+}
 /* 平板：抽屉覆盖聊天，有遮罩 */
 @media (min-width: 640px) and (max-width: 1023px) {
   .memory-backdrop {
