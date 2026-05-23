@@ -41,7 +41,7 @@ export default function App() {
     messages, phase, phaseText, confirmRequest,
     isStreaming, error,
     sendMessage, confirm, reset,
-  } = useAgent(activePluginId);
+  } = useAgent({ pluginId: activePluginId });
 
   // 尝试从服务端加载插件列表（含 suggestions）
   useEffect(() => {

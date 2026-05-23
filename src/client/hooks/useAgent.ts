@@ -1,21 +1,33 @@
 ﻿/**
- * useAgent — 聊天状态机 Hook v3.0
+ * useAgent — 聊天状态机 Hook v4.0
  *
- * 与业务解耦的版本：
- *   - 不再硬编码 tool 名称（submit_form / start_process）
- *   - 不再硬编码阶段标签（填表 / 校验）
- *   - confirm_required 事件中 tool/label/fieldLabels 全部由后端插件动态提供
- *
- * 核心职责：
+ * 核心职责:
  *   1. SSE 流式对话管理
- *   2. 确认流程 — 去重由 lastConfirmToolRef（按 tool 名）实现
- *   3. 阶段追踪 — 由 SSE 事件驱动，StatusBar 根据插件 pipeline 渲染
- *   4. 消息管理
+ *   2. 确认流程 — 去重由 lastConfirmToolRef 实现
+ *   3. 阶段追踪 — SSE 事件驱动
+ *   4. 记忆注入 — 把用户记忆和对话摘要传给后端
+ *   5. 压缩触发 — 消息数超阈值时调 /api/compact
  */
 import { useCallback, useRef, useState } from 'react';
 import type { Message, ConfirmRequest, AgentPhase } from '../types';
+import type { MemoryItem } from '../../shared/memory';
+import { MEMORY_LIMITS } from '../../shared/memory';
 
-export function useAgent(pluginId?: string) {
+interface UseAgentOptions {
+  pluginId?: string;
+  memories?: MemoryItem[];
+  summary?: string;
+  onSummaryUpdate?: (summary: string, messageCount: number) => void;
+  onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[] }) => void;
+}
+
+export function useAgent(options?: UseAgentOptions) {
+  const pluginId = options?.pluginId;
+  const memories = options?.memories;
+  const summary = options?.summary;
+  const onSummaryUpdate = options?.onSummaryUpdate;
+  const onMemoriesExtracted = options?.onMemoriesExtracted;
+
   // ── 状态 ──
   const [messages, setMessages] = useState<Message[]>([]);
   const [phase, setPhase] = useState<AgentPhase>('idle');
@@ -28,9 +40,14 @@ export function useAgent(pluginId?: string) {
   const abortRef = useRef<AbortController | null>(null);
   const lastConfirmToolRef = useRef<string | null>(null);
   const pluginIdRef = useRef<string>(pluginId || 'leave_approval');
+  const memoriesRef = useRef<MemoryItem[]>(memories || []);
+  const summaryRef = useRef<string>(summary || '');
+  const messageCountRef = useRef(0);
 
-  // 同步外部 pluginId 变化
+  // 同步外部变化
   pluginIdRef.current = pluginId || 'leave_approval';
+  memoriesRef.current = memories || [];
+  summaryRef.current = summary || '';
 
   // ── 消息管理 ──
 
@@ -54,6 +71,44 @@ export function useAgent(pluginId?: string) {
     });
   }, []);
 
+  // ── 压缩对话历史 ──
+  const compactHistory = useCallback(async (oldMessages: Message[]) => {
+    if (oldMessages.length < MEMORY_LIMITS.compactThreshold) return;
+    try {
+      const res = await fetch('/api/compact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: oldMessages,
+          plugin: pluginIdRef.current,
+        }),
+      });
+      const data = await res.json();
+      if (data.summary && onSummaryUpdate) {
+        onSummaryUpdate(data.summary, oldMessages.length);
+      }
+    } catch { /* 压缩失败不影响主流程 */ }
+  }, [onSummaryUpdate]);
+
+  // ── 提取记忆 ──
+  const extractMemories = useCallback(async (recentMessages: Message[]) => {
+    if (!onMemoriesExtracted) return;
+    try {
+      const res = await fetch('/api/extract-memories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: recentMessages,
+          plugin: pluginIdRef.current,
+        }),
+      });
+      const data = await res.json();
+      if (data && onMemoriesExtracted) {
+        onMemoriesExtracted(data);
+      }
+    } catch { /* 提取失败不影响主流程 */ }
+  }, [onMemoriesExtracted]);
+
   // ── SSE 流处理 ──
 
   const sendMessage = useCallback(async (text: string) => {
@@ -64,11 +119,23 @@ export function useAgent(pluginId?: string) {
     setConfirmRequest(null);
     lastConfirmToolRef.current = null;
     addMessage('user', text);
+    messageCountRef.current += 1;
 
+    // 触发记忆提取 (每 N 轮)
+    if (messageCountRef.current > 0 && messageCountRef.current % MEMORY_LIMITS.extractInterval === 0) {
+      extractMemories(messages.slice(-10));
+    }
+
+    // 构建 history: 去掉 system 消息，取最近消息
     const history = messages
       .filter(m => m.role !== 'system')
       .slice(-20)
       .map(m => ({ role: m.role, content: m.content }));
+
+    // 检查是否需要压缩
+    if (messages.length >= MEMORY_LIMITS.compactThreshold) {
+      compactHistory(messages.slice(0, -8));
+    }
 
     addMessage('assistant', '');
     setPhase('processing');
@@ -81,7 +148,13 @@ export function useAgent(pluginId?: string) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, plugin: pluginIdRef.current }),
+        body: JSON.stringify({
+          message: text,
+          history,
+          plugin: pluginIdRef.current,
+          memories: memoriesRef.current,
+          summary: summaryRef.current,
+        }),
         signal: controller.signal,
       });
 
@@ -113,16 +186,14 @@ export function useAgent(pluginId?: string) {
             }
 
             switch (eventType) {
-              // ── 流式文本 ──
               case 'text':
                 fullText += data.content;
                 updateLastAssistant(fullText);
                 break;
 
-              // ── 确认请求（通用化：不再限定 tool 名称） ──
               case 'confirm_required':
                 if (lastConfirmToolRef.current === data.tool) {
-                  console.log('[SSE] confirm_required ignored: duplicate for', data.tool);
+                  console.log('[SSE] confirm_required ignored: duplicate');
                   break;
                 }
                 setConfirmRequest({
@@ -135,19 +206,15 @@ export function useAgent(pluginId?: string) {
                 setPhaseText(data.label || '请确认');
                 break;
 
-              // ── 确认已处理 ──
               case 'confirm_resolved':
                 setConfirmRequest(null);
                 setPhase('processing');
                 setPhaseText('Agent 正在处理...');
                 break;
 
-              // ── Tool 执行结果 ──
               case 'tool_result':
-                // 阶段切换由 StatusBar 根据 event.tool 自动处理
                 break;
 
-              // ── 流程结束 ──
               case 'done':
                 setPhase('done');
                 setPhaseText('流程结束');
@@ -155,7 +222,6 @@ export function useAgent(pluginId?: string) {
                 lastConfirmToolRef.current = null;
                 break;
 
-              // ── 错误 ──
               case 'error':
                 updateLastAssistant(fullText + '\n\n⚠️ ' + data.message);
                 setPhase('error');
@@ -163,7 +229,7 @@ export function useAgent(pluginId?: string) {
                 setError(data.message as string);
                 break;
             }
-          } catch { /* 跳过解析失败的 JSON */ }
+          } catch { /* 跳过解析失败 */ }
         }
       }
     } catch (err: any) {
@@ -177,7 +243,7 @@ export function useAgent(pluginId?: string) {
       setIsStreaming(false);
       abortRef.current = null;
     }
-  }, [isStreaming, messages, addMessage, updateLastAssistant]);
+  }, [isStreaming, messages, addMessage, updateLastAssistant, compactHistory, extractMemories]);
 
   // ── 确认处理 ──
 
@@ -195,9 +261,7 @@ export function useAgent(pluginId?: string) {
       });
     } catch { /* 忽略 */ }
 
-    addMessage('system', approved
-      ? `✓ 已确认`
-      : `✕ 已拒绝`);
+    addMessage('system', approved ? '✓ 已确认' : '✕ 已拒绝');
   }, [confirmRequest, addMessage]);
 
   // ── 重置 ──
@@ -211,6 +275,7 @@ export function useAgent(pluginId?: string) {
     setIsStreaming(false);
     setError(null);
     lastConfirmToolRef.current = null;
+    messageCountRef.current = 0;
   }, []);
 
   return {
