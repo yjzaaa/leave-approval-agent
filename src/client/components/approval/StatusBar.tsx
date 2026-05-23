@@ -26,6 +26,7 @@ function getStepState(step: StepInfo, currentPhase: AgentPhase): 'completed' | '
     if (stepIndex === currentIndex) return 'error';
     return 'pending';
   }
+  if (currentPhase === 'done') return 'completed';
   if (stepIndex < currentIndex) return 'completed';
   if (stepIndex === currentIndex) return 'active';
   return 'pending';
