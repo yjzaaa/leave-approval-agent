@@ -1,56 +1,74 @@
 /**
  * ChatContainer — 聊天消息列表容器
- *
- * 功能：
- * 1. 空状态展示 — 根据插件 suggestions 动态显示快捷建议
- * 2. 消息列表渲染 — 逐条渲染 MessageBubble
- * 3. 自动滚动到底 — 新消息到达时自动滚动
- * 4. 滚动偏离提示 — 用户上翻历史时显示"回到底部"按钮
- * 5. 快捷建议联动 — 点击建议通过自定义事件通知 InputBar
  */
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Message } from '../../types';
 import { MessageBubble } from './MessageBubble';
 
 interface Props {
   messages: Message[];
-  /** 空状态快捷建议语（来自当前插件） */
   suggestions?: string[];
 }
 
 export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
-  const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const userScrolledUpRef = useRef(false);
 
-  /** 滚动到消息列表底部 */
-  const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  /** 滚动到底部 */
+  const scrollToBottom = useCallback((smooth = false) => {
+    sentinelRef.current?.scrollIntoView({
+      behavior: smooth ? 'smooth' : 'auto',
+      block: 'end',
+    });
+  }, []);
 
-  // 新消息到达时自动滚动
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  /** 判断用户是否在底部附近（容差 60px） */
+  const isNearBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+  }, []);
 
-  // 监听滚动位置，偏离超过 150px 时显示"回到底部"按钮
+  // 用户手动滚动时记录是否离开底部
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 150);
+      const near = isNearBottom();
+      setShowScrollBtn(!near);
+      userScrolledUpRef.current = !near;
     };
+
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
+  }, [isNearBottom]);
+
+  // 消息变化时：如果用户在底部，自动跟随；否则不动
+  useEffect(() => {
+    if (!userScrolledUpRef.current) {
+      scrollToBottom(false);
+    }
+  }, [messages, scrollToBottom]);
+
+  // 首次加载和插件切换后强制滚到底部
+  useEffect(() => {
+    userScrolledUpRef.current = false;
+    scrollToBottom(false);
   }, []);
 
   const isEmpty = messages.length === 0;
 
-  /** 点击快捷建议：通过自定义事件通知 InputBar */
-  const handleSuggestionClick = (text: string) => {
-    window.dispatchEvent(new CustomEvent('suggestion-click', { detail: text }));
-  };
-
   return (
-    <div className="chat-container" ref={containerRef} role="log" aria-label="对话记录" aria-live="polite">
-      {/* 空状态 */}
+    <div
+      className="chat-container"
+      ref={containerRef}
+      role="log"
+      aria-label="对话记录"
+      aria-live="polite"
+    >
       {isEmpty ? (
         <div className="chat-empty">
           <div className="chat-empty-icon" aria-hidden="true">💬</div>
@@ -62,7 +80,9 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
                 <button
                   key={s}
                   className="chat-empty-suggestion"
-                  onClick={() => handleSuggestionClick(s)}
+                  onClick={() =>
+                    window.dispatchEvent(new CustomEvent('suggestion-click', { detail: s }))
+                  }
                 >
                   {s}
                 </button>
@@ -71,18 +91,27 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
           )}
         </div>
       ) : (
-        /* 消息列表 */
         messages.map(msg => (
           <MessageBubble key={msg.id} message={msg} />
         ))
       )}
 
-      {/* 回到底部按钮 */}
-      {showScrollBtn && (
-        <button className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="滚动到底部">↓</button>
-      )}
+      {/* 滚动锚点 sentinel — 替代 bottomRef */}
+      <div ref={sentinelRef} style={{ height: 1, flexShrink: 0 }} />
 
-      <div ref={bottomRef} />
+      {/* 回到底部按钮（固定定位，始终可见） */}
+      {showScrollBtn && (
+        <button
+          className="scroll-bottom-btn"
+          onClick={() => {
+            userScrolledUpRef.current = false;
+            scrollToBottom(true);
+          }}
+          aria-label="滚动到底部"
+        >
+          ↓
+        </button>
+      )}
     </div>
   );
 };
