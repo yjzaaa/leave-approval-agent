@@ -10,6 +10,7 @@
  * 注册到 registry 后即可被 Agent 框架加载。
  */
 import type { BusinessPlugin } from '../../shared/plugin.js';
+import { allLeaveTools } from './tools.js';
 import { leaveFields } from './fields.js';
 import { leavePrompt } from './prompt.js';
 import { validateLeaveForm } from './validator.js';

@@ -2,6 +2,7 @@
  * 病假申请 — 插件入口
  */
 import type { BusinessPlugin } from '../../shared/plugin.js';
+import { allSickLeaveTools } from './tools.js';
 import { sickLeaveFields } from './fields.js';
 import { sickLeavePrompt } from './prompt.js';
 import { validateSickLeaveForm } from './validator.js';
@@ -12,7 +13,7 @@ export const sickLeavePlugin: BusinessPlugin = {
   displayName: '病假申请',
   fields: sickLeaveFields,
   systemPrompt: sickLeavePrompt,
-  tools: [] as any,
+  tools: allSickLeaveTools,
   validate: validateSickLeaveForm,
   submitApi: submitSickLeave,
   startProcessApi: startSickLeaveProcess,

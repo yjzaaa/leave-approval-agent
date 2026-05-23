@@ -103,7 +103,7 @@ app.get('/api/plugins', (_req: Request, res: Response) => {
   const list = Object.entries(registry).map(([id, p]) => ({
     id,
     displayName: p.displayName,
-    fieldCount: p.fields.length,
+    fieldCount: p.fields?.length || 0,
     suggestions: p.suggestions || [],
   }));
   res.json({ plugins: list });

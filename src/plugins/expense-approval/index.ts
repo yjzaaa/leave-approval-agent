@@ -2,6 +2,7 @@
  * 报销审批 — 插件入口
  */
 import type { BusinessPlugin } from '../../shared/plugin.js';
+import { allExpenseTools } from './tools.js';
 import { expenseFields } from './fields.js';
 import { expensePrompt } from './prompt.js';
 import { validateExpenseForm } from './validator.js';
@@ -12,7 +13,7 @@ export const expensePlugin: BusinessPlugin = {
   displayName: '报销审批',
   fields: expenseFields,
   systemPrompt: expensePrompt,
-  tools: [] as any,
+  tools: allExpenseTools,
   validate: validateExpenseForm,
   submitApi: submitExpense,
   startProcessApi: startExpenseProcess,

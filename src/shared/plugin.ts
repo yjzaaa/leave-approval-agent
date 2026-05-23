@@ -55,7 +55,7 @@ export interface BusinessPlugin {
   displayName: string;
 
   /** 表单字段定义 */
-  fields: FieldMeta[];
+  fields?: FieldMeta[];
 
   /** Agent System Prompt（支持 ${config.maxFormRetries} 等变量） */
   systemPrompt: string;
@@ -64,13 +64,13 @@ export interface BusinessPlugin {
   tools: AgentTool<any>[];
 
   /** 表单校验函数 */
-  validate(form: Record<string, string>): ValidationResult;
+  validate?(form: Record<string, string>): ValidationResult;
 
   /** 提交表单的 API（由 plugin 提供，框架通过 Tool 工厂调用） */
-  submitApi: (form: Record<string, string>) => Promise<{ success: boolean; resultId?: string; message?: string; form?: Record<string, string> }>;
+  submitApi?: (form: Record<string, string>) => Promise<{ success: boolean; resultId?: string; message?: string; form?: Record<string, string> }>;
 
   /** 发起流程的 API */
-  startProcessApi: (resultId: string, form: Record<string, string>) => Promise<{ success: boolean; processId?: string; message?: string }>;
+  startProcessApi?: (resultId: string, form: Record<string, string>) => Promise<{ success: boolean; processId?: string; message?: string; }>;
 
   /** 确认阶段的文案 */
 confirmLabels?: Record<string, string>;
