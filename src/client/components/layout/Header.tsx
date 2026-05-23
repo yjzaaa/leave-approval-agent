@@ -1,8 +1,3 @@
-/**
- * 顶部导航栏 v3.0
- *
- * 标题由外部注入，支持通过 children 嵌入插件选择器等控件。
- */
 import React, { type ReactNode } from 'react';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -23,7 +18,6 @@ export const Header: React.FC<Props> = ({ title = '审批助手', children }) =>
         <span className="tag">React 18</span>
       </div>
     </div>
-    {/* 插件选择器等扩展控件 */}
     {children && <div className="header-controls">{children}</div>}
     <div style={{ flex: 1 }} />
     <ThemeToggle />
