@@ -1,14 +1,33 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
-const STORAGE_KEY = 'leave-approval-theme';
 
-function getStoredTheme(): Theme {
+/** 从 ui_state_{userId} 中读写主题偏好 */
+function getStoredTheme(userId?: string): Theme {
   try {
-    const v = localStorage.getItem(STORAGE_KEY);
+    if (userId) {
+      const raw = localStorage.getItem(`ui_state_${userId}`);
+      if (raw) {
+        const state = JSON.parse(raw);
+        const t = state.theme;
+        if (t === 'light' || t === 'dark' || t === 'system') return t;
+      }
+    }
+    // 回退到旧 key (兼容未登录时)
+    const v = localStorage.getItem('leave-approval-theme');
     if (v === 'light' || v === 'dark' || v === 'system') return v;
   } catch {}
   return 'system';
+}
+
+function saveTheme(userId: string, theme: Theme) {
+  try {
+    const key = `ui_state_${userId}`;
+    let state: Record<string, unknown> = {};
+    try { state = JSON.parse(localStorage.getItem(key) || '{}'); } catch {}
+    state.theme = theme;
+    localStorage.setItem(key, JSON.stringify(state));
+  } catch {}
 }
 
 function applyTheme(t: Theme) {
@@ -19,16 +38,25 @@ function applyTheme(t: Theme) {
   else if (t === 'dark') root.classList.add('dark');
 }
 
-export const ThemeToggle: React.FC = () => {
-  const [theme, setTheme] = useState<Theme>(getStoredTheme);
+export const ThemeToggle: React.FC<{ userId?: string }> = ({ userId }) => {
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme(userId));
+
   useEffect(() => { applyTheme(theme); }, [theme]);
+
+  // userId 变化时重新加载主题
+  useEffect(() => {
+    if (userId) setTheme(getStoredTheme(userId));
+  }, [userId]);
+
   const cycle = useCallback(() => {
     setTheme(prev => {
       const next = prev === 'system' ? 'dark' : prev === 'dark' ? 'light' : 'system';
-      try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+      if (userId) saveTheme(userId, next);
+      else { try { localStorage.setItem('leave-approval-theme', next); } catch {} }
       return next;
     });
-  }, []);
+  }, [userId]);
+
   const icon = theme === 'dark' ? '☀️' : theme === 'light' ? '🌙' : '💻';
   const label = theme === 'dark' ? '暗色' : theme === 'light' ? '亮色' : '跟随系统';
   return (

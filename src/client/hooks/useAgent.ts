@@ -8,14 +8,15 @@
  *   4. 记忆注入 — 把用户记忆和对话摘要传给后端
  *   5. 压缩触发 — 消息数超阈值时调 /api/compact
  */
-import { useCallback, useRef, useState } from 'react';
-import type { Message, ConfirmRequest, AgentPhase } from '../types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Message, ConfirmRequest, AgentPhase, ChatHistory } from '../types';
 import type { MemoryItem } from '../../shared/memory';
 import { MEMORY_LIMITS } from '../../shared/memory';
 
 
 interface UseAgentOptions {
   pluginId?: string;
+  userId?: string;
   memories?: MemoryItem[];
   summary?: string;
   onSummaryUpdate?: (summary: string, messageCount: number) => void;
@@ -24,18 +25,48 @@ interface UseAgentOptions {
 
 export function useAgent(options?: UseAgentOptions) {
   const pluginId = options?.pluginId;
+  const userId = options?.userId;
   const memories = options?.memories;
   const summary = options?.summary;
   const onSummaryUpdate = options?.onSummaryUpdate;
   const onMemoriesExtracted = options?.onMemoriesExtracted;
 
   // ── 状态 ──
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (!userId) return [];
+    try {
+      const raw = localStorage.getItem(`chat_history_${userId}`);
+      if (raw) {
+        const history: ChatHistory = JSON.parse(raw);
+        return history.messages || [];
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [phase, setPhase] = useState<AgentPhase>('idle');
   const [phaseText, setPhaseText] = useState('请输入您的需求');
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── 聊天历史持久化 ──
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!userId || messages.length === 0) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const history: ChatHistory = {
+          messages,
+          activePluginId: pluginId || 'leave_approval',
+          lastActiveAt: Date.now(),
+        };
+        localStorage.setItem(`chat_history_${userId}`, JSON.stringify(history));
+      } catch { /* quota */ }
+    }, 500);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [messages, userId, pluginId]);
 
   // ── Refs ──
   const abortRef = useRef<AbortController | null>(null);

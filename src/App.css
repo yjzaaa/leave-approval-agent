@@ -1179,3 +1179,168 @@ body {
 
   .confirm-modal { max-width: 100%; margin: var(--space-4); border-radius: var(--radius-lg); }
 }
+
+/* ── 15. Login Screen ── */
+
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-root);
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+}
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  margin: 0 0 32px;
+}
+
+.login-users {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.login-user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.login-user-card:hover {
+  border-color: var(--vermillion-400);
+  box-shadow: 0 2px 12px var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.login-user-avatar {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.login-user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.login-user-dept {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.login-user-role {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  background: var(--bg-sunken);
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+
+/* ── 16. User Menu (Header) ── */
+
+.user-menu {
+  position: relative;
+  margin-left: 8px;
+}
+
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--header-ctrl-bg, var(--bg-sunken));
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+
+.user-menu-trigger:hover {
+  background: var(--header-ctrl-hover, var(--bg-hover));
+}
+
+.user-avatar-sm {
+  line-height: 1;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.user-menu-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.user-menu-role {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.user-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.user-menu-item:hover {
+  background: var(--danger-light);
+}
+
+@media (max-width: 480px) {
+  .login-users {
+    grid-template-columns: 1fr;
+  }
+  .login-title {
+    font-size: 1.5rem;
+  }
+}

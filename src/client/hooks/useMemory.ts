@@ -10,24 +10,27 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   type MemoryStore, type MemoryItem, type MemoryType,
-  MEMORY_STORAGE_KEY, MEMORY_LIMITS,
+  MEMORY_LIMITS,
   createEmptyStore, getPluginMemories,
 } from '../../shared/memory.js';
 
-/** 从 localStorage 加载记忆 */
-function loadStore(): MemoryStore {
+/** 按用户 ID 生成 localStorage key */
+function getStorageKey(userId: string): string {
+  return `agent_memory_store_${userId}`;
+}
+
+function loadStore(userId: string): MemoryStore {
   try {
-    const raw = localStorage.getItem(MEMORY_STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey(userId));
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
   return createEmptyStore();
 }
 
-/** 保存记忆到 localStorage */
-function saveStore(store: MemoryStore): void {
+function saveStore(userId: string, store: MemoryStore): void {
   try {
-    localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(store));
-  } catch { /* ignore - quota exceeded */ }
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(store));
+  } catch { /* ignore */ }
 }
 
 /** 获取某类型记忆的容量上限 */
@@ -66,13 +69,13 @@ export interface UseMemoryReturn {
 }
 
 /** 记忆管理 Hook */
-export function useMemory(): UseMemoryReturn {
-  const [store, setStore] = useState<MemoryStore>(loadStore);
+export function useMemory(userId: string): UseMemoryReturn {
+  const [store, setStore] = useState<MemoryStore>(() => loadStore(userId));
 
   // 每次变更后持久化
   useEffect(() => {
-    saveStore(store);
-  }, [store]);
+    saveStore(userId, store);
+  }, [store, userId]);
 
   const getMemories = useCallback((pluginId: string): MemoryItem[] => {
     return getPluginMemories(store, pluginId);

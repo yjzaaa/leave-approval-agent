@@ -5,8 +5,10 @@ import { ChatContainer } from './client/components/chat/ChatContainer';
 import { InputBar } from './client/components/chat/InputBar';
 import { ConfirmCard } from './client/components/approval/ConfirmCard';
 import { MemoryPanel } from './client/components/memory/MemoryPanel';
+import { LoginScreen } from './client/components/auth/LoginScreen';
 import { useMemory } from './client/hooks/useMemory';
 import { useAgent } from './client/hooks/useAgent';
+import { useAuth } from './client/hooks/useAuth';
 import type { PluginInfo } from './client/types';
 
 const FALLBACK_PLUGINS: PluginInfo[] = [
@@ -22,14 +24,37 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
 };
 
 export default function App() {
+  const { user, login, logout } = useAuth();
+
+  // 未登录显示登录页
+  if (!user) {
+    return <LoginScreen onLogin={login} />;
+  }
+
+  // 登录后渲染主界面（用 key 确保切换用户时 Hook 重置）
+  return <MainApp key={user.id} user={user} onLogout={logout} />;
+}
+
+/** 登录后的主界面 */
+const MainApp: React.FC<{
+  user: NonNullable<ReturnType<typeof useAuth>['user']>;
+  onLogout: () => void;
+}> = ({ user, onLogout }) => {
   const [plugins, setPlugins] = useState<PluginInfo[]>(FALLBACK_PLUGINS);
   const [activePluginId, setActivePluginId] = useState('leave_approval');
   const [appTitle, setAppTitle] = useState('远程办公申请审批');
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS.leave_approval);
-  const { messages, phase, phaseText, confirmRequest, isStreaming, error, sendMessage, confirm, reset } = useAgent({ pluginId: activePluginId });
-  const { store: memoryStore, getMemories: getMemoriesForPlugin, addSharedMemory, addPluginMemory, removeMemory, setSummary, clearAll } = useMemory();
   const [showMemory, setShowMemory] = useState(false);
+
+  const { store: memoryStore, getMemories: getMemoriesForPlugin, addSharedMemory, addPluginMemory, removeMemory, setSummary, clearAll } = useMemory(user.id);
   const pluginMemories = getMemoriesForPlugin(activePluginId);
+
+  const { messages, phase, phaseText, confirmRequest, isStreaming, error, sendMessage, confirm, reset } = useAgent({
+    pluginId: activePluginId,
+    userId: user.id,
+    memories: pluginMemories,
+    summary: memoryStore.summary,
+  });
 
   useEffect(() => {
     fetch('/api/plugins').then(r => r.json()).then(data => {
@@ -63,7 +88,7 @@ export default function App() {
   return (
     <>
       <div className={`app${showMemory ? " has-memory-open" : ""}`}>
-        <Header title={appTitle}>
+        <Header title={appTitle} user={user} onLogout={onLogout}>
           <div className="plugin-selector">
             <label className="plugin-selector-label">📋</label>
             <PluginDropdown
@@ -88,7 +113,7 @@ export default function App() {
   );
 };
 
-/* ── Custom Dropdown (replaces native <select> for theme consistency) ── */
+/* ── Custom Dropdown ── */
 
 const PluginDropdown: React.FC<{
   plugins: PluginInfo[];

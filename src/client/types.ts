@@ -57,3 +57,10 @@ export interface PluginInfo {
   displayName: string;
   fieldCount: number;
 }
+
+/** 聊天历史 (按用户持久化) */
+export interface ChatHistory {
+  messages: Message[];
+  activePluginId: string;
+  lastActiveAt: number;
+}
