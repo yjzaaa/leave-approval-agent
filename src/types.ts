@@ -32,6 +32,12 @@ export interface ProcessResult {
   error?: string;
 }
 
+/** 聊天消息 */
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 /** 校验结果 */
 export interface ValidationResult {
   valid: boolean;

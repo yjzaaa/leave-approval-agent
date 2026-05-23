@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "web": "tsx src/server.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run"
@@ -12,9 +13,11 @@
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.75.4",
     "@earendil-works/pi-ai": "^0.75.4",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "express": "^4.21"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22",
     "tsx": "^4.19",
     "typescript": "^5.7",
