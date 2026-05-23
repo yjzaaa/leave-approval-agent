@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 远程办公审批 — 插件入口
  *
  * 导出一个完整的 BusinessPlugin 实例，包含：
@@ -21,8 +21,7 @@ export const leavePlugin: BusinessPlugin = {
   displayName: '远程办公审批',
   fields: leaveFields,
   systemPrompt: leavePrompt,
-  // Tool 列表由框架的 buildTools() 自动生成，插件无需手动指定
-  tools: [] as any, // 占位，由 agent-factory 的 buildTools() 覆盖
+  tools: allLeaveTools,
   validate: validateLeaveForm,
   submitApi: submitLeaveForm,
   startProcessApi: startLeaveProcess,

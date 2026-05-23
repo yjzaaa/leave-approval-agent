@@ -39,7 +39,6 @@ if (fs.existsSync(staticDir)) {
 
 /** SSE 辅助：写入一条命名事件 */
 function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
-  console.log('[SSE]', event, JSON.stringify(data).slice(0, 200));
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 

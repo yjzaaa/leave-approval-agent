@@ -13,19 +13,6 @@ import type { Message, ConfirmRequest, AgentPhase } from '../types';
 import type { MemoryItem } from '../../shared/memory';
 import { MEMORY_LIMITS } from '../../shared/memory';
 
-/** 清除模型输出中的 function call XML 标签 */
-function cleanToolCallXml(text: string): string {
-  return text
-    .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '')
-    .replace(/<function_calls>/g, '')
-    .replace(/<\/function_calls>/g, '')
-    .replace(/<invoke\s+name="[^"]*">[\s\S]*?<\/invoke>/g, '')
-    .replace(/<invoke\s+name="[^"]*">/g, '')
-    .replace(/<\/invoke>/g, '')
-    .replace(/<parameter\s+name="[^"]*">[\s\S]*?<\/parameter>/g, '')
-    .replace(/<parameter\s+name="[^"]*">/g, '')
-    .replace(/<\/parameter>/g, '');
-}
 
 interface UseAgentOptions {
   pluginId?: string;
@@ -202,7 +189,7 @@ export function useAgent(options?: UseAgentOptions) {
             switch (eventType) {
               case 'text':
                 fullText += data.content;
-                updateLastAssistant(cleanToolCallXml(fullText));
+                updateLastAssistant(fullText);
                 break;
 
               case 'confirm_required':

@@ -121,7 +121,6 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
   let confirmTick: ReturnType<typeof setInterval> | null = null;
 
   agent.subscribe(async (event, _signal) => {
-    console.log('[Agent Event]', event.type, event.type.includes('tool') ? (event as any).toolName : '');
     switch (event.type) {
       case 'tool_execution_start': {
         if (isConfirmTool(event.toolName, plugin)) {
