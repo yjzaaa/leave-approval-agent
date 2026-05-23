@@ -16,7 +16,7 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
 
   const scrollToBottom = useCallback(() => {
     const el = containerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, []);
 
   const handleGoToBottom = useCallback(() => {

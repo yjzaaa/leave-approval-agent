@@ -682,23 +682,27 @@ body {
 
 .scroll-bottom-btn {
   position: absolute;
-  bottom: 16px; right: 20px;
-  width: 36px; height: 36px;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px; height: 28px;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-subtle);
   background: var(--bg-raised);
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   cursor: pointer;
-  box-shadow: var(--shadow-md);
+  opacity: 0.7;
   display: flex; align-items: center; justify-content: center;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   transition: all 0.2s var(--ease-out);
   z-index: 5;
 }
 
 .scroll-bottom-btn:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  opacity: 1;
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+  transform: translateX(-50%) translateY(-1px);
 }
 
 /* ── 10. Confirm Modal ── */
