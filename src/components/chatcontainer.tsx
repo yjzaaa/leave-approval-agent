@@ -22,7 +22,10 @@ export const ChatContainer: React.FC<Props> = ({ messages, confirmRequest, onCon
         <MessageBubble key={msg.id} message={msg} />
       ))}
       {confirmRequest && (
-        <ConfirmCard confirmRequest={confirmRequest} onConfirm={onConfirm} />
+        <>
+          {console.log('[ChatContainer] rendering ConfirmCard:', confirmRequest.tool)}
+          <ConfirmCard confirmRequest={confirmRequest} onConfirm={onConfirm} />
+        </>
       )}
       <div ref={bottomRef} />
     </div>

@@ -79,12 +79,14 @@ export function useAgent() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (eventType !== 'text') console.log('[SSE] event:', eventType, JSON.stringify(data).slice(0, 100));
             switch (eventType) {
               case 'text':
                 fullText += data.content;
                 updateLastAssistant(fullText);
                 break;
               case 'confirm_required':
+                console.log('[SSE] confirm_required received:', data);
                 setConfirmRequest({
                   tool: data.tool,
                   label: data.label,
@@ -93,6 +95,7 @@ export function useAgent() {
                 });
                 setPhase('confirming');
                 setPhaseText(data.tool === 'submit_form' ? '请确认表单信息' : '请确认发起审批流程');
+                console.log('[SSE] confirmRequest set, phase: confirming');
                 break;
               case 'confirm_resolved':
                 setConfirmRequest(null);

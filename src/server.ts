@@ -71,14 +71,31 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   let confirmTick: ReturnType<typeof setInterval> | null = null;
 
   agent.subscribe(async (event, _signal) => {
+    // 调试：打印所有事件
+    if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end') {
+      const ev = event as any;
+      console.log(`[Event] ${event.type}:`, ev.toolName, '| args keys:', ev.args ? Object.keys(ev.args) : 'none');
+    } else if (event.type === 'message_update') {
+      // 太频繁，不打印
+    } else {
+      console.log(`[Event] ${event.type}`);
+    }
+
     switch (event.type) {
       case 'tool_execution_start':
+        console.log(`  → tool: ${event.toolName}, args:`, JSON.stringify((event as any).args).slice(0, 200));
         if (event.toolName === 'submit_form' || event.toolName === 'start_process') {
-          const form = event.args?.form || event.args;
+          const tevent = event as any;
+          const form = tevent.args?.form || tevent.args;
+          // 标记确认请求已就绪
+          setTimeout(() => {
+            const pc = getPendingConfirm();
+            console.log(`  → pendingConfirm exists:`, !!pc, '| tool:', pc?.tool);
+          }, 50);
+
           confirmTick = setInterval(() => {
             const pc = getPendingConfirm();
             if (!pc) {
-              // 确认已完成
               if (confirmTick) { clearInterval(confirmTick); confirmTick = null; }
               sendSSE(res, 'confirm_resolved', { tool: event.toolName });
             }
@@ -91,16 +108,16 @@ app.post('/api/chat', async (req: Request, res: Response) => {
             form,
             fieldLabels: FIELD_LABELS,
           });
+          console.log(`  → sent confirm_required SSE for ${event.toolName}`);
         }
         break;
 
       case 'tool_execution_end':
-        // 只通知非确认类工具的结果
+        console.log(`  → tool_end: ${event.toolName}, isError: ${event.isError}`);
         if (event.toolName !== 'submit_form' && event.toolName !== 'start_process') {
           sendSSE(res, 'tool_result', {
             tool: event.toolName,
             error: event.isError,
-            result: (event as any).result,
           });
         }
         break;

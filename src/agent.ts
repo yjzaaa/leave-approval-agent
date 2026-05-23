@@ -24,8 +24,10 @@ let pendingConfirm: PendingConfirm | null = null;
 
 /** 注册一个待确认请求，返回 Promise */
 export function requestConfirm(tool: string, data: any, timeoutMs = 120_000): Promise<boolean> {
+  console.log(`[requestConfirm] tool=${tool}, data keys:`, Object.keys(data || {}));
   if (pendingConfirm) {
-    pendingConfirm.resolve(false); // 覆盖旧的
+    console.log('[requestConfirm] overriding existing pending confirm');
+    pendingConfirm.resolve(false);
     clearTimeout(pendingConfirm.timer);
   }
   return new Promise<boolean>(resolve => {
@@ -33,8 +35,9 @@ export function requestConfirm(tool: string, data: any, timeoutMs = 120_000): Pr
       resolve,
       tool,
       data,
-      timer: setTimeout(() => { pendingConfirm = null; resolve(false); }, timeoutMs),
+      timer: setTimeout(() => { console.log('[requestConfirm] timeout'); pendingConfirm = null; resolve(false); }, timeoutMs),
     };
+    console.log('[requestConfirm] pendingConfirm set, waiting for user...');
   });
 }
 
@@ -149,22 +152,38 @@ export const startProcessTool: AgentTool<any> = {
 
 export const allTools = [getCurrentDateTool, validateFormTool, submitFormTool, startProcessTool];
 
-export const SYSTEM_PROMPT = `你是远程办公申请自动化审批助手。
+export const SYSTEM_PROMPT = `你是远程办公申请自动化审批助手。你必须主动完成整个流程，不要反问用户缺失信息，用合理默认值填补！
 
-## 流程
-### Phase 1: 填写表单
-1. 调用 get_current_date 获取当前日期
-2. 根据用户需求填写表单（信息不完整时合理推断）
-3. 调用 validate_form 校验，不通过则修正重试（最多 ${config.maxFormRetries} 次）
-4. 校验通过后展示表单，告知用户即将提交
+## 铁律
+1. **绝不反问用户**！缺失字段用默认值：姓名="员工"、部门="技术部"、工号="EMP001"、电话="13800138000"、地址="家庭地址"
+2. **日期必须调用 get_current_date 获取**，不能凭空编造
+3. **填完立即校验**，不通过就修正重试，最多 ${config.maxFormRetries} 次
+4. **校验通过后直接调用 submit_form**，不要只展示表单然后等用户文字回复
+5. **submit_form 成功后直接调用 start_process**，把 formId 传进去
 
-### Phase 2: 提交表单
-- 调用 submit_form 提交（系统会自动请求用户确认）
-- 成功后展示 formId
+## 流程（严格执行，不要跳过任何步骤）
+### Step 1: 获取日期
+调用 get_current_date
 
-### Phase 3: 发起流程
-- 调用 start_process 发起（系统会自动请求用户二次确认）
-- 成功后展示 formId 和 processId`;
+### Step 2: 填写表单
+根据用户需求 + 默认值填写完整 9 字段表单：
+- applicantName: 员工
+- department: 技术部
+- employeeId: EMP001
+- remoteStartDate/remoteEndDate: 根据用户说的天数推断
+- reason: 根据用户输入展开到 ≥10 字
+- workPlan: 完成日常工作任务，保持线上沟通和协作 ≥20 字
+- emergencyContact: 13800138000
+- address: 家庭地址
+
+### Step 3: 校验
+调用 validate_form 校验 → 不通过就修正（最多${config.maxFormRetries}次）→ 通过后继续
+
+### Step 4: 提交
+直接调用 submit_form 提交表单（无需等用户文字回复，系统会弹出确认卡片让用户点按钮）
+
+### Step 5: 发起流程
+submit_form 成功后，立即用返回的 formId 调用 start_process 发起审批流程（系统会弹出二次确认卡片）`;
 
 export function getDefaultModel() {
   return getModel('deepseek', 'deepseek-v4-pro' as any);
