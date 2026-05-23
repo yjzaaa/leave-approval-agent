@@ -1,0 +1,44 @@
+﻿---
+title: HITL 确认流程时序图
+config:
+  theme: base
+  themeVariables:
+    actorTextColor: "#1a1a1a"
+    fontSize: 13
+---
+sequenceDiagram
+    actor User as 👤 用户
+    participant Browser as 🌐 Browser
+    participant Express as Express :3000
+    participant Confirm as confirm-state
+    participant Tool as 插件 Tool
+    participant API as 插件 API
+
+    Note over Tool,Confirm: Tool 执行时调用 requestConfirm()
+    
+    Tool->>Confirm: requestConfirm(toolName, formData)
+    Note over Confirm: Promise 挂起 ⏳<br/>等待用户决策
+    
+    Confirm-->>Express: getPending() ≠ null
+    Express-->>Browser: SSE: confirm_required<br/>{ tool, label, form, fieldLabels }
+    Browser-->>User: 弹出确认卡片<br/>📋 确认提交表单
+    
+    alt 用户确认
+        User->>Browser: 点击 ✅ 确认
+        Browser->>Express: POST /api/confirm<br/>{ approved: true }
+        Express->>Confirm: approveConfirm()
+        Confirm-->>Tool: Promise resolve(true)
+        Tool->>API: submitApi(form) / startProcessApi(...)
+        API-->>Tool: 返回结果
+        Tool-->>Express: 返回 tool 结果
+        Express-->>Browser: SSE: confirm_resolved + tool_result
+        Browser-->>User: 显示成功消息
+    else 用户拒绝
+        User->>Browser: 点击 ❌ 拒绝
+        Browser->>Express: POST /api/confirm<br/>{ approved: false }
+        Express->>Confirm: rejectConfirm()
+        Confirm-->>Tool: Promise resolve(false)
+        Tool-->>Express: throw Error("用户拒绝")
+        Express-->>Browser: SSE: confirm_resolved + tool_result
+        Browser-->>User: 显示拒绝消息，Agent 重新收集
+    end

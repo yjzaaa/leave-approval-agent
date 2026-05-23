@@ -1,0 +1,49 @@
+﻿---
+title: 插件类型对比图
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#e8e8e6"
+    primaryTextColor: "#1a1a1a"
+    primaryBorderColor: "#8b8b8b"
+    lineColor: "#6b7280"
+    fontSize: 14
+---
+graph TB
+    subgraph ApprovalType["审批类插件"]
+        direction TB
+        ATools["tools: [validate, submit, start, get_date]"]
+        AHITL["confirmTools: [submit, start]"]
+        AFields["fields: ✅ 有表单"]
+        AApi["submitApi + startProcessApi: ✅"]
+    end
+
+    subgraph ChatType["纯聊天插件"]
+        direction TB
+        CTools["tools: [] 空数组"]
+        CHITL["confirmTools: 无"]
+        CFields["fields: ❌ 无"]
+        CApi["submitApi: ❌ 无"]
+    end
+
+    subgraph FAQType["FAQ 咨询插件"]
+        direction TB
+        FTools["tools: [searchKnowledgeBase]"]
+        FHITL["confirmTools: [] 空数组"]
+        FFields["fields: ❌ 无"]
+        FApi["submitApi: ❌ 无"]
+    end
+
+    subgraph Interface["BusinessPlugin 接口"]
+        Required["必填: id + displayName<br/>+ systemPrompt + tools"]
+        Optional["可选: fields, validate,<br/>submitApi, confirmTools, ..."]
+    end
+
+    Required -.-> ApprovalType
+    Required -.-> ChatType
+    Required -.-> FAQType
+
+    style ApprovalType fill:#fef3c7,stroke:#6b7280,color:#1a1a1a
+    style ChatType fill:#dbeafe,stroke:#6b7280,color:#1a1a1a
+    style FAQType fill:#f0fdf4,stroke:#6b7280,color:#1a1a1a
+    style Interface fill:#f3f3f0,stroke:#8b8b8b,color:#1a1a1a

@@ -1,0 +1,38 @@
+﻿---
+title: HITL 确认状态机
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#e8e8e6"
+    primaryTextColor: "#1a1a1a"
+    primaryBorderColor: "#8b8b8b"
+    lineColor: "#6b7280"
+    fontSize: 14
+---
+stateDiagram-v2
+    [*] --> Idle : Agent 启动
+
+    Idle --> Pending : tool 调用 requestConfirm()<br/>(仅 confirmTools 中的 tool)
+    
+    state Pending {
+        [*] --> WaitingForUser
+        WaitingForUser : Promise 挂起
+        WaitingForUser : SSE 推送 confirm_required
+        WaitingForUser : 前端弹出确认卡片
+    }
+    
+    Pending --> Approved : POST /api/confirm<br/>{ approved: true }
+    Pending --> Rejected : POST /api/confirm<br/>{ approved: false }
+    
+    Approved --> ToolContinues : Promise resolve(true)<br/>tool 继续执行 API
+    Rejected --> ToolAborted : Promise resolve(false)<br/>tool throw Error
+    
+    ToolContinues --> Idle : tool 执行完毕
+    ToolAborted --> Idle : Agent 重新处理
+    
+    Idle --> Idle : tool 不在 confirmTools 中<br/>直接执行，无 HITL
+    
+    note right of Pending
+        全局单例
+        同一时刻最多一个 Pending
+    end note

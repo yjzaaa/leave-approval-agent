@@ -1,0 +1,37 @@
+﻿---
+title: 远程办公审批完整流程图
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#e8e8e6"
+    primaryTextColor: "#1a1a1a"
+    primaryBorderColor: "#8b8b8b"
+    lineColor: "#6b7280"
+    fontSize: 14
+---
+flowchart TD
+    Start([👤 用户: 我要申请远程办公]) --> GetDate[Agent 调用 get_current_date]
+    GetDate --> Ask[Agent 询问表单信息]
+    Ask --> UserInput[👤 用户输入姓名/部门/日期/原因...]
+    UserInput --> Validate[Agent 调用 leave_approval_validate]
+    
+    Validate --> Valid{校验通过?}
+    Valid -->|❌ 失败| Ask
+    Valid -->|✅ 通过| Submit[Agent 调用 leave_approval_submit]
+    
+    Submit --> HITL1{📋 确认提交表单}
+    HITL1 -->|👤 用户确认| CallSubmit[调用 submitApi → FM-xxx]
+    HITL1 -->|👤 用户拒绝| Ask
+    
+    CallSubmit --> StartProcess[Agent 调用 leave_approval_start]
+    StartProcess --> HITL2{🚀 确认发起审批流程}
+    HITL2 -->|👤 用户确认| CallStart[调用 startProcessApi → PS-xxx]
+    HITL2 -->|👤 用户拒绝| Ask
+    
+    CallStart --> Done([✅ 流程发起成功 PS-xxx])
+    
+    style Start fill:#fef3c7,stroke:#6b7280,color:#1a1a1a
+    style Done fill:#f0fdf4,stroke:#6b7280,color:#1a1a1a
+    style HITL1 fill:#fee2e2,stroke:#6b7280,color:#1a1a1a
+    style HITL2 fill:#fee2e2,stroke:#6b7280,color:#1a1a1a
+    style Valid fill:#dbeafe,stroke:#6b7280,color:#1a1a1a
