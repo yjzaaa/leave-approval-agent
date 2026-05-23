@@ -140,6 +140,17 @@ export default function App() {
       {confirmRequest && (
         <ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />
       )}
+
+      {/* 记忆面板 */}
+      {showMemory && (
+        <MemoryPanel
+          store={memoryStore}
+          pluginId={activePluginId}
+          onRemove={removeMemory}
+          onClearAll={clearAll}
+          onClose={() => setShowMemory(false)}
+        />
+      )}
     </div>
   );
 };
