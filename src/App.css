@@ -219,22 +219,22 @@ body {
   height: var(--header-h);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-3);
-  padding: 0 var(--space-6);
+  padding: 0 calc((100vw - 960px) / 2 + var(--space-6));
   flex-shrink: 0;
   background: var(--gray-900);
   color: var(--text-inverse);
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: padding 0.2s;
 }
-.header > * {
-  max-width: 960px;
+@media (max-width: 960px) {
+  .header { padding: 0 var(--space-6); }
 }
 @media (min-width: 1200px) {
-  .header > * { max-width: 1080px; }
+  .header { padding: 0 calc((100vw - 1080px) / 2 + var(--space-6)); }
 }
 @media (min-width: 1600px) {
-  .header > * { max-width: 1200px; }
+  .header { padding: 0 calc((100vw - 1200px) / 2 + var(--space-6)); }
 }
 
 .header-icon-wrapper {
