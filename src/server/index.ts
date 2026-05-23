@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Express Web 服务 — 插件化 SSE 流式 Agent
  *
  * 架构: 浏览器 → Express → Agent 框架 → 业务插件 → DeepSeek API
@@ -13,6 +13,7 @@
  *   - agent-factory 负责 Agent 创建和 SSE 事件转换
  *   - server 只负责 HTTP 路由和 SSE 写入
  */
+import fs from 'node:fs';
 import express from 'express';
 import type { Request, Response } from 'express';
 import path from 'node:path';
@@ -27,7 +28,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// 开发: Vite dev server 独立运行; 生产: 从 dist/ 提供静态文件
+const staticDir = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(staticDir)) {
+  app.use(express.static(staticDir));
+  console.log('[Static] serving from dist/');
+}
 
 /** SSE 辅助：写入一条命名事件 */
 function sendSSE(res: Response, event: string, data: Record<string, unknown>) {

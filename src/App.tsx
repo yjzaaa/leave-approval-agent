@@ -2,7 +2,7 @@
  * App 根组件 v3.0
  *
  * 五大视觉区域：
- *   1. Header/插件下拉  — 顶部导航 + 业务插件选择器
+ *   1. Header/插件下拉  — 顶部导航 + 业务插件选择器（始终显示）
  *   2. StatusBar       — 流水线步骤指示器
  *   3. ChatContainer   — 聊天消息列表
  *   4. InputBar        — 消息输入框
@@ -17,6 +17,13 @@ import { ConfirmCard } from './client/components/approval/ConfirmCard';
 import { useAgent } from './client/hooks/useAgent';
 import type { PluginInfo } from './client/types';
 
+/** 内置插件列表（API 失败时的兜底） */
+const FALLBACK_PLUGINS: PluginInfo[] = [
+  { id: 'leave_approval', displayName: '远程办公审批', fieldCount: 9 },
+  { id: 'expense_approval', displayName: '报销审批', fieldCount: 8 },
+  { id: 'sick_leave', displayName: '病假申请', fieldCount: 9 },
+];
+
 export default function App() {
   const {
     messages, phase, phaseText, confirmRequest,
@@ -24,27 +31,35 @@ export default function App() {
     sendMessage, confirm, reset,
   } = useAgent();
 
-  const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const [plugins, setPlugins] = useState<PluginInfo[]>(FALLBACK_PLUGINS);
   const [activePluginId, setActivePluginId] = useState('leave_approval');
-  const [appTitle, setAppTitle] = useState('审批助手');
+  const [appTitle, setAppTitle] = useState('远程办公申请审批');
 
-  // 加载可用插件列表
+  // 尝试从服务端加载插件列表（更新动态信息如 fieldCount）
   useEffect(() => {
     fetch('/api/plugins')
       .then(r => r.json())
       .then(data => {
-        const list = data.plugins || [];
-        setPlugins(list);
-        const active = list.find((p: PluginInfo) => p.id === activePluginId);
-        if (active) setAppTitle(active.displayName);
+        if (data.plugins?.length > 0) {
+          setPlugins(data.plugins);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // API 不可用时使用内置兜底列表
+        console.log('[App] /api/plugins 不可用，使用内置插件列表');
+      });
   }, []);
+
+  // 初始化标题
+  useEffect(() => {
+    const active = plugins.find(p => p.id === activePluginId);
+    if (active) setAppTitle(active.displayName);
+  }, [plugins]);
 
   /** 切换插件时重置对话 */
   const switchPlugin = (pluginId: string) => {
     const p = plugins.find(pl => pl.id === pluginId);
-    if (p) {
+    if (p && pluginId !== activePluginId) {
       setActivePluginId(pluginId);
       setAppTitle(p.displayName);
       reset();
@@ -54,27 +69,25 @@ export default function App() {
   return (
     <div className="app">
       <Header title={appTitle}>
-        {/* 业务插件下拉选择器 */}
-        {plugins.length > 1 && (
-          <div className="plugin-selector">
-            <label htmlFor="plugin-select" className="plugin-selector-label">
-              📋
-            </label>
-            <select
-              id="plugin-select"
-              className="plugin-select"
-              value={activePluginId}
-              onChange={e => switchPlugin(e.target.value)}
-              aria-label="选择审批类型"
-            >
-              {plugins.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* 业务插件下拉选择器（始终显示） */}
+        <div className="plugin-selector">
+          <label htmlFor="plugin-select" className="plugin-selector-label">
+            📋
+          </label>
+          <select
+            id="plugin-select"
+            className="plugin-select"
+            value={activePluginId}
+            onChange={e => switchPlugin(e.target.value)}
+            aria-label="选择审批类型"
+          >
+            {plugins.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
       </Header>
 
       <main className="main-content">
