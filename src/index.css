@@ -1,0 +1,274 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════
+   AI2-Style Design System — Enterprise Chat Agent
+   Based on Chainlit · Orange/Teal dual-color chat · RGB tokens
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens (inline → Tailwind utilities) ── */
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-send: rgb(var(--send));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-radius: var(--radius);
+}
+
+/* ── Light Mode ── */
+@layer base {
+  :root {
+    /* 字体系统 — 可扩展口: 替换 CSS 变量即可切换品牌字体 */
+    --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+    --font-serif: 'Crimson Pro', 'Noto Serif SC', 'Songti SC', 'SimSun', Georgia, serif;
+    --font-mono: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+
+    /* 表面 */
+    --background: 0 0% 92.5%;      /* 浅灰底 — 非纯白, 降低眼部疲劳 */
+    --foreground: 0 0% 5%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+
+    /* 主色 — 橙色 (用户气泡) · RGB 格式便于精确控制 */
+    --primary: 236 102 2;
+    --primary-foreground: 255 255 255;
+
+    /* 次色 — 蓝绿色 (AI 助手气泡) */
+    --secondary: 0 153 153;
+    --secondary-foreground: 255 255 255;
+
+    /* 发送按钮 — 紫蓝色 */
+    --send: 115 118 225;
+
+    /* 中性色 */
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 36%;
+    --accent: 0 0% 95%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* 语义色 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 210 40% 98%;
+
+    /* 边框 & 输入 */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 25 85% 53%;
+
+    /* 圆角基础 */
+    --radius: 0.75rem;
+  }
+
+  /* ── Dark Mode — 纯黑背景 ── */
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 20%;
+    --card-foreground: 210 40% 98%;
+    --popover: 0 0% 20%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 236 102 2;           /* 橙色不变 */
+    --primary-foreground: 255 255 255;
+    --secondary: 0 153 153;         /* 蓝绿色不变 */
+    --secondary-foreground: 255 255 255;
+    --send: 115 118 225;            /* 紫蓝色不变 */
+
+    --muted: 0 1% 26%;
+    --muted-foreground: 0 0% 71%;
+    --accent: 0 0% 26%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 60% 40%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 80% 45%;
+    --warning-foreground: 210 40% 98%;
+
+    --border: 0 1% 26%;
+    --input: 0 1% 26%;
+    --ring: 25 85% 53%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* 选中高亮 — 半透明橙色 */
+  ::selection {
+    background: rgb(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Spring Animations — AI2 bounce feel
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes loading-shimmer {
+  0% { background-position: -100% top; }
+  100% { background-position: 250% top; }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px) scale(1.05); }
+}
+
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════════════════════ */
+
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 2px;
+  }
+}
+
+@utility loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--foreground) / 0.15) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 50% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: loading-shimmer 4s infinite;
+}
+
+/* ── Chat message markdown — 墨韵级别排版 ── */
+.msg-markdown {
+  line-height: 1.7;
+}
+
+.msg-markdown h1, .msg-markdown h2, .msg-markdown h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+  color: rgb(var(--primary));
+}
+
+.msg-markdown h1 { font-size: 1.375rem; }
+.msg-markdown h2 { font-size: 1.125rem; }
+.msg-markdown h3 { font-size: 1rem; }
+
+.msg-markdown p { margin: 0.4em 0; }
+
+.msg-markdown ul, .msg-markdown ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.msg-markdown ul { list-style: disc; }
+.msg-markdown ol { list-style: decimal; }
+.msg-markdown li { margin: 0.2em 0; line-height: 1.6; }
+.msg-markdown li > ul, .msg-markdown li > ol { margin: 0.1em 0; }
+
+.msg-markdown a {
+  color: rgb(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.msg-markdown a:hover { opacity: 0.8; }
+
+.msg-markdown strong { font-weight: 600; }
+
+.msg-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: hsl(var(--muted));
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+}
+
+.msg-markdown pre {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  padding: 12px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.msg-markdown pre code { background: none; padding: 0; border: none; color: inherit; }
+
+.msg-markdown blockquote {
+  border-left: 3px solid rgb(var(--primary));
+  padding-left: 12px;
+  margin: 0.5em 0;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.msg-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  font-size: 0.875em;
+}
+
+.msg-markdown th, .msg-markdown td {
+  padding: 6px 10px;
+  border: 1px solid hsl(var(--border));
+  text-align: left;
+}
+
+.msg-markdown th {
+  background: rgba(0,0,0,0.08);
+  font-weight: 600;
+  font-family: var(--font-serif);
+}
+
+.msg-markdown hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1em 0;
+}

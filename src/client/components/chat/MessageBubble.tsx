@@ -22,30 +22,49 @@ export const MessageBubble: React.FC<Props> = ({ message }) => {
   const isLoading = message.role === 'assistant' && !message.content;
 
   if (isSystem) {
-    return <div className="msg system" role="status">{message.content}</div>;
+    return (
+      <div className="flex justify-center" role="status">
+        <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">{message.content}</span>
+      </div>
+    );
   }
 
   const time = formatTime(message.timestamp);
 
-  return (
-    <div className={`msg ${isUser ? 'user' : 'assistant'}`} role="article" aria-label={`${isUser ? '你' : '助手'}的消息`}>
-      <div className={`avatar ${isUser ? 'user' : 'bot'}`} aria-hidden="true">
-        {isUser ? '👤' : '🤖'}
-      </div>
-      <div className="bubble-wrapper">
-        <div className="bubble">
-          {isLoading ? (
-            <div className="typing-indicator" aria-label="正在输入...">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-            </div>
-          ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+  if (isUser) {
+    return (
+      <div className="flex justify-end px-2 mb-4" role="article" aria-label="你的消息">
+        <div className="flex flex-col items-end gap-0 min-w-0">
+          <div className="bg-primary text-primary-foreground rounded-2xl px-5 py-2.5 max-w-[75%] text-sm leading-relaxed break-words">
+            <div className="msg-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>
+          </div>
+          {time && (
+            <time className="text-[10px] text-muted-foreground/60 mt-1" dateTime={new Date(message.timestamp).toISOString()}>{time}</time>
           )}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 px-2 mb-4" role="article" aria-label="助手的消息">
+      <div className="h-8 w-8 rounded-full bg-secondary/15 text-secondary flex items-center justify-center text-xs font-medium shrink-0" aria-hidden="true">
+        AI
+      </div>
+      <div className="flex flex-col gap-0 min-w-0">
+        {isLoading ? (
+          <span className="flex gap-1.5 items-center px-5 py-2.5" aria-label="正在输入...">
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </span>
+        ) : (
+          <div className="bg-secondary text-secondary-foreground rounded-2xl px-5 py-2.5 max-w-[75%] text-sm leading-relaxed break-words">
+            <div className="msg-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>
+          </div>
+        )}
         {time && (
-          <time className="msg-time" dateTime={new Date(message.timestamp).toISOString()}>{time}</time>
+          <time className="text-[10px] text-muted-foreground/60 mt-1 ml-1" dateTime={new Date(message.timestamp).toISOString()}>{time}</time>
         )}
       </div>
     </div>

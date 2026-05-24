@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from 'react';
+import { Check, X, AlertCircle } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
 import type { ConfirmRequest } from '../../types';
 
 interface Props {
@@ -34,30 +36,40 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
   };
 
   return (
-    <div className="confirm-overlay" ref={overlayRef} onClick={handleOverlayClick} role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-desc">
-      <div className="confirm-modal">
-        <div className="confirm-modal-header">
-          <div className="confirm-modal-icon" aria-hidden="true">🔒</div>
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-desc"
+    >
+      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-lg p-6 max-w-md w-full mx-4">
+        <div className="flex items-start gap-3 mb-4">
+          <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
           <div>
-            <div className="confirm-modal-title" id="confirm-modal-title">{label}</div>
-            <div className="confirm-modal-subtitle" id="confirm-modal-desc">请仔细核对以下信息，确认无误后提交</div>
+            <div className="text-lg font-semibold leading-none tracking-tight" id="confirm-modal-title">{label}</div>
+            <div className="text-sm text-muted-foreground mt-2" id="confirm-modal-desc">请仔细核对以下信息，确认无误后提交</div>
           </div>
         </div>
-        <div className="confirm-modal-body">
-          <table className="form-table" role="table" aria-label="申请信息摘要">
-            <tbody>
-              {entries.map(([key, fieldLabel]) => (
-                <tr key={key}>
-                  <td>{fieldLabel}</td>
-                  <td><strong>{String(form[key] ?? '—')}</strong></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2 mb-6" role="table" aria-label="申请信息摘要">
+          {entries.map(([key, fieldLabel]) => (
+            <div key={key} className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{fieldLabel}</span>
+              <span className="font-medium text-foreground">{String(form[key] ?? '—')}</span>
+            </div>
+          ))}
         </div>
-        <div className="confirm-modal-actions">
-          <button className="btn-modal btn-modal-reject" onClick={() => onConfirm(false)}>✕ 拒绝</button>
-          <button className="btn-modal btn-modal-approve" onClick={() => onConfirm(true)} ref={approveBtnRef}>✓ 确认提交</button>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={() => onConfirm(false)}>
+            <X className="h-4 w-4 mr-1" />
+            拒绝
+          </Button>
+          <Button variant="default" onClick={() => onConfirm(true)} ref={approveBtnRef}>
+            <Check className="h-4 w-4 mr-1" />
+            确认提交
+          </Button>
         </div>
       </div>
     </div>

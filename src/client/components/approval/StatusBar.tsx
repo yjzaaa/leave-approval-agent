@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '../../../lib/utils';
 import type { AgentPhase } from '../../types';
 
 interface Props {
@@ -35,15 +36,35 @@ function getStepState(step: StepInfo, currentPhase: AgentPhase): 'completed' | '
 export const StatusBar: React.FC<Props> = ({ phase, text }) => {
   const visibleSteps = phase === 'idle' ? PIPELINE_STEPS.slice(0, 1) : PIPELINE_STEPS.slice(1);
   return (
-    <div className="status-bar" role="status" aria-live="polite" aria-label={`当前状态: ${text}`}>
-      <div className="pipeline">
+    <div
+      className="h-10 border-b border-border bg-background flex items-center px-4 gap-3 text-xs overflow-x-auto"
+      role="status"
+      aria-live="polite"
+      aria-label={`当前状态: ${text}`}
+    >
+      <div className="flex items-center gap-2 max-w-3xl mx-auto w-full">
         {visibleSteps.map((step, i) => {
           const state = getStepState(step, phase);
           return (
             <React.Fragment key={step.key}>
-              {i > 0 && <span className="pipeline-arrow" aria-hidden="true">›</span>}
-              <span className={`pipeline-step ${state}`} aria-current={state === 'active' ? 'step' : undefined}>
-                <span className="pipeline-step-dot" aria-hidden="true" />
+              {i > 0 && <span className="text-muted-foreground" aria-hidden="true">›</span>}
+              <span
+                className={cn(
+                  'flex items-center gap-1.5',
+                  state === 'completed' && 'text-green-600 dark:text-green-400',
+                  state === 'active' && 'text-primary font-medium',
+                  state === 'error' && 'text-destructive',
+                  state === 'pending' && 'text-muted-foreground'
+                )}
+                aria-current={state === 'active' ? 'step' : undefined}
+              >
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full bg-current',
+                    state === 'active' && 'animate-pulse'
+                  )}
+                  aria-hidden="true"
+                />
                 {step.label}
               </span>
             </React.Fragment>

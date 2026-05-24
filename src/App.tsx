@@ -6,9 +6,15 @@ import { InputBar } from './client/components/chat/InputBar';
 import { ConfirmCard } from './client/components/approval/ConfirmCard';
 import { MemoryPanel } from './client/components/memory/MemoryPanel';
 import { LoginScreen } from './client/components/auth/LoginScreen';
+import { PrivacyPolicy } from './client/components/legal/PrivacyPolicy';
+import { LegalNotice } from './client/components/legal/LegalNotice';
 import { useMemory } from './client/hooks/useMemory';
 import { useAgent } from './client/hooks/useAgent';
 import { useAuth } from './client/hooks/useAuth';
+import { ThemeProvider } from './components/ThemeProvider';
+import { cn } from './lib/utils';
+import { ChevronDown, Brain } from 'lucide-react';
+import { Tooltip } from './client/components/ui/Tooltip';
 import type { PluginInfo } from './client/types';
 
 const FALLBACK_PLUGINS: PluginInfo[] = [
@@ -26,13 +32,15 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
 export default function App() {
   const { user, login, logout } = useAuth();
 
-  // 未登录显示登录页
   if (!user) {
     return <LoginScreen onLogin={login} />;
   }
 
-  // 登录后渲染主界面（用 key 确保切换用户时 Hook 重置）
-  return <MainApp key={user.id} user={user} onLogout={logout} />;
+  return (
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <MainApp key={user.id} user={user} onLogout={logout} />
+    </ThemeProvider>
+  );
 }
 
 /** 登录后的主界面 */
@@ -45,6 +53,7 @@ const MainApp: React.FC<{
   const [appTitle, setAppTitle] = useState('远程办公申请审批');
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS.leave_approval);
   const [showMemory, setShowMemory] = useState(false);
+  const [legalModal, setLegalModal] = useState<'privacy' | 'legal' | null>(null);
 
   const { store: memoryStore, getMemories: getMemoriesForPlugin, addSharedMemory, addPluginMemory, removeMemory, setSummary, clearAll } = useMemory(user.id);
   const pluginMemories = getMemoriesForPlugin(activePluginId);
@@ -86,34 +95,52 @@ const MainApp: React.FC<{
   }, [plugins]);
 
   return (
-    <>
-      <div className={`app${showMemory ? " has-memory-open" : ""}`}>
-        <Header title={appTitle} user={user} onLogout={onLogout}>
-          <div className="plugin-selector">
-            <label className="plugin-selector-label">📋</label>
-            <PluginDropdown
-              plugins={plugins}
-              value={activePluginId}
-              onChange={switchPlugin}
-            />
-          </div>
-          <button className={`memory-toggle-btn${showMemory ? " active" : ""}`} onClick={() => setShowMemory(v => !v)} title="查看记忆">🧠</button>
-        </Header>
-        <main className="main-content">
-          <StatusBar phase={phase} text={phaseText} />
-          <ChatContainer messages={messages} suggestions={suggestions} />
-          <InputBar onSend={sendMessage} disabled={isStreaming} />
-        </main>
-        {confirmRequest && (<ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />)}
-      </div>
+    <div className="flex h-dvh flex-col bg-background">
+      <Header title={appTitle} user={user} onLogout={onLogout}>
+        <PluginDropdown plugins={plugins} value={activePluginId} onChange={switchPlugin} />
+        <Tooltip text="查看记忆" position="bottom">
+          <button
+            className={cn(
+              "inline-flex items-center justify-center rounded-full h-9 w-9 text-sm hover:bg-accent transition-colors",
+              showMemory && "bg-accent text-accent-foreground"
+            )}
+            onClick={() => setShowMemory(v => !v)}
+            aria-label="查看记忆"
+          >
+            <Brain className="h-4 w-4" />
+          </button>
+        </Tooltip>
+      </Header>
+      <main className="flex flex-1 flex-col min-h-0">
+        <StatusBar phase={phase} text={phaseText} />
+        <ChatContainer messages={messages} suggestions={suggestions} />
+        <InputBar onSend={sendMessage} disabled={isStreaming} />
+      </main>
+      {/* Footer — 合规链接 */}
+      <footer className="flex items-center justify-center gap-4 h-8 border-t border-border bg-background flex-shrink-0 px-4">
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setLegalModal('privacy')}
+        >隐私政策</button>
+        <span className="text-xs text-muted-foreground/40">·</span>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setLegalModal('legal')}
+        >法律声明</button>
+        <span className="text-xs text-muted-foreground/40">·</span>
+        <span className="text-xs text-muted-foreground/60">© 2026 审批助手 v2.1 — Enterprise Edition</span>
+      </footer>
+      {confirmRequest && (<ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />)}
       {showMemory && (
         <MemoryPanel store={memoryStore} pluginId={activePluginId} onRemove={removeMemory} onClearAll={clearAll} onClose={() => setShowMemory(false)} />
       )}
-    </>
+      <PrivacyPolicy open={legalModal === 'privacy'} onClose={() => setLegalModal(null)} />
+      <LegalNotice open={legalModal === 'legal'} onClose={() => setLegalModal(null)} />
+    </div>
   );
 };
 
-/* ── Custom Dropdown ── */
+/* ── Plugin Dropdown ── */
 
 const PluginDropdown: React.FC<{
   plugins: PluginInfo[];
@@ -138,27 +165,36 @@ const PluginDropdown: React.FC<{
   }, [open, close]);
 
   return (
-    <div className="plugin-dropdown" ref={ref}>
+    <div className="relative" ref={ref}>
       <button
         type="button"
-        className={`plugin-dropdown-trigger${open ? ' open' : ''}`}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium",
+          "hover:bg-accent hover:text-accent-foreground transition-colors",
+          open && "bg-accent text-accent-foreground"
+        )}
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="plugin-dropdown-text">{active?.displayName ?? ''}</span>
-        <svg className="plugin-dropdown-arrow" width="12" height="12" viewBox="0 0 12 12">
-          <path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+        <span>{active?.displayName ?? ''}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <ul className="plugin-dropdown-menu" role="listbox">
+        <ul
+          className="absolute left-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-md animate-in fade-in slide-in-from-top-2"
+          role="listbox"
+        >
           {plugins.map(p => (
             <li
               key={p.id}
               role="option"
               aria-selected={p.id === value}
-              className={`plugin-dropdown-item${p.id === value ? ' active' : ''}`}
+              className={cn(
+                "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none",
+                "hover:bg-accent hover:text-accent-foreground transition-colors",
+                p.id === value && "bg-accent text-accent-foreground font-medium"
+              )}
               onClick={() => { onChange(p.id); close(); }}
             >
               {p.displayName}
