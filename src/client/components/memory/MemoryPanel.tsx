@@ -8,8 +8,8 @@ import type { MemoryStore, MemoryItem, MemoryType } from '../../../shared/memory
 
 interface MemoryPanelProps {
   store: MemoryStore;
-  pluginId: string;
-  onRemove: (type: MemoryType, index: number, pluginId?: string) => void;
+  scenarioId: string;
+  onRemove: (type: MemoryType, index: number, scenarioId?: string) => void;
   onClearAll: () => void;
   onClose: () => void;
 }
@@ -21,9 +21,9 @@ const TYPE_CONFIG: Record<MemoryType, { labelKey: string; icon: React.ReactNode;
   reference: { labelKey: 'memory.typeReference', icon: <Link className="h-3.5 w-3.5" />, color: '#ebfbee' },
 };
 
-function MemoryCard({ item, index, type, pluginId, onRemove }: {
-  item: MemoryItem; index: number; type: MemoryType; pluginId?: string;
-  onRemove: (type: MemoryType, index: number, pluginId?: string) => void;
+function MemoryCard({ item, index, type, scenarioId, onRemove }: {
+  item: MemoryItem; index: number; type: MemoryType; scenarioId?: string;
+  onRemove: (type: MemoryType, index: number, scenarioId?: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const config = TYPE_CONFIG[type];
@@ -40,7 +40,7 @@ function MemoryCard({ item, index, type, pluginId, onRemove }: {
       <Tooltip text={t('memory.deleteTooltip')}>
         <button
           className="mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
-          onClick={() => onRemove(type, index, pluginId)}
+          onClick={() => onRemove(type, index, scenarioId)}
           aria-label={t('memory.deleteAria')}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -51,13 +51,13 @@ function MemoryCard({ item, index, type, pluginId, onRemove }: {
 }
 
 /** 记忆面板 — 右侧抽屉式 */
-export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: MemoryPanelProps) {
+export function MemoryPanel({ store, scenarioId, onRemove, onClearAll, onClose }: MemoryPanelProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'shared' | 'plugin'>('shared');
-  const pluginMem = store.byPlugin[pluginId] || { project: [], reference: [] };
+  const [activeTab, setActiveTab] = useState<'shared' | 'scenario'>('shared');
+  const scenarioMem = store.byScenario[scenarioId] || { project: [], reference: [] };
   const sharedCount = store.shared.user.length + store.shared.feedback.length;
-  const pluginCount = pluginMem.project.length + pluginMem.reference.length;
-  const totalCount = sharedCount + pluginCount;
+  const scenarioCount = scenarioMem.project.length + scenarioMem.reference.length;
+  const totalCount = sharedCount + scenarioCount;
 
   return (
     <>
@@ -95,14 +95,14 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
           <button
             className={cn(
               'inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-all',
-              activeTab === 'plugin'
+              activeTab === 'scenario'
                 ? 'bg-background text-foreground shadow-sm'
                 : 'hover:text-foreground'
             )}
-            data-state={activeTab === 'plugin' ? 'active' : 'inactive'}
-            onClick={() => setActiveTab('plugin')}
+            data-state={activeTab === 'scenario' ? 'active' : 'inactive'}
+            onClick={() => setActiveTab('scenario')}
           >
-            <Package className="h-3.5 w-3.5" /> {t('memory.tabPlugin', { count: pluginCount })}
+            <Package className="h-3.5 w-3.5" /> {t('memory.tabScenario', { count: scenarioCount })}
           </button>
         </div>
         <div className="p-4 space-y-3">
@@ -117,14 +117,14 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
               {store.shared.feedback.map((item, i) => <MemoryCard key={`f-${i}`} item={item} index={i} type="feedback" onRemove={onRemove} />)}
             </>)
           ) : (
-            pluginMem.project.length === 0 && pluginMem.reference.length === 0 ? (
+            scenarioMem.project.length === 0 && scenarioMem.reference.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">{t('memory.emptyPlugin')}</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">{t('memory.emptyPluginHint')}</p>
+                <p className="text-sm text-muted-foreground">{t('memory.emptyScenario')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{t('memory.emptyScenarioHint')}</p>
               </div>
             ) : (<>
-              {pluginMem.project.map((item, i) => <MemoryCard key={`p-${i}`} item={item} index={i} type="project" pluginId={pluginId} onRemove={onRemove} />)}
-              {pluginMem.reference.map((item, i) => <MemoryCard key={`r-${i}`} item={item} index={i} type="reference" pluginId={pluginId} onRemove={onRemove} />)}
+              {scenarioMem.project.map((item, i) => <MemoryCard key={`p-${i}`} item={item} index={i} type="project" scenarioId={scenarioId} onRemove={onRemove} />)}
+              {scenarioMem.reference.map((item, i) => <MemoryCard key={`r-${i}`} item={item} index={i} type="reference" scenarioId={scenarioId} onRemove={onRemove} />)}
             </>)
           )}
         </div>

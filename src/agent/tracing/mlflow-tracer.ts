@@ -66,7 +66,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 // ═══ 类型 ═══
 
 export interface TracerOptions {
-  plugin: string;
+  scenario: string;
   userId?: string;
   sessionId?: string;
   message: string;
@@ -135,7 +135,7 @@ class FetchTracer implements ITracer {
       trace_id: hexToBase64(this.traceId.slice(3), 16),
       span_id: hexToBase64(this.rootSpanId, 8),
       parent_span_id: '',
-      name: `chat:${this.opts.plugin}`,
+      name: `chat:${this.opts.scenario}`,
       start_time_unix_nano: String(BigInt(this.startTime) * 1_000_000n),
       status: { code: 'STATUS_CODE_UNSET', message: '' },
       attributes: {
@@ -144,7 +144,7 @@ class FetchTracer implements ITracer {
         'mlflow.spanInputs': JSON.stringify({ message: this.opts.message }),
         'mlflow.spanOutputs': JSON.stringify({}),
         'mlflow.experimentId': EXPERIMENT_ID,
-        plugin: this.opts.plugin,
+        scenario: this.opts.scenario,
         userId: this.opts.userId || 'anonymous',
         sessionId: this.opts.sessionId || '',
         messageLength: this.opts.message.length,
@@ -251,7 +251,7 @@ class FetchTracer implements ITracer {
   /** 构建 trace 元数据 */
   private buildMetadata(): { tags: Record<string, string>; metadata: Record<string, string> } {
     const tags: Record<string, string> = {
-      plugin: this.opts.plugin,
+      scenario: this.opts.scenario,
       userId: this.opts.userId || 'anonymous',
     };
     if (this.opts.sessionId) tags['sessionId'] = this.opts.sessionId;

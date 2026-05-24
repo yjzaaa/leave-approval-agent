@@ -8,7 +8,7 @@
 > | 🏗️ | `src/infrastructure/` | [CLAUDE.md](src/infrastructure/CLAUDE.md) | 基础设施 — 错误/工具/常量/记忆运行时 |
 > | ⚙️ | `src/agent/` | [CLAUDE.md](src/agent/CLAUDE.md) | Agent 框架层 (业务无关) |
 > | 🔀 | `src/services/` | [CLAUDE.md](src/services/CLAUDE.md) | 服务层 — 业务逻辑编排 |
-> | 📦 | `src/plugins/` | [CLAUDE.md](src/plugins/CLAUDE.md) | 业务插件层 |
+> | 📦 | `src/scenarios/` | [CLAUDE.md](src/scenarios/CLAUDE.md) | 业务场景层 |
 > | 🎨 | `src/client/` | [CLAUDE.md](src/client/CLAUDE.md) | 前端 UI 壳层 |
 > | 🔧 | `src/server/` | [CLAUDE.md](src/server/CLAUDE.md) | Express 服务端 |
 > | 🌐 | `src/i18n/` | — | 多语言翻译 (i18next) |
@@ -34,7 +34,7 @@ graph TB
     subgraph Services["🔀 业务编排"]
         ChatSvc["chat/service.ts<br/>对话编排"]
         MemSvc["memory/service.ts<br/>记忆编排"]
-        PluginSvc["plugins/service.ts<br/>插件发现"]
+        ScenarioSvc["scenarios/service.ts<br/>场景发现"]
     end
 
     subgraph Agent["⚙️ 框架层 (业务无关)"]
@@ -43,7 +43,7 @@ graph TB
         Tracer["mlflow-tracer.ts<br/>MLflow 追踪"]
     end
 
-    subgraph Plugins["📦 插件层"]
+    subgraph Scenarios["📦 场景层"]
         Leave["远程办公审批"]
         Expense["报销审批"]
         Sick["病假申请"]
@@ -69,10 +69,10 @@ graph TB
     API --> SSE
     SSE --> Services
     Services --> Agent
-    Services --> Plugins
-    Agent --> Plugins
+    Services --> Scenarios
+    Agent --> Scenarios
     Agent --> Infra
-    Plugins --> Domain
+    Scenarios --> Domain
     Services --> Domain
     Server --> Domain
     UI --> Domain
@@ -83,7 +83,7 @@ graph TB
     style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
     style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Plugins fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style Scenarios fill:#fff4e6,stroke:#495057,color:#1a1a1a
     style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
     style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
 ```
@@ -95,7 +95,7 @@ graph TD
     Domain["domain/<br/>模型·DTO·VO·接口"]
     Infra["infrastructure/<br/>错误·工具·常量·记忆运行时"]
     Agent["agent/<br/>Agent 运行时"]
-    Plugins["plugins/<br/>业务插件"]
+    Scenarios["scenarios/<br/>业务场景"]
     Services["services/<br/>业务编排"]
     Server["server/<br/>Express 路由"]
     Client["client/<br/>React 前端"]
@@ -103,9 +103,9 @@ graph TD
     Domain --> Infra
     Server -->|"依赖"| Services
     Services -->|"依赖"| Agent
-    Agent -->|"依赖"| Plugins
+    Agent -->|"依赖"| Scenarios
     Agent -->|"依赖"| Infra
-    Plugins -->|"依赖"| Domain
+    Scenarios -->|"依赖"| Domain
     Services -->|"依赖"| Domain
     Server -->|"依赖"| Domain
     Client -->|"依赖"| Domain
@@ -115,7 +115,7 @@ graph TD
     style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
     style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Plugins fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style Scenarios fill:#fff4e6,stroke:#495057,color:#1a1a1a
     style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
     style Client fill:#dbe4ff,stroke:#495057,color:#1a1a1a
 ```
@@ -177,9 +177,9 @@ sequenceDiagram
     participant DeepSeek as DeepSeek API
 
     User->>Browser: 输入消息
-    Browser->>Express: POST /api/chat {message, plugin}
-    Express->>Factory: runAgent({plugin, message, onSSE})
-    Factory->>Factory: new Agent({tools: plugin.tools})
+    Browser->>Express: POST /api/chat {message, scenario}
+    Express->>Factory: runAgent({scenario, message, onSSE})
+    Factory->>Factory: new Agent({tools: scenario.tools})
 
     loop 流式响应
         Factory-->>Express: onSSE('text', {content})
@@ -201,8 +201,8 @@ sequenceDiagram
     participant DeepSeek as DeepSeek API
 
     User->>Browser: 输入消息
-    Browser->>Factory: runAgent({plugin, message, onSSE})
-    Factory->>Factory: new Agent({tools: plugin.tools})
+    Browser->>Factory: runAgent({scenario, message, onSSE})
+    Factory->>Factory: new Agent({tools: scenario.tools})
 
     loop 流式响应
         Factory-->>Browser: onSSE('text', {content})
@@ -222,7 +222,7 @@ sequenceDiagram
     participant Browser as Browser
     participant Express as Express
     participant Hitl as HitlManager
-    participant Tool as 插件 Tool
+    participant Tool as 场景 Tool
 
     Note over Tool: tool.execute() 中
     Tool->>Hitl: requestConfirm(toolName, form)
@@ -254,7 +254,7 @@ sequenceDiagram
     actor User as 👤 用户
     participant Browser as Browser
     participant Hitl as HitlManager
-    participant Tool as 插件 Tool
+    participant Tool as 场景 Tool
 
     Note over Tool: tool.execute() 中
     Tool->>Hitl: requestConfirm(toolName, form)
@@ -279,13 +279,13 @@ sequenceDiagram
 ## 核心原则
 
 1. **领域层零依赖** — `domain/` 只定义类型和接口，不 import 任何外部包
-2. **框架不知道 tool** — `agent/` 不定义任何 tool，tool 由插件完全自主提供
-3. **插件完全自主** — 每个插件自带 prompt + tools + api + validator
-4. **HITL 是可选能力** — 框架提供 `hitl/`，插件按需 import
-5. **前端零改动** — 新增插件或切换运行模式都不需要修改前端代码
+2. **框架不知道 tool** — `agent/` 不定义任何 tool，tool 由场景完全自主提供
+3. **场景完全自主** — 每个场景自带 prompt + tools + api + validator
+4. **HITL 是可选能力** — 框架提供 `hitl/`，场景按需 import
+5. **前端零改动** — 新增场景或切换运行模式都不需要修改前端代码
 6. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
 7. **结构化错误** — 统一 `AppError` 体系，按 `ErrorCode` 分类，前端按 code 处理
-8. **Service 编排** — 复杂业务逻辑（对话/记忆/插件发现）集中在 `services/` 层
+8. **Service 编排** — 复杂业务逻辑（对话/记忆/场景发现）集中在 `services/` 层
 
 ## 目录职责
 
@@ -295,7 +295,7 @@ sequenceDiagram
 | `src/infrastructure/` | 基础设施 (errors/utils/constants/memory) | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
 | `src/agent/` | Agent 框架层（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
 | `src/services/` | 服务层 — 业务逻辑编排 | [CLAUDE.md](src/services/CLAUDE.md) |
-| `src/plugins/` | 业务插件层（完全自主） | [CLAUDE.md](src/plugins/CLAUDE.md) |
+| `src/scenarios/` | 业务场景层（完全自主） | [CLAUDE.md](src/scenarios/CLAUDE.md) |
 | `src/client/` | 前端 UI 壳 | [CLAUDE.md](src/client/CLAUDE.md) |
 | `src/server/` | Express 服务端 | [CLAUDE.md](src/server/CLAUDE.md) |
 | `src/i18n/` | 多语言翻译 (i18next) | — |
@@ -317,13 +317,14 @@ sequenceDiagram
 - 样式: 墨韵设计系统，CSS Variables token，禁止蓝紫渐变
 - 字体: Crimson Pro + Noto Serif SC + IBM Plex Mono + Noto Sans SC
 - 主题: 墨韵 (warm paper + ink-dark + vermillion accent)，dark/light/system
-- 依赖注入: 通过 `BusinessPlugin` 接口，禁止直接 import 具体业务
+- 依赖注入: 通过 `Scenario` 接口，禁止直接 import 具体业务
+- **禁止裸 JSON 返回值** — tool / API / 函数返回结构化数据时，必须使用 `interface` 或 `type` 约束，禁止直接返回 `{ success: true, processId, message: '...' }` 等未类型化的对象字面量。所有返回结构必须在 `domain/` 或 `shared/` 中定义对应类型
 - **CLAUDE.md 文档规范** — 每个 CLAUDE.md 必须包含以下四项:
   1. **目录结构** — 当前层的文件树 (`tree` 代码块)
   2. **架构图** — 模块关系或组件结构 (`mermaid graph`)
   3. **数据流** — 数据在层内/层间的流转路径 (`mermaid graph` 或表格)
   4. **时序图** — 关键交互流程 (`mermaid sequenceDiagram`)
-  - 插件级 CLAUDE.md (plugins/xxx/) 可简化为审批流程图 + Tool 列表
+  - 场景级 CLAUDE.md (scenarios/xxx/) 可简化为审批流程图 + Tool 列表
   - 越底层的文档越精简，越上层的越完整
   - 新增/删除文件后必须同步更新对应 CLAUDE.md
 
@@ -367,7 +368,7 @@ npm run dev:server    # Express 服务端
 npm run dev:all       # Server 模式 (Express :3000 + Vite :5173 代理)
 npm run build         # 生产构建
 npm run cli           # CLI 模式
-npm run cli -- --plugin=xxx  # 指定插件
+npm run cli -- --scenario=xxx  # 指定场景
 ```
 
 **运行模式**:
@@ -399,7 +400,7 @@ Mapping:
 - `src/infrastructure/**` → `src/infrastructure/CLAUDE.md`
 - `src/agent/**` → `src/agent/CLAUDE.md`
 - `src/services/**` → `src/services/CLAUDE.md`
-- `src/plugins/**` → `src/plugins/CLAUDE.md` + the specific plugin's `CLAUDE.md`
+- `src/scenarios/**` → `src/scenarios/CLAUDE.md` + the specific scenario's `CLAUDE.md`
 - `src/client/**` → `src/client/CLAUDE.md`
 - `src/server/**` → `src/server/CLAUDE.md`
 - `src/App.tsx`, `src/App.css` → `src/client/CLAUDE.md`

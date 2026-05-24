@@ -2,9 +2,9 @@
  * Agent 框架层类型定义
  *
  * 与具体业务无关的通用类型。
- * 业务特定类型定义在 domain/interfaces/ 和各 plugin 中。
+ * 业务特定类型定义在 domain/interfaces/ 和各 scenario 中。
  */
-import type { BusinessPlugin } from '../../shared/plugin.js';
+import type { Scenario } from '../../shared/scenario.js';
 
 /** 待确认项 */
 export interface PendingConfirm {
@@ -31,6 +31,6 @@ export interface SSEPayload {
 
 /** Agent 创建参数 */
 export interface CreateAgentParams {
-  plugin: BusinessPlugin;
+  scenario: Scenario;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }

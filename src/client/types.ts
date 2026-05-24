@@ -1,10 +1,10 @@
 /**
- * 前端专用类型定义 — v3.0 插件化版本
+ * 前端专用类型定义 — v3.0 场景化版本
  *
  * 与具体业务解耦：
  *   - ConfirmRequest.tool 不再限定为 'submit_form' | 'start_process'
  *   - AgentPhase 不再包含 filling/validating 等业务特定阶段
- *   - 字段标签由后端插件动态提供，不再前端硬编码
+ *   - 字段标签由后端场景动态提供，不再前端硬编码
  */
 
 /** 聊天消息 */
@@ -18,8 +18,8 @@ export interface Message {
 /**
  * 确认请求（由 SSE confirm_required 推送）
  *
- * tool 字段不再限定值，可以是任何插件的任何确认 Tool。
- * fieldLabels 由后端插件动态提供，驱动 ConfirmCard 渲染。
+ * tool 字段不再限定值，可以是任何场景的任何确认 Tool。
+ * fieldLabels 由后端场景动态提供，驱动 ConfirmCard 渲染。
  */
 export interface ConfirmRequest {
   tool: string;
@@ -32,7 +32,7 @@ export interface ConfirmRequest {
  * Agent 工作阶段 — 泛化版本
  *
  * 不再包含 filling/validating 等业务特定阶段。
- * 状态切换由 SSE tool_result 事件驱动，StatusBar 根据插件 pipeline 动态渲染。
+ * 状态切换由 SSE tool_result 事件驱动，StatusBar 根据场景 pipeline 动态渲染。
  */
 export type AgentPhase =
   | 'idle'              // 就绪，等待用户输入
@@ -51,8 +51,8 @@ export interface AgentState {
   error: string | null;
 }
 
-/** 可用插件信息（来自 GET /api/plugins） */
-export interface PluginInfo {
+/** 可用场景信息（来自 GET /api/scenarios） */
+export interface ScenarioInfo {
   id: string;
   displayName: string;
   fieldCount: number;
@@ -61,6 +61,6 @@ export interface PluginInfo {
 /** 聊天历史 (按用户持久化) */
 export interface ChatHistory {
   messages: Message[];
-  activePluginId: string;
+  activeScenarioId: string;
   lastActiveAt: number;
 }

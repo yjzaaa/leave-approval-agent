@@ -84,15 +84,15 @@
     "typeProject": "Business Context",
     "typeReference": "External Resources",
     "tabShared": "Shared ({{count}})",
-    "tabPlugin": "Plugin ({{count}})",
+    "tabScenario": "Scenario ({{count}})",
     "emptyShared": "No shared memories",
     "emptySharedHint": "User info and preferences are extracted during conversations",
-    "emptyPlugin": "No plugin memories",
-    "emptyPluginHint": "Plugin memories are extracted during conversations",
+    "emptyScenario": "No scenario memories",
+    "emptyScenarioHint": "Scenario memories are extracted during conversations",
     "deleteTooltip": "Delete",
     "deleteAria": "Delete memory",
     "summaryLabel": "Summary",
-    "footerText": "Shared across plugins · Isolated per plugin · Local storage"
+    "footerText": "Shared across scenarios · Isolated per scenario · Local storage"
   },
   "legal": {
     "privacyTitle": "Privacy Policy",

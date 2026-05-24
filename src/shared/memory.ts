@@ -2,10 +2,10 @@
  * 记忆系统类型定义
  *
  * 记忆分层:
- *   - 用户记忆 (user): 跨插件共享，用户画像/偏好
- *   - 反馈记忆 (feedback): 跨插件共享，用户纠正/确认
- *   - 项目记忆 (project): 按插件隔离，业务上下文
- *   - 引用记忆 (reference): 按插件隔离，外部资源指针
+ *   - 用户记忆 (user): 跨场景共享，用户画像/偏好
+ *   - 反馈记忆 (feedback): 跨场景共享，用户纠正/确认
+ *   - 项目记忆 (project): 按场景隔离，业务上下文
+ *   - 引用记忆 (reference): 按场景隔离，外部资源指针
  *
  * 存储: 前端 localStorage，服务端无状态
  */
@@ -25,14 +25,14 @@ export interface MemoryItem {
   updatedAt: number;
 }
 
-/** 跨插件共享的记忆 (user + feedback) */
+/** 跨场景共享的记忆 (user + feedback) */
 export interface SharedMemories {
   user: MemoryItem[];
   feedback: MemoryItem[];
 }
 
-/** 按插件隔离的记忆 (project + reference) */
-export interface PluginMemories {
+/** 按场景隔离的记忆 (project + reference) */
+export interface ScenarioMemories {
   project: MemoryItem[];
   reference: MemoryItem[];
 }
@@ -41,8 +41,8 @@ export interface PluginMemories {
 export interface MemoryStore {
   /** 共享记忆 */
   shared: SharedMemories;
-  /** 按插件隔离的记忆: { [pluginId]: PluginMemories } */
-  byPlugin: Record<string, PluginMemories>;
+  /** 按场景隔离的记忆: { [scenarioId]: ScenarioMemories } */
+  byScenario: Record<string, ScenarioMemories>;
   /** 对话摘要 */
   summary: string;
   /** 摘要覆盖到第几条消息 */
@@ -68,19 +68,20 @@ export const MEMORY_STORAGE_KEY = 'agent_memory_store';
 export function createEmptyStore(): MemoryStore {
   return {
     shared: { user: [], feedback: [] },
-    byPlugin: {},
+    byScenario: {},
     summary: '',
     summaryUpTo: 0,
   };
 }
 
-/** 获取指定插件的记忆（含共享 + 隔离） */
-export function getPluginMemories(store: MemoryStore, pluginId: string): MemoryItem[] {
-  const plugin = store.byPlugin[pluginId] || { project: [], reference: [] };
+/** 获取指定场景的记忆（含共享 + 隔离） */
+export function getScenarioMemories(store: MemoryStore, scenarioId: string): MemoryItem[] {
+  const byScenario = store.byScenario || {};
+  const scenario = byScenario[scenarioId] || { project: [], reference: [] };
   return [
     ...store.shared.user,
     ...store.shared.feedback,
-    ...plugin.project,
-    ...plugin.reference,
+    ...scenario.project,
+    ...scenario.reference,
   ];
 }

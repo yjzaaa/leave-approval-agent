@@ -45,19 +45,19 @@ graph TD
     end
 
     subgraph VOs["vo/"]
-        PluginInfo["PluginInfo"]
+        ScenarioInfo["ScenarioInfo"]
         ChatHistory["ChatHistory"]
         StatusStep["StatusStep"]
         ConfirmCard["ConfirmCardData"]
     end
 
     subgraph Ifaces["interfaces/"]
-        IBusinessPlugin["IBusinessPlugin"]
+        IScenario["IScenario"]
         ITracer["ITracer"]
     end
 
-    IBusinessPlugin --> FieldMeta
-    IBusinessPlugin -->|"validate()"| Models
+    IScenario --> FieldMeta
+    IScenario -->|"validate()"| Models
     SSEPayload --> SSEEventType
     MemoryItem --> MemoryType
 
@@ -76,7 +76,7 @@ graph LR
 
     Infra["infrastructure/<br/>运行时函数"]
     Agent["agent/<br/>框架层"]
-    Plugins["plugins/<br/>业务插件"]
+    Plugins["scenarios/<br/>业务场景"]
     Server["server/<br/>Express"]
     Client["client/<br/>React UI"]
 
@@ -93,17 +93,17 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant Plugin as plugins/
+    participant Plugin as scenarios/
     participant Factory as agent/core/
     participant Server as server/
     participant Client as client/
 
     Note over Plugin,Client: 所有层 import domain/ 的类型 (编译时擦除)
 
-    Plugin->>Plugin: BusinessPlugin, FieldMeta, ValidationResult
+    Plugin->>Plugin: Scenario, FieldMeta, ValidationResult
     Factory->>Factory: ChatMessage, MemoryItem, ITracer
     Server->>Server: ChatRequest, ConfirmRequest, SSEEventPayload
-    Client->>Client: PluginInfo, StatusStep, ConfirmCardData
+    Client->>Client: ScenarioInfo, StatusStep, ConfirmCardData
 ```
 
 ## 各子目录说明
@@ -124,7 +124,7 @@ sequenceDiagram
 
 ### dto/ — 数据传输对象
 
-API 层（server ↔ client / agent ↔ plugin）传输的数据形状。包含 I/O 专用字段。
+API 层（server ↔ client / agent ↔ scenario）传输的数据形状。包含 I/O 专用字段。
 
 | 类型 | 说明 |
 |------|------|
@@ -135,7 +135,7 @@ API 层（server ↔ client / agent ↔ plugin）传输的数据形状。包含 
 | `ConfirmRequest` | 确认请求 (SSE confirm_required) |
 | `CompactRequest` / `CompactResponse` | 对话压缩 |
 | `ExtractMemoriesResponse` | 记忆提取结果 |
-| `PluginInfoResponse` | 插件列表响应 |
+| `ScenarioInfoResponse` | 场景列表响应 |
 
 ### vo/ — 视图对象
 
@@ -143,7 +143,7 @@ API 层（server ↔ client / agent ↔ plugin）传输的数据形状。包含 
 
 | 类型 | 说明 |
 |------|------|
-| `PluginInfo` | 插件下拉选项 (id + displayName + fieldCount) |
+| `ScenarioInfo` | 场景下拉选项 (id + displayName + fieldCount) |
 | `ChatHistory` | 聊天历史 (localStorage 持久化格式) |
 | `StatusStep` | 流水线步骤 (StatusBar 渲染) |
 | `ConfirmCardData` | 确认卡片渲染数据 |
@@ -155,10 +155,10 @@ API 层（server ↔ client / agent ↔ plugin）传输的数据形状。包含 
 
 | 接口 | 说明 | 实现者 |
 |------|------|--------|
-| `IBusinessPlugin` | 业务插件契约 | `plugins/*/index.ts` |
+| `IScenario` | 场景契约 | `scenarios/*/index.ts` |
 | `ITracer` | 追踪器接口 | `agent/tracing/mlflow-tracer.ts` |
 | `IMemoryStore` | 记忆存储接口 | `infrastructure/memory/` |
-| `IApiService` | API 服务接口 | `plugins/*/api.ts` |
+| `IApiService` | API 服务接口 | `scenarios/*/api.ts` |
 
 ### enums/ — 枚举常量
 
@@ -176,7 +176,7 @@ API 层（server ↔ client / agent ↔ plugin）传输的数据形状。包含 
 | `shared/types.ts` → `LeaveForm`, `ProcessForm` 等 | `domain/models/` |
 | `shared/types.ts` → `FormSubmitResult`, `ProcessResult` 等 | `domain/dto/` |
 | `shared/types.ts` → `ChatMessage` | `domain/models/` |
-| `shared/plugin.ts` → `BusinessPlugin`, `FieldMeta` 等 | `domain/interfaces/` + `domain/models/` |
+| `shared/plugin.ts` → `Scenario`, `FieldMeta` 等 | `domain/interfaces/` + `domain/models/` |
 | `shared/memory.ts` → 类型部分 (`MemoryType`, `MemoryItem`, `MemoryStore`) | `domain/models/` + `domain/enums/` |
 | `shared/memory.ts` → 常量部分 (`MEMORY_LIMITS`) | `infrastructure/constants/` |
 | `shared/memory.ts` → 函数部分 (`createEmptyStore` 等) | `infrastructure/memory/` |

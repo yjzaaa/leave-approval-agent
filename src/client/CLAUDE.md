@@ -6,7 +6,7 @@
 
 React 前端，支持两种运行模式。不关心具体业务逻辑。
 
-**核心约束：前端不知道任何具体业务插件的存在。**
+**核心约束：前端不知道任何具体业务场景的存在。**
 
 ## 双模式架构
 
@@ -54,7 +54,7 @@ client/
     │   ├── ConfirmCard.tsx          # HITL 确认弹窗
     │   └── StatusBar.tsx            # 流水线状态栏
     ├── layout/
-    │   ├── Header.tsx               # 顶部导航 + 插件选择
+    │   ├── Header.tsx               # 顶部导航 + 场景选择
     │   ├── ThemeToggle.tsx          # 主题切换 (system/dark/light)
     │   └── LanguageSwitcher.tsx     # 语言切换 (zh-CN ↔ en)
     ├── memory/
@@ -150,7 +150,7 @@ graph TD
     App --> Header
     Header --> ThemeToggle
     Header --> LanguageSwitcher["LanguageSwitcher"]
-    Header --> PluginSelector
+    Header --> ScenarioSelector
     App --> StatusBar
     App --> ChatContainer
     ChatContainer --> MessageBubble1["MessageBubble × N"]
@@ -220,7 +220,7 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 | 持久化 | `localStorage` (`agent_memory_store`) |
 | Hook | `useMemory.ts` — CRUD + 容量管理 (FIFO 淘汰) |
 | UI | `MemoryPanel.tsx` — 桌面右侧抽屉 / 平板覆盖层 / 手机底部抽屉 |
-| 隔离 | user/feedback 跨插件共享，project/reference 按插件隔离 |
+| 隔离 | user/feedback 跨场景共享，project/reference 按场景隔离 |
 | 类型 | 引用 `domain/models/MemoryItem.ts`, `domain/enums/MemoryType.ts` |
 | 常量 | 引用 `infrastructure/constants/memory.ts` |
 
@@ -240,7 +240,7 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 ### hooks/useMemory.ts
 
 - localStorage 持久化 (`agent_memory_store`)，FIFO 容量管理
-- user/feedback 跨插件共享，project/reference 按插件隔离
+- user/feedback 跨场景共享，project/reference 按场景隔离
 - 类型引用 `domain/models/MemoryItem.ts`
 
 ### types.ts

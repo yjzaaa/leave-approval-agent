@@ -4,14 +4,14 @@
  * 负责:
  *   - 记忆的 CRUD 操作
  *   - localStorage 读写
- *   - 按插件隔离/跨插件共享
+ *   - 按场景隔离/跨场景共享
  *   - 容量控制 (FIFO 淘汰)
  */
 import { useState, useCallback, useEffect } from 'react';
 import {
   type MemoryStore, type MemoryItem, type MemoryType,
   MEMORY_LIMITS,
-  createEmptyStore, getPluginMemories,
+  createEmptyStore, getScenarioMemories,
 } from '../../shared/memory.js';
 
 /** 按用户 ID 生成 localStorage key */
@@ -22,7 +22,15 @@ function getStorageKey(userId: string): string {
 function loadStore(userId: string): MemoryStore {
   try {
     const raw = localStorage.getItem(getStorageKey(userId));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const store = JSON.parse(raw);
+      // 兼容旧版 localStorage 数据：byPlugin → byScenario
+      if (!store.byScenario && store.byPlugin) {
+        store.byScenario = store.byPlugin;
+        delete store.byPlugin;
+      }
+      return store;
+    }
   } catch { /* ignore */ }
   return createEmptyStore();
 }
@@ -52,20 +60,20 @@ function trimToLimit(items: MemoryItem[], limit: number): MemoryItem[] {
 export interface UseMemoryReturn {
   /** 完整记忆存储 */
   store: MemoryStore;
-  /** 获取指定插件的全部记忆 (共享+隔离) */
-  getMemories: (pluginId: string) => MemoryItem[];
+  /** 获取指定场景的全部记忆 (共享+隔离) */
+  getMemories: (scenarioId: string) => MemoryItem[];
   /** 添加共享记忆 (user/feedback) */
   addSharedMemory: (type: 'user' | 'feedback', content: string) => void;
-  /** 添加插件隔离记忆 (project/reference) */
-  addPluginMemory: (pluginId: string, type: 'project' | 'reference', content: string) => void;
+  /** 添加场景隔离记忆 (project/reference) */
+  addScenarioMemory: (scenarioId: string, type: 'project' | 'reference', content: string) => void;
   /** 删除指定记忆 */
-  removeMemory: (type: MemoryType, index: number, pluginId?: string) => void;
+  removeMemory: (type: MemoryType, index: number, scenarioId?: string) => void;
   /** 更新对话摘要 */
   setSummary: (summary: string, upTo: number) => void;
   /** 清空所有记忆 */
   clearAll: () => void;
-  /** 清空指定插件的对话 */
-  clearPlugin: (pluginId: string) => void;
+  /** 清空指定场景的对话 */
+  clearScenario: (scenarioId: string) => void;
 }
 
 /** 记忆管理 Hook */
@@ -77,8 +85,8 @@ export function useMemory(userId: string): UseMemoryReturn {
     saveStore(userId, store);
   }, [store, userId]);
 
-  const getMemories = useCallback((pluginId: string): MemoryItem[] => {
-    return getPluginMemories(store, pluginId);
+  const getMemories = useCallback((scenarioId: string): MemoryItem[] => {
+    return getScenarioMemories(store, scenarioId);
   }, [store]);
 
   const addSharedMemory = useCallback((type: 'user' | 'feedback', content: string) => {
@@ -96,18 +104,18 @@ export function useMemory(userId: string): UseMemoryReturn {
     });
   }, []);
 
-  const addPluginMemory = useCallback((pluginId: string, type: 'project' | 'reference', content: string) => {
+  const addScenarioMemory = useCallback((scenarioId: string, type: 'project' | 'reference', content: string) => {
     setStore(prev => {
       const now = Date.now();
       const item: MemoryItem = { content, type, createdAt: now, updatedAt: now };
-      const pluginMem = prev.byPlugin[pluginId] || { project: [], reference: [] };
-      const list = [...pluginMem[type], item];
+      const scenarioMem = prev.byScenario[scenarioId] || { project: [], reference: [] };
+      const list = [...scenarioMem[type], item];
       return {
         ...prev,
-        byPlugin: {
-          ...prev.byPlugin,
-          [pluginId]: {
-            ...pluginMem,
+        byScenario: {
+          ...prev.byScenario,
+          [scenarioId]: {
+            ...scenarioMem,
             [type]: trimToLimit(list, getLimit(type)),
           },
         },
@@ -115,23 +123,23 @@ export function useMemory(userId: string): UseMemoryReturn {
     });
   }, []);
 
-  const removeMemory = useCallback((type: MemoryType, index: number, pluginId?: string) => {
+  const removeMemory = useCallback((type: MemoryType, index: number, scenarioId?: string) => {
     setStore(prev => {
       if (type === 'user' || type === 'feedback') {
         const list = [...prev.shared[type]];
         list.splice(index, 1);
         return { ...prev, shared: { ...prev.shared, [type]: list } };
       } else {
-        if (!pluginId) return prev;
-        const pluginMem = prev.byPlugin[pluginId];
-        if (!pluginMem) return prev;
-        const list = [...pluginMem[type]];
+        if (!scenarioId) return prev;
+        const scenarioMem = prev.byScenario[scenarioId];
+        if (!scenarioMem) return prev;
+        const list = [...scenarioMem[type]];
         list.splice(index, 1);
         return {
           ...prev,
-          byPlugin: {
-            ...prev.byPlugin,
-            [pluginId]: { ...pluginMem, [type]: list },
+          byScenario: {
+            ...prev.byScenario,
+            [scenarioId]: { ...scenarioMem, [type]: list },
           },
         };
       }
@@ -150,10 +158,10 @@ export function useMemory(userId: string): UseMemoryReturn {
     setStore(createEmptyStore());
   }, []);
 
-  const clearPlugin = useCallback((pluginId: string) => {
+  const clearScenario = useCallback((scenarioId: string) => {
     setStore(prev => {
-      const { [pluginId]: _, ...rest } = prev.byPlugin;
-      return { ...prev, byPlugin: rest, summary: '', summaryUpTo: 0 };
+      const { [scenarioId]: _, ...rest } = prev.byScenario;
+      return { ...prev, byScenario: rest, summary: '', summaryUpTo: 0 };
     });
   }, []);
 
@@ -161,10 +169,10 @@ export function useMemory(userId: string): UseMemoryReturn {
     store,
     getMemories,
     addSharedMemory,
-    addPluginMemory,
+    addScenarioMemory,
     removeMemory,
     setSummary,
     clearAll,
-    clearPlugin,
+    clearScenario,
   };
 }

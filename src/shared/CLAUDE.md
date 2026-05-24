@@ -15,7 +15,7 @@
 
 ```
 shared/               ← ⚠️ 弃用中
-├── plugin.ts         # BusinessPlugin 核心契约 + FieldMeta + ValidationResult
+├── plugin.ts         # Scenario 核心契约 + FieldMeta + ValidationResult
 ├── types.ts          # LeaveForm, ProcessForm, ChatMessage, FormSubmitResult
 ├── memory.ts         # MemoryType, MemoryItem, MemoryStore + 运行时函数
 └── config.ts         # envInt() + config.maxFormRetries
@@ -26,7 +26,7 @@ shared/               ← ⚠️ 弃用中
 ```mermaid
 graph LR
     subgraph Old["shared/ (弃用)"]
-        Plugin["plugin.ts"]
+        Plugin["plugin.ts<br/>(→ Scenario)"]
         Types["types.ts"]
         Memory["memory.ts"]
         Config["config.ts"]
@@ -45,7 +45,7 @@ graph LR
         MemStore["memory/"]
     end
 
-    Plugin --> Ifaces
+    Plugin -->|"Scenario 接口"| Ifaces
     Types --> Models
     Types --> DTOs
     Memory --> Models
@@ -64,18 +64,18 @@ graph LR
 
 | 旧文件 | 旧内容 | 迁移到 |
 |--------|--------|--------|
-| `plugin.ts` | `BusinessPlugin` 接口 | `domain/interfaces/IBusinessPlugin.ts` |
+| `plugin.ts` | `Scenario` 接口 | `domain/interfaces/IScenario.ts` |
 | `plugin.ts` | `FieldMeta` 模型 | `domain/models/FieldMeta.ts` |
 | `plugin.ts` | `ValidationResult` | `domain/models/ValidationResult.ts` |
 | `plugin.ts` | `PipelineStep` | `domain/models/PipelineStep.ts` |
-| `plugin.ts` | `PluginRegistry` 类型 | `domain/models/PluginRegistry.ts` |
+| `plugin.ts` | `ScenarioRegistry` 类型 | `domain/models/ScenarioRegistry.ts` |
 | `types.ts` | `LeaveForm`, `ProcessForm` | `domain/models/LeaveApplication.ts` |
 | `types.ts` | `FormSubmitResult`, `ProcessResult` | `domain/dto/SubmitFormResponse.ts` |
 | `types.ts` | `ChatMessage` | `domain/models/ChatMessage.ts` |
 | `memory.ts` | `MemoryType` 枚举 | `domain/enums/MemoryType.ts` |
-| `memory.ts` | `MemoryItem`, `MemoryStore`, `SharedMemories`, `PluginMemories` | `domain/models/MemoryItem.ts` |
+| `memory.ts` | `MemoryItem`, `MemoryStore`, `SharedMemories`, `ScenarioMemories` | `domain/models/MemoryItem.ts` |
 | `memory.ts` | `MEMORY_LIMITS`, `MEMORY_STORAGE_KEY` | `infrastructure/constants/memory.ts` |
-| `memory.ts` | `createEmptyStore()`, `getPluginMemories()` | `infrastructure/memory/store.ts` |
+| `memory.ts` | `createEmptyStore()`, `getScenarioMemories()` | `infrastructure/memory/store.ts` |
 | `config.ts` | `envInt()` | `infrastructure/utils/env.ts` |
 | `config.ts` | `config.maxFormRetries` | `infrastructure/constants/agent.ts` |
 

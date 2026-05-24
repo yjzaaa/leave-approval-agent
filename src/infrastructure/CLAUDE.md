@@ -43,7 +43,7 @@ graph TD
     end
 
     subgraph MemRuntime["memory/"]
-        Store["store.ts<br/>createEmptyStore()<br/>getPluginMemories()"]
+        Store["store.ts<br/>createEmptyStore()<br/>getScenarioMemories()"]
     end
 
     Domain["domain/models/<br/>MemoryItem, MemoryStore"]
@@ -69,7 +69,7 @@ graph LR
     end
 
     Agent["agent/"]
-    Plugins["plugins/"]
+    Plugins["scenarios/"]
     Client["client/"]
     Server["server/"]
 
@@ -101,7 +101,7 @@ sequenceDiagram
     Client->>Limits: MEMORY_LIMITS.maxUserMemories
     Limits-->>Client: 20
 
-    Client->>Store: getPluginMemories(store, pluginId)
+    Client->>Store: getScenarioMemories(store, scenarioId)
     Store-->>Client: MemoryItem[]
 ```
 
@@ -158,7 +158,7 @@ class AuthError extends AppError { ... }
 
 | 文件 | 说明 |
 |------|------|
-| `store.ts` | `createEmptyStore()`, `getPluginMemories()` |
+| `store.ts` | `createEmptyStore()`, `getScenarioMemories()` |
 
 **注意**: 记忆类型定义 (`MemoryType`, `MemoryItem`, `MemoryStore`) 在 `domain/models/`，不是这里。
 
@@ -175,7 +175,7 @@ class AuthError extends AppError { ... }
 
 - ✅ 可以 import `domain/` (类型)
 - ✅ 可以 import npm 工具包 (`clsx`, `tailwind-merge` 等)
-- ❌ 不 import `agent/`, `plugins/`, `server/`, `client/`
+- ❌ 不 import `agent/`, `scenarios/`, `server/`, `client/`
 - ❌ 函数保持纯净，不包含业务逻辑
 
 ---

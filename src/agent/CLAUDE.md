@@ -72,9 +72,9 @@ sequenceDiagram
     participant Agent as Pi Agent
     participant API as DeepSeek API
 
-    Server->>Factory: runAgent({plugin, message, onSSE, onHitlCreated})
+    Server->>Factory: runAgent({scenario, message, onSSE, onHitlCreated})
     Factory->>Server: onHitlCreated(hitl) ← 立即注册
-    Factory->>Agent: new Agent({tools: plugin.tools})
+    Factory->>Agent: new Agent({tools: scenario.tools})
     Factory->>Agent: agent.prompt(message)
     Agent->>API: stream 请求
 
@@ -104,9 +104,9 @@ sequenceDiagram
     participant Agent as Pi Agent
     participant API as DeepSeek API
 
-    Browser->>Factory: runAgent({plugin, message, onSSE, onHitlCreated})
+    Browser->>Factory: runAgent({scenario, message, onSSE, onHitlCreated})
     Factory->>Browser: onHitlCreated(hitl) ← 保存 hitlRef
-    Factory->>Agent: new Agent({tools: plugin.tools})
+    Factory->>Agent: new Agent({tools: scenario.tools})
     Factory->>Agent: agent.prompt(message)
     Agent->>API: stream 请求
 
@@ -170,7 +170,7 @@ stateDiagram-v2
   - `onHitlCreated` 回调在 `agent.prompt()` 之前触发，用于注册 HitlManager 到会话映射
   - 返回 `Promise<HitlManager>`（流程结束后 resolve）
 - `getDefaultModel()` — DeepSeek 模型配置
-- 不 import 任何 tool，直接使用 `plugin.tools`
+- 不 import 任何 tool，直接使用 `scenario.tools`
 
 ### core/types.ts
 
@@ -208,15 +208,15 @@ stateDiagram-v2
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- `domain/interfaces/` — `IBusinessPlugin`, `ITracer` 等接口契约
+- `domain/interfaces/` — `IScenario`, `ITracer` 等接口契约
 - `domain/models/` — `ChatMessage`, `MemoryItem` 等领域实体
 - `infrastructure/memory/` — 记忆存储运行时
 
 ## 约束
 
-- ❌ 不 import plugins/ 下的任何模块
+- ❌ 不 import scenarios/ 下的任何模块
 - ❌ 不定义任何 tool
-- ✅ 只通过 IBusinessPlugin 接口通信
+- ✅ 只通过 IScenario 接口通信
 - ❌ 不 import server/ 或 client/
 
 ---

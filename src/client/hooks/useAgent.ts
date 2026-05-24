@@ -22,7 +22,7 @@ import { MEMORY_LIMITS } from '../../shared/memory';
 const isLocal = import.meta.env.MODE !== 'server';
 
 interface UseAgentOptions {
-  pluginId?: string;
+  scenarioId?: string;
   userId?: string;
   memories?: MemoryItem[];
   summary?: string;
@@ -32,7 +32,7 @@ interface UseAgentOptions {
 
 export function useAgent(options?: UseAgentOptions) {
   const { t } = useTranslation();
-  const pluginId = options?.pluginId;
+  const scenarioId = options?.scenarioId;
   const userId = options?.userId;
   const memories = options?.memories;
   const summary = options?.summary;
@@ -74,19 +74,19 @@ export function useAgent(options?: UseAgentOptions) {
       try {
         const history: ChatHistory = {
           messages,
-          activePluginId: pluginId || 'leave_approval',
+          activeScenarioId: scenarioId || 'leave_approval',
           lastActiveAt: Date.now(),
         };
         localStorage.setItem(`chat_history_${userId}`, JSON.stringify(history));
       } catch { /* quota */ }
     }, 500);
     return () => clearTimeout(saveTimerRef.current);
-  }, [messages, userId, pluginId]);
+  }, [messages, userId, scenarioId]);
 
   // ── Refs ──
   const abortRef = useRef<AbortController | null>(null);
   const lastConfirmToolRef = useRef<string | null>(null);
-  const pluginIdRef = useRef<string>(pluginId || 'leave_approval');
+  const scenarioIdRef = useRef<string>(scenarioId || 'leave_approval');
   const memoriesRef = useRef<MemoryItem[]>(memories || []);
   const summaryRef = useRef<string>(summary || '');
   const messageCountRef = useRef(0);
@@ -94,7 +94,7 @@ export function useAgent(options?: UseAgentOptions) {
   const hitlRef = useRef<any>(null);
 
   // 同步外部变化
-  pluginIdRef.current = pluginId || 'leave_approval';
+  scenarioIdRef.current = scenarioId || 'leave_approval';
   memoriesRef.current = memories || [];
   summaryRef.current = summary || '';
 
@@ -137,7 +137,7 @@ export function useAgent(options?: UseAgentOptions) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: oldMessages.map(m => ({ role: m.role, content: m.content })),
-            plugin: pluginIdRef.current,
+            scenario: scenarioIdRef.current,
           }),
         });
         const data = await res.json();
@@ -166,7 +166,7 @@ export function useAgent(options?: UseAgentOptions) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: recentMessages.map(m => ({ role: m.role, content: m.content })),
-            plugin: pluginIdRef.current,
+            scenario: scenarioIdRef.current,
           }),
         });
         const data = await res.json();
@@ -214,16 +214,16 @@ export function useAgent(options?: UseAgentOptions) {
       let fullText = '';
 
       try {
-        const [{ runAgent }, { getPlugin }, { createTracer }] = await Promise.all([
+        const [{ runAgent }, { getScenario }, { createTracer }] = await Promise.all([
           import('../../agent/core/agent-factory.js'),
-          import('../../plugins/registry.js'),
+          import('../../scenarios/registry.js'),
           import('../../agent/tracing/mlflow-tracer.js'),
         ]);
 
-        const plugin = getPlugin(pluginIdRef.current);
+        const scenario = getScenario(scenarioIdRef.current);
 
         const tracer = createTracer({
-          plugin: plugin.id,
+          scenario: scenario.id,
           userId: userId,
           sessionId: `local-${Date.now()}`,
           message: text,
@@ -231,7 +231,7 @@ export function useAgent(options?: UseAgentOptions) {
 
         const hitl = await tracer.run(async () => {
           return runAgent({
-          plugin,
+          scenario,
           message: text,
           history,
           memories: memoriesRef.current,
@@ -316,7 +316,7 @@ export function useAgent(options?: UseAgentOptions) {
         body: JSON.stringify({
           message: text,
           history,
-          plugin: pluginIdRef.current,
+          scenario: scenarioIdRef.current,
           memories: memoriesRef.current,
           summary: summaryRef.current,
           userId,

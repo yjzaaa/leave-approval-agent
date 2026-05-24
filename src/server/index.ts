@@ -1,15 +1,15 @@
 ﻿/**
- * Express Web 服务 — 插件化 SSE 流式 Agent
+ * Express Web 服务 — 场景化 SSE 流式 Agent
  *
- * 架构: 浏览器 → Express → Agent 框架 → 业务插件 → DeepSeek API
+ * 架构: 浏览器 → Express → Agent 框架 → 业务场景 → DeepSeek API
  *
  * 路由:
- *   POST /api/chat      — SSE 流式对话（注入默认插件）
+ *   POST /api/chat      — SSE 流式对话（注入默认场景）
  *   POST /api/confirm   — 用户确认/拒绝
- *   GET  /api/plugins   — 获取可用插件列表
+ *   GET  /api/scenarios — 获取可用场景列表
  *
  * 与旧版区别：
- *   - 不再硬编码 tool 名称和字段标签，全部从 plugin 动态获取
+ *   - 不再硬编码 tool 名称和字段标签，全部从 scenario 动态获取
  *   - agent-factory 负责 Agent 创建和 SSE 事件转换
  *   - server 只负责 HTTP 路由和 SSE 写入
  */
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { runAgent, getDefaultModel } from '../agent/core/agent-factory.js';
 import { createTracer } from '../agent/tracing/mlflow-tracer.js';
 import type { HitlManager } from '../agent/hitl/hitl.js';
-import { getPlugin, getDefaultPlugin, registry } from '../plugins/registry.js';
+import { getScenario, getDefaultScenario, registry } from '../scenarios/registry.js';
 import type { ChatMessage } from '../shared/types.js';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
@@ -47,16 +47,16 @@ function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
 }
 
 /**
- * POST /api/chat — SSE 流式对话（插件化）
+ * POST /api/chat — SSE 流式对话（场景化）
  *
- * 支持通过 body.plugin 指定使用哪个业务插件，默认使用 leave_approval。
+ * 支持通过 body.scenario 指定使用哪个业务场景，默认使用 leave_approval。
  * Agent 创建和事件转换全部委托给 agent-factory。
  */
 /** 对话压缩 — 前端一次性调用，服务端不存储 */
 app.post('/api/compact', express.json(), async (req, res) => {
   try {
-    const { messages, plugin: pluginId } = req.body;
-    const plugin = getPlugin(pluginId || 'leave_approval');
+    const { messages, scenario: scenarioId } = req.body;
+    const scenario = getScenario(scenarioId || 'leave_approval');
 
     // 构建压缩 prompt
     const messagesText = messages
@@ -100,7 +100,7 @@ ${messagesText}`;
 /** 记忆提取 — 从对话中提取用户记忆，一次性返回不存储 */
 app.post('/api/extract-memories', express.json(), async (req, res) => {
   try {
-    const { messages, plugin: pluginId } = req.body;
+    const { messages, scenario: scenarioId } = req.body;
 
     const messagesText = messages
       .map((m: any) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
@@ -158,10 +158,10 @@ ${messagesText}`;
   }
 });
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { message, history, plugin: pluginId, memories, summary } = req.body as {
+  const { message, history, scenario: scenarioId, memories, summary } = req.body as {
     message?: string;
     history?: ChatMessage[];
-    plugin?: string;
+    scenario?: string;
     memories?: any[];
     summary?: string;
   };
@@ -170,8 +170,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   if (!message) return res.status(400).json({ error: 'message required' });
 
-  // 根据请求选择插件
-  const plugin = pluginId ? getPlugin(pluginId) : getDefaultPlugin();
+  // 根据请求选择场景
+  const scenario = scenarioId ? getScenario(scenarioId) : getDefaultScenario();
 
   // 设置 SSE 响应头
   res.writeHead(200, {
@@ -183,7 +183,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   try {
     const tracer = createTracer({
-      plugin: plugin.id,
+      scenario: scenario.id,
       userId: (req.body as any).userId,
       sessionId,
       message,
@@ -191,7 +191,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
     await tracer.run(async () => {
       await runAgent({
-        plugin,
+        scenario,
         message,
         history,
         memories,
@@ -228,29 +228,29 @@ app.post('/api/confirm', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/plugins — 获取可用插件列表
+ * GET /api/scenarios — 获取可用场景列表
  *
- * 前端可据此渲染插件选择器，或通过 URL 参数指定插件。
+ * 前端可据此渲染场景选择器，或通过 URL 参数指定场景。
  */
-app.get('/api/plugins', (_req: Request, res: Response) => {
+app.get('/api/scenarios', (_req: Request, res: Response) => {
   const list = Object.entries(registry).map(([id, p]) => ({
     id,
     displayName: p.displayName,
     fieldCount: p.fields?.length || 0,
     suggestions: p.suggestions || [],
   }));
-  res.json({ plugins: list });
+  res.json({ scenarios: list });
 });
 
 // ── 启动服务 ──
 app.listen(PORT, () => {
   console.log('');
   console.log('╔══════════════════════════════════════════════╗');
-  console.log('║  插件化审批 Agent (Web UI) v3.0              ║');
+  console.log('║  场景化审批 Agent (Web UI) v3.0              ║');
   console.log('╠══════════════════════════════════════════════╣');
   console.log(`║  地址: http://localhost:${PORT}                  ║`);
   console.log(`║  模型: ${getDefaultModel().name.padEnd(34)}║`);
-  console.log(`║  插件: ${getDefaultPlugin().displayName.padEnd(34)}║`);
+  console.log(`║  场景: ${getDefaultScenario().displayName.padEnd(34)}║`);
   console.log('╚══════════════════════════════════════════════╝');
   console.log('');
 });

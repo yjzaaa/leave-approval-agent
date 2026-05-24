@@ -84,15 +84,15 @@
     "typeProject": "业务上下文",
     "typeReference": "外部资源",
     "tabShared": "共享 ({{count}})",
-    "tabPlugin": "插件 ({{count}})",
+    "tabScenario": "场景 ({{count}})",
     "emptyShared": "暂无共享记忆",
     "emptySharedHint": "对话过程中会自动提取用户信息和偏好",
-    "emptyPlugin": "暂无业务记忆",
-    "emptyPluginHint": "使用插件对话后会自动提取",
+    "emptyScenario": "暂无业务记忆",
+    "emptyScenarioHint": "使用场景对话后会自动提取",
     "deleteTooltip": "删除",
     "deleteAria": "删除记忆",
     "summaryLabel": "对话摘要",
-    "footerText": "共享记忆跨插件 · 业务记忆按插件隔离 · 本地存储"
+    "footerText": "共享记忆跨场景 · 业务记忆按场景隔离 · 本地存储"
   },
   "legal": {
     "privacyTitle": "隐私政策",

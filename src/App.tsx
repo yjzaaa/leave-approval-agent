@@ -16,9 +16,9 @@ import { ThemeProvider } from './components/ThemeProvider';
 import { cn } from './lib/utils';
 import { ChevronDown, Brain } from 'lucide-react';
 import { Tooltip } from './client/components/ui/Tooltip';
-import type { PluginInfo } from './client/types';
+import type { ScenarioInfo } from './client/types';
 
-const FALLBACK_PLUGINS: PluginInfo[] = [
+const FALLBACK_SCENARIOS: ScenarioInfo[] = [
   { id: 'leave_approval', displayName: '远程办公审批', fieldCount: 9 },
   { id: 'expense_approval', displayName: '报销审批', fieldCount: 8 },
   { id: 'sick_leave', displayName: '病假申请', fieldCount: 9 },
@@ -50,41 +50,41 @@ const MainApp: React.FC<{
   onLogout: () => void;
 }> = ({ user, onLogout }) => {
   const { t } = useTranslation();
-  const [plugins, setPlugins] = useState<PluginInfo[]>(FALLBACK_PLUGINS);
-  const [activePluginId, setActivePluginId] = useState('leave_approval');
+  const [scenarios, setScenarios] = useState<ScenarioInfo[]>(FALLBACK_SCENARIOS);
+  const [activeScenarioId, setActiveScenarioId] = useState('leave_approval');
   const [appTitle, setAppTitle] = useState('远程办公申请审批');
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS.leave_approval);
   const [showMemory, setShowMemory] = useState(false);
   const [legalModal, setLegalModal] = useState<'privacy' | 'legal' | null>(null);
 
-  const { store: memoryStore, getMemories: getMemoriesForPlugin, addSharedMemory, addPluginMemory, removeMemory, setSummary, clearAll } = useMemory(user.id);
-  const pluginMemories = getMemoriesForPlugin(activePluginId);
+  const { store: memoryStore, getMemories: getMemoriesForScenario, addSharedMemory, addScenarioMemory, removeMemory, setSummary, clearAll } = useMemory(user.id);
+  const scenarioMemories = getMemoriesForScenario(activeScenarioId);
 
   const { messages, phase, phaseText, confirmRequest, isStreaming, error, sendMessage, confirm, reset } = useAgent({
-    pluginId: activePluginId,
+    scenarioId: activeScenarioId,
     userId: user.id,
-    memories: pluginMemories,
+    memories: scenarioMemories,
     summary: memoryStore.summary,
   });
 
   useEffect(() => {
-    fetch('/api/plugins').then(r => r.json()).then(data => {
-      if (data.plugins?.length > 0) {
-        setPlugins(data.plugins);
-        const ap = data.plugins.find((p: PluginInfo & { suggestions?: string[] }) => p.id === activePluginId);
+    fetch('/api/scenarios').then(r => r.json()).then(data => {
+      if (data.scenarios?.length > 0) {
+        setScenarios(data.scenarios);
+        const ap = data.scenarios.find((p: ScenarioInfo & { suggestions?: string[] }) => p.id === activeScenarioId);
         if (ap?.suggestions) setSuggestions(ap.suggestions);
       }
-    }).catch(() => { console.log('[App] /api/plugins 不可用，使用内置插件列表'); });
+    }).catch(() => { console.log('[App] /api/scenarios 不可用，使用内置场景列表'); });
   }, []);
 
-  const switchPlugin = (pluginId: string) => {
-    const p = plugins.find(pl => pl.id === pluginId);
-    if (p && pluginId !== activePluginId) {
-      setActivePluginId(pluginId);
+  const switchScenario = (scenarioId: string) => {
+    const p = scenarios.find(pl => pl.id === scenarioId);
+    if (p && scenarioId !== activeScenarioId) {
+      setActiveScenarioId(scenarioId);
       setAppTitle(p.displayName);
-      setSuggestions(DEFAULT_SUGGESTIONS[pluginId] || []);
-      fetch('/api/plugins').then(r => r.json()).then(data => {
-        const sp = data.plugins?.find((pl: PluginInfo & { suggestions?: string[] }) => pl.id === pluginId);
+      setSuggestions(DEFAULT_SUGGESTIONS[scenarioId] || []);
+      fetch('/api/scenarios').then(r => r.json()).then(data => {
+        const sp = data.scenarios?.find((pl: ScenarioInfo & { suggestions?: string[] }) => pl.id === scenarioId);
         if (sp?.suggestions) setSuggestions(sp.suggestions);
       }).catch(() => {});
       reset();
@@ -92,14 +92,14 @@ const MainApp: React.FC<{
   };
 
   useEffect(() => {
-    const active = plugins.find(p => p.id === activePluginId);
+    const active = scenarios.find(p => p.id === activeScenarioId);
     if (active) setAppTitle(active.displayName);
-  }, [plugins]);
+  }, [scenarios]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
       <Header title={appTitle} user={user} onLogout={onLogout}>
-        <PluginDropdown plugins={plugins} value={activePluginId} onChange={switchPlugin} />
+        <ScenarioDropdown scenarios={scenarios} value={activeScenarioId} onChange={switchScenario} />
         <Tooltip text={t('memory.title')} position="bottom">
           <button
             className={cn(
@@ -134,7 +134,7 @@ const MainApp: React.FC<{
       </footer>
       {confirmRequest && (<ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />)}
       {showMemory && (
-        <MemoryPanel store={memoryStore} pluginId={activePluginId} onRemove={removeMemory} onClearAll={clearAll} onClose={() => setShowMemory(false)} />
+        <MemoryPanel store={memoryStore} scenarioId={activeScenarioId} onRemove={removeMemory} onClearAll={clearAll} onClose={() => setShowMemory(false)} />
       )}
       <PrivacyPolicy open={legalModal === 'privacy'} onClose={() => setLegalModal(null)} />
       <LegalNotice open={legalModal === 'legal'} onClose={() => setLegalModal(null)} />
@@ -142,16 +142,16 @@ const MainApp: React.FC<{
   );
 };
 
-/* ── Plugin Dropdown ── */
+/* ── Scenario Dropdown ── */
 
-const PluginDropdown: React.FC<{
-  plugins: PluginInfo[];
+const ScenarioDropdown: React.FC<{
+  scenarios: ScenarioInfo[];
   value: string;
   onChange: (id: string) => void;
-}> = ({ plugins, value, onChange }) => {
+}> = ({ scenarios, value, onChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const active = plugins.find(p => p.id === value);
+  const active = scenarios.find(p => p.id === value);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -187,7 +187,7 @@ const PluginDropdown: React.FC<{
           className="absolute left-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-md animate-in fade-in slide-in-from-top-2"
           role="listbox"
         >
-          {plugins.map(p => (
+          {scenarios.map(p => (
             <li
               key={p.id}
               role="option"

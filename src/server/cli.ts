@@ -1,17 +1,17 @@
 ﻿/**
- * CLI 入口 — 插件化 Agent 命令行交互
+ * CLI 入口 — 场景化 Agent 命令行交互
  */
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
-import { getPlugin } from '../plugins/registry.js';
+import { getScenario } from '../scenarios/registry.js';
 import { getDefaultModel } from '../agent/core/agent-factory.js';
 
 function banner(displayName: string): void {
   console.log('');
   console.log('╔══════════════════════════════════════════════════════╗');
-  console.log(`║     插件化 Agent v3.2 — ${displayName.padEnd(21)}║`);
+  console.log(`║     场景化 Agent v3.2 — ${displayName.padEnd(21)}║`);
   console.log('╠══════════════════════════════════════════════════════╣');
   console.log('║  基于 Pi Agent Framework                            ║');
   console.log('║  输入 "exit" 退出 | "reset" 重置对话                 ║');
@@ -32,10 +32,10 @@ function extractText(messages: any[]): string {
 }
 
 async function main(): Promise<void> {
-  const pluginArg = process.argv.find(a => a.startsWith('--plugin='));
-  const pluginId = pluginArg?.split('=')[1] || 'leave_approval';
-  const plugin = getPlugin(pluginId);
-  banner(plugin.displayName);
+  const scenarioArg = process.argv.find(a => a.startsWith('--scenario='));
+  const scenarioId = scenarioArg?.split('=')[1] || 'leave_approval';
+  const scenario = getScenario(scenarioId);
+  banner(scenario.displayName);
 
   const rl = readline.createInterface({ input, output });
 
@@ -50,8 +50,8 @@ async function main(): Promise<void> {
 
   const agent = new Agent({
     initialState: {
-      systemPrompt: plugin.systemPrompt,
-      tools: plugin.tools,
+      systemPrompt: scenario.systemPrompt,
+      tools: scenario.tools,
       model,
     },
     streamFn: streamSimple,

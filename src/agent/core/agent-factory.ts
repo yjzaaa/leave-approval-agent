@@ -1,15 +1,15 @@
 /**
- * Agent 工厂 — 根据 BusinessPlugin 创建 Pi Agent
+ * Agent 工厂 — 根据 Scenario 创建 Pi Agent
  *
  * 支持:
- *   - plugin.tools 自主定义
+ *   - scenario.tools 自主定义
  *   - HITL 由 HitlManager 管理，confirmTools 自动包装
  *   - 用户记忆注入 system prompt
  *   - 对话摘要作为 history 前缀
  */
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
-import type { BusinessPlugin } from '../../shared/plugin.js';
+import type { Scenario } from '../../shared/scenario.js';
 import type { ChatMessage } from '../../shared/types.js';
 import type { MemoryItem } from '../../shared/memory.js';
 import { HitlManager, wrapHitlTools } from '../hitl/hitl.js';
@@ -19,7 +19,7 @@ import type { ITracer } from '../tracing/mlflow-tracer.js';
 export type SSECallback = (event: string, data: Record<string, unknown>) => void;
 
 export interface AgentFactoryParams {
-  plugin: BusinessPlugin;
+  scenario: Scenario;
   message: string;
   history?: ChatMessage[];
   onSSE: SSECallback;
@@ -39,17 +39,17 @@ export function getDefaultModel() {
 }
 
 /** 获取字段标签映射 */
-function getFieldLabels(plugin: BusinessPlugin): Record<string, string> {
+function getFieldLabels(scenario: Scenario): Record<string, string> {
   const map: Record<string, string> = {};
-  if (plugin.fields) {
-    for (const f of plugin.fields) { map[f.key] = f.label; }
+  if (scenario.fields) {
+    for (const f of scenario.fields) { map[f.key] = f.label; }
   }
   return map;
 }
 
-/** 拼接 system prompt (插件 prompt + 用户记忆) */
-function buildSystemPrompt(plugin: BusinessPlugin, memories?: MemoryItem[]): string {
-  let prompt = plugin.systemPrompt;
+/** 拼接 system prompt (场景 prompt + 用户记忆) */
+function buildSystemPrompt(scenario: Scenario, memories?: MemoryItem[]): string {
+  let prompt = scenario.systemPrompt;
 
   if (memories && memories.length > 0) {
     const memoryBlock = formatMemoriesForPrompt(memories);
@@ -93,11 +93,11 @@ function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
 
 /** 创建并运行 Agent */
 export async function runAgent(params: AgentFactoryParams): Promise<HitlManager> {
-  const { plugin, message, history, onSSE, memories, summary, tracer, onHitlCreated } = params;
+  const { scenario, message, history, onSSE, memories, summary, tracer, onHitlCreated } = params;
 
-  const systemPrompt = buildSystemPrompt(plugin, memories);
+  const systemPrompt = buildSystemPrompt(scenario, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
-  const fieldLabels = getFieldLabels(plugin);
+  const fieldLabels = getFieldLabels(scenario);
 
   // 创建 HITL 管理器，事件驱动 SSE（替代轮询）
   const hitl = new HitlManager({
@@ -108,8 +108,8 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
           onSSE('confirm_required', {
             tool: event.tool,
             label: event.label ?? '📋 确认操作',
-            form: plugin.formatFormForDisplay
-              ? plugin.formatFormForDisplay(event.form as Record<string, string>)
+            form: scenario.formatFormForDisplay
+              ? scenario.formatFormForDisplay(event.form as Record<string, string>)
               : event.form,
             fieldLabels,
           });
@@ -121,12 +121,12 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
     },
   });
 
-  // 自动包装 HITL tools（插件 tool 只含业务逻辑）
+  // 自动包装 HITL tools（场景 tool 只含业务逻辑）
   const tools = wrapHitlTools(
-    plugin.tools,
+    scenario.tools,
     hitl,
-    plugin.confirmTools || [],
-    plugin.confirmLabels,
+    scenario.confirmTools || [],
+    scenario.confirmLabels,
   );
 
   // 立即注册 HitlManager（在 agent.prompt() 之前），消除 session 竞态

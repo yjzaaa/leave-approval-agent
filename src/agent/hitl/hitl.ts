@@ -4,12 +4,12 @@
  * 符合 Pi Agent 代码风格的 HITL 组件：
  *   - 实例化设计（替代全局单例），每个会话一个实例
  *   - 事件驱动（替代轮询），通过 onEvent 回调通知确认状态变化
- *   - 声明式 withConfirm 包装器，插件 tool 无需手动调用 requestConfirm
+ *   - 声明式 withConfirm 包装器，场景 tool 无需手动调用 requestConfirm
  *
  * 使用方式：
  *   1. agent-factory 创建 HitlManager 实例，onEvent 驱动 SSE
- *   2. agent-factory 对 plugin.confirmTools 中的 tool 自动包装 withConfirm
- *   3. 插件 tool 只定义业务逻辑，HITL 自动注入
+ *   2. agent-factory 对 scenario.confirmTools 中的 tool 自动包装 withConfirm
+ *   3. 场景 tool 只定义业务逻辑，HITL 自动注入
  *   4. 服务端通过 hitl.approve() / hitl.reject() 响应用户操作
  */
 import type { AgentTool } from '@earendil-works/pi-agent-core';
