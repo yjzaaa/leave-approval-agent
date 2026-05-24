@@ -488,8 +488,8 @@ body {
 }
 
 .avatar.user {
-  background: var(--ink-95);
-  color: var(--ink-10);
+  background: var(--ink-30);
+  color: #FFF;
   font-size: 0.75rem;
 }
 
@@ -513,9 +513,9 @@ body {
 }
 
 .msg.user .bubble {
-  background: var(--ink-95);
-  color: var(--ink-10);
-  border-color: transparent;
+  background: var(--vermillion-50);
+  color: var(--ink-90);
+  border-color: var(--vermillion-50);
   border-bottom-right-radius: var(--radius-xs);
 }
 
@@ -526,7 +526,7 @@ body {
   font-family: var(--font-serif);
   font-weight: 600;
   margin: 0.6em 0 0.3em;
-  color: var(--ink-95);
+  color: var(--vermillion-400);
 }
 
 .bubble h1 { font-size: var(--text-xl); }
@@ -553,7 +553,7 @@ body {
   text-underline-offset: 2px;
 }
 .bubble a:hover { color: var(--vermillion-500); }
-.bubble strong { font-weight: 600; color: var(--ink-95); }
+.bubble strong { font-weight: 600; }
 
 .bubble code {
   font-family: var(--font-mono);
