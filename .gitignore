@@ -5,3 +5,7 @@ dist/
 .DS_Store
 .autoclaw/
 .autoclaw/
+mlartifacts/
+mlflow.db
+test-results/
+*.png
