@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../../lib/utils';
 import type { AgentPhase } from '../../types';
 
@@ -7,21 +8,11 @@ interface Props {
   text: string;
 }
 
-interface StepInfo {
-  key: AgentPhase;
-  label: string;
-}
+const STEP_KEYS: AgentPhase[] = ['idle', 'processing', 'awaiting_confirm', 'done'];
 
-const PIPELINE_STEPS: StepInfo[] = [
-  { key: 'idle',              label: '就绪' },
-  { key: 'processing',        label: '处理中' },
-  { key: 'awaiting_confirm',  label: '等待确认' },
-  { key: 'done',              label: '完成' },
-];
-
-function getStepState(step: StepInfo, currentPhase: AgentPhase): 'completed' | 'active' | 'pending' | 'error' {
-  const stepIndex = PIPELINE_STEPS.findIndex(s => s.key === step.key);
-  const currentIndex = PIPELINE_STEPS.findIndex(s => s.key === currentPhase);
+function getStepState(stepKey: AgentPhase, currentPhase: AgentPhase): 'completed' | 'active' | 'pending' | 'error' {
+  const stepIndex = STEP_KEYS.indexOf(stepKey);
+  const currentIndex = STEP_KEYS.indexOf(currentPhase);
   if (currentPhase === 'error') {
     if (stepIndex < currentIndex) return 'completed';
     if (stepIndex === currentIndex) return 'error';
@@ -33,20 +24,30 @@ function getStepState(step: StepInfo, currentPhase: AgentPhase): 'completed' | '
   return 'pending';
 }
 
+const PHASE_TO_LABEL_KEY: Record<AgentPhase, string> = {
+  idle: 'status.idle',
+  processing: 'status.processing',
+  awaiting_confirm: 'status.awaitingConfirm',
+  done: 'status.done',
+  error: 'status.done',
+};
+
 export const StatusBar: React.FC<Props> = ({ phase, text }) => {
-  const visibleSteps = phase === 'idle' ? PIPELINE_STEPS.slice(0, 1) : PIPELINE_STEPS.slice(1);
+  const { t } = useTranslation();
+  const visibleKeys = phase === 'idle' ? STEP_KEYS.slice(0, 1) : STEP_KEYS.slice(1);
+
   return (
     <div
       className="h-10 border-b border-border bg-background flex items-center px-4 gap-3 text-xs overflow-x-auto"
       role="status"
       aria-live="polite"
-      aria-label={`当前状态: ${text}`}
+      aria-label={t('status.ariaLabel', { text })}
     >
       <div className="flex items-center gap-2 max-w-3xl mx-auto w-full">
-        {visibleSteps.map((step, i) => {
-          const state = getStepState(step, phase);
+        {visibleKeys.map((key, i) => {
+          const state = getStepState(key, phase);
           return (
-            <React.Fragment key={step.key}>
+            <React.Fragment key={key}>
               {i > 0 && <span className="text-muted-foreground" aria-hidden="true">›</span>}
               <span
                 className={cn(
@@ -65,7 +66,7 @@ export const StatusBar: React.FC<Props> = ({ phase, text }) => {
                   )}
                   aria-hidden="true"
                 />
-                {step.label}
+                {t(PHASE_TO_LABEL_KEY[key] as any)}
               </span>
             </React.Fragment>
           );

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, X, AlertCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import type { ConfirmRequest } from '../../types';
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
+  const { t } = useTranslation();
   const { label, form, fieldLabels } = confirmRequest;
   const entries = Object.entries(fieldLabels).filter(([key]) => form[key] !== undefined);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -50,10 +52,10 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
           <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
           <div>
             <div className="text-lg font-semibold leading-none tracking-tight" id="confirm-modal-title">{label}</div>
-            <div className="text-sm text-muted-foreground mt-2" id="confirm-modal-desc">请仔细核对以下信息，确认无误后提交</div>
+            <div className="text-sm text-muted-foreground mt-2" id="confirm-modal-desc">{t('confirm.description')}</div>
           </div>
         </div>
-        <div className="space-y-2 mb-6" role="table" aria-label="申请信息摘要">
+        <div className="space-y-2 mb-6" role="table" aria-label={t('confirm.formSummary')}>
           {entries.map(([key, fieldLabel]) => (
             <div key={key} className="flex justify-between text-sm">
               <span className="text-muted-foreground">{fieldLabel}</span>
@@ -64,11 +66,11 @@ export const ConfirmCard: React.FC<Props> = ({ confirmRequest, onConfirm }) => {
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => onConfirm(false)}>
             <X className="h-4 w-4 mr-1" />
-            拒绝
+            {t('confirm.reject')}
           </Button>
           <Button variant="default" onClick={() => onConfirm(true)} ref={approveBtnRef}>
             <Check className="h-4 w-4 mr-1" />
-            确认提交
+            {t('confirm.approve')}
           </Button>
         </div>
       </div>

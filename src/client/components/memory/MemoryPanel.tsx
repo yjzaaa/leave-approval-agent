@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2, X, User, Lightbulb, ClipboardList, Link, Brain, FileText, Globe, Package } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Tooltip } from '../ui/Tooltip';
@@ -13,34 +14,34 @@ interface MemoryPanelProps {
   onClose: () => void;
 }
 
-const TYPE_CONFIG: Record<MemoryType, { label: string; icon: React.ReactNode; color: string }> = {
-  user: { label: '用户信息', icon: <User className="h-3.5 w-3.5" />, color: '#dbe4ff' },
-  feedback: { label: '反馈偏好', icon: <Lightbulb className="h-3.5 w-3.5" />, color: '#fff9db' },
-  project: { label: '业务上下文', icon: <ClipboardList className="h-3.5 w-3.5" />, color: '#fff4e6' },
-  reference: { label: '外部资源', icon: <Link className="h-3.5 w-3.5" />, color: '#ebfbee' },
+const TYPE_CONFIG: Record<MemoryType, { labelKey: string; icon: React.ReactNode; color: string }> = {
+  user: { labelKey: 'memory.typeUser', icon: <User className="h-3.5 w-3.5" />, color: '#dbe4ff' },
+  feedback: { labelKey: 'memory.typeFeedback', icon: <Lightbulb className="h-3.5 w-3.5" />, color: '#fff9db' },
+  project: { labelKey: 'memory.typeProject', icon: <ClipboardList className="h-3.5 w-3.5" />, color: '#fff4e6' },
+  reference: { labelKey: 'memory.typeReference', icon: <Link className="h-3.5 w-3.5" />, color: '#ebfbee' },
 };
 
-/** 单个记忆卡片组件 */
 function MemoryCard({ item, index, type, pluginId, onRemove }: {
   item: MemoryItem; index: number; type: MemoryType; pluginId?: string;
   onRemove: (type: MemoryType, index: number, pluginId?: string) => void;
 }) {
+  const { t, i18n } = useTranslation();
   const config = TYPE_CONFIG[type];
-  const timeStr = new Date(item.createdAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const timeStr = new Date(item.createdAt).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   return (
     <div className="rounded-lg border border-border p-3" style={{ borderLeftColor: config.color, borderLeftWidth: 3 }}>
       <div className="flex items-center justify-between mb-1">
         <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
-          {config.icon} {config.label}
+          {config.icon} {t(config.labelKey as any)}
         </span>
         <span className="text-xs text-muted-foreground">{timeStr}</span>
       </div>
       <p className="text-sm text-card-foreground">{item.content}</p>
-      <Tooltip text="删除">
+      <Tooltip text={t('memory.deleteTooltip')}>
         <button
           className="mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
           onClick={() => onRemove(type, index, pluginId)}
-          aria-label="删除记忆"
+          aria-label={t('memory.deleteAria')}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -51,6 +52,7 @@ function MemoryCard({ item, index, type, pluginId, onRemove }: {
 
 /** 记忆面板 — 右侧抽屉式 */
 export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: MemoryPanelProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'shared' | 'plugin'>('shared');
   const pluginMem = store.byPlugin[pluginId] || { project: [], reference: [] };
   const sharedCount = store.shared.user.length + store.shared.feedback.length;
@@ -62,18 +64,18 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
       <aside className="fixed right-0 top-0 h-full w-80 bg-background border-l border-border shadow-lg z-50 overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-sm font-semibold flex items-center gap-1.5"><Brain className="h-4 w-4" /> 记忆系统</h2>
+          <h2 className="text-sm font-semibold flex items-center gap-1.5"><Brain className="h-4 w-4" /> {t('memory.title')}</h2>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{totalCount} 条</span>
-            <Button variant="outline" size="sm" onClick={onClearAll}>清空</Button>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="关闭">
+            <span className="text-xs text-muted-foreground">{t('memory.count', { count: totalCount })}</span>
+            <Button variant="outline" size="sm" onClick={onClearAll}>{t('memory.clearAll')}</Button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={t('memory.close')}>
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
         {store.summary && (
           <div className="p-4 border-b border-border">
-            <h3 className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> 对话摘要</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {t('memory.summaryLabel')}</h3>
             <p className="text-xs text-card-foreground">{store.summary}</p>
           </div>
         )}
@@ -88,7 +90,7 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
             data-state={activeTab === 'shared' ? 'active' : 'inactive'}
             onClick={() => setActiveTab('shared')}
           >
-            <Globe className="h-3.5 w-3.5" /> 共享 ({sharedCount})
+            <Globe className="h-3.5 w-3.5" /> {t('memory.tabShared', { count: sharedCount })}
           </button>
           <button
             className={cn(
@@ -100,15 +102,15 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
             data-state={activeTab === 'plugin' ? 'active' : 'inactive'}
             onClick={() => setActiveTab('plugin')}
           >
-            <Package className="h-3.5 w-3.5" /> 插件 ({pluginCount})
+            <Package className="h-3.5 w-3.5" /> {t('memory.tabPlugin', { count: pluginCount })}
           </button>
         </div>
         <div className="p-4 space-y-3">
           {activeTab === 'shared' ? (
             store.shared.user.length === 0 && store.shared.feedback.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">暂无共享记忆</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">对话过程中会自动提取用户信息和偏好</p>
+                <p className="text-sm text-muted-foreground">{t('memory.emptyShared')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{t('memory.emptySharedHint')}</p>
               </div>
             ) : (<>
               {store.shared.user.map((item, i) => <MemoryCard key={`u-${i}`} item={item} index={i} type="user" onRemove={onRemove} />)}
@@ -117,8 +119,8 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
           ) : (
             pluginMem.project.length === 0 && pluginMem.reference.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">暂无业务记忆</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">使用插件对话后会自动提取</p>
+                <p className="text-sm text-muted-foreground">{t('memory.emptyPlugin')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{t('memory.emptyPluginHint')}</p>
               </div>
             ) : (<>
               {pluginMem.project.map((item, i) => <MemoryCard key={`p-${i}`} item={item} index={i} type="project" pluginId={pluginId} onRemove={onRemove} />)}
@@ -127,7 +129,7 @@ export function MemoryPanel({ store, pluginId, onRemove, onClearAll, onClose }: 
           )}
         </div>
         <div className="p-4 border-t border-border">
-          <p className="text-xs text-muted-foreground flex items-center gap-1"><Lightbulb className="h-3.5 w-3.5" /> 共享记忆跨插件 · 业务记忆按插件隔离 · 本地存储</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1"><Lightbulb className="h-3.5 w-3.5" /> {t('memory.footerText')}</p>
         </div>
       </aside>
     </>

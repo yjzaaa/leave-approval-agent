@@ -1,0 +1,211 @@
+{
+  "app": {
+    "title": "Approval Assistant",
+    "footer": {
+      "privacy": "Privacy Policy",
+      "legal": "Legal Notice",
+      "copyright": "© {{year}} Approval Assistant v{{version}} — Enterprise Edition"
+    }
+  },
+  "header": {
+    "defaultTitle": "Approval Assistant",
+    "serviceStatus": "Service Running",
+    "modelLabel": "DeepSeek V4 Pro",
+    "frameworkLabel": "Pi Framework",
+    "logout": "Sign Out"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System",
+    "toggleTooltip": "Theme: {{label}} (click to toggle)",
+    "toggleAriaLabel": "Toggle theme, current: {{label}}"
+  },
+  "language": {
+    "label": "EN",
+    "switchTo": "Switch Language"
+  },
+  "login": {
+    "title": "Approval Assistant",
+    "subtitle": "Enterprise Approval System · Select User",
+    "roleEmployee": "Employee",
+    "roleManager": "Manager",
+    "roleAdmin": "Admin"
+  },
+  "chat": {
+    "emptyTitle": "Approval Assistant",
+    "emptyDescription": "Describe your needs, the assistant will help fill applications, validate, and submit for approval.",
+    "scrollToBottom": "Go to bottom",
+    "ariaLog": "Chat history"
+  },
+  "input": {
+    "placeholder": "Describe your work-from-home needs, e.g., family member hospitalized...",
+    "placeholderDisabled": "Please wait...",
+    "ariaInput": "Message input",
+    "sendTooltip": "Send (Enter)",
+    "ariaSend": "Send message"
+  },
+  "message": {
+    "ariaUser": "Your message",
+    "ariaAssistant": "Assistant's message",
+    "ariaTyping": "Typing..."
+  },
+  "confirm": {
+    "description": "Please carefully review the information below before submitting.",
+    "reject": "Reject",
+    "approve": "Confirm & Submit",
+    "formSummary": "Application Summary"
+  },
+  "status": {
+    "idle": "Ready",
+    "processing": "Processing",
+    "awaitingConfirm": "Awaiting Confirmation",
+    "done": "Completed",
+    "ariaLabel": "Current status: {{text}}"
+  },
+  "agent": {
+    "enterRequest": "Please enter your request",
+    "processing": "Agent processing...",
+    "pleaseConfirm": "Please confirm",
+    "done": "Process complete",
+    "connectionFailed": "Connection failed",
+    "confirmed": "✓ Confirmed",
+    "rejected": "✗ Rejected",
+    "errorPrefix": "⚠️ Error: ",
+    "connectionErrorPrefix": "⚠️ Connection error: "
+  },
+  "memory": {
+    "title": "Memory System",
+    "count": "{{count}} items",
+    "clearAll": "Clear All",
+    "close": "Close",
+    "typeUser": "User Info",
+    "typeFeedback": "Preferences",
+    "typeProject": "Business Context",
+    "typeReference": "External Resources",
+    "tabShared": "Shared ({{count}})",
+    "tabPlugin": "Plugin ({{count}})",
+    "emptyShared": "No shared memories",
+    "emptySharedHint": "User info and preferences are extracted during conversations",
+    "emptyPlugin": "No plugin memories",
+    "emptyPluginHint": "Plugin memories are extracted during conversations",
+    "deleteTooltip": "Delete",
+    "deleteAria": "Delete memory",
+    "summaryLabel": "Summary",
+    "footerText": "Shared across plugins · Isolated per plugin · Local storage"
+  },
+  "legal": {
+    "privacyTitle": "Privacy Policy",
+    "noticeTitle": "Legal Notice",
+    "lastUpdated": "Last updated: May 2026",
+    "close": "Close",
+    "privacySections": [
+      {
+        "heading": "1. Information Collection",
+        "body": "This system may collect the following information during operation:",
+        "items": [
+          "User identity information: user ID, name, department, and other identifiers required for the approval process.",
+          "Application content: business data entered into approval forms (e.g., leave reasons, expense details).",
+          "Conversation records: user interactions with the AI assistant, used to improve service quality.",
+          "Device information: browser type, operating system version, and other basic device information."
+        ]
+      },
+      {
+        "heading": "2. Use of Information",
+        "body": "Collected information is used only for the following purposes:",
+        "items": [
+          "Processing approval requests: completing the approval workflow based on submitted information.",
+          "Optimizing AI models: using anonymized conversation data to improve the AI assistant's understanding and response capabilities.",
+          "Compliance auditing: conducting data audits per internal policies and legal requirements."
+        ]
+      },
+      {
+        "heading": "3. Information Storage & Security",
+        "body": "All data is stored on enterprise secure servers with the following security measures:",
+        "items": [
+          "Transport encryption: all data transmission uses TLS 1.3 encryption.",
+          "Access control: role-based access control (RBAC), only authorized personnel can access data.",
+          "Security audits: regular vulnerability scanning and penetration testing.",
+          "Data backup: daily automated backups with Recovery Time Objective (RTO) < 4 hours."
+        ]
+      },
+      {
+        "heading": "4. User Rights",
+        "body": "You have the following rights regarding your data:",
+        "items": [
+          "Right of access: you may request to view your personal data we have collected.",
+          "Right of correction: you may request correction of inaccurate personal data.",
+          "Right of deletion: subject to legal requirements, you may request deletion of your personal data.",
+          "Right of data portability: you may request export of your data in a structured, commonly used format."
+        ]
+      },
+      {
+        "heading": "5. Cookie Usage",
+        "body": "This system uses necessary cookies to maintain user sessions and language preferences. We do not use tracking cookies or third-party cookies.",
+        "items": []
+      },
+      {
+        "heading": "6. Contact Information",
+        "body": "If you have any questions about this privacy policy or wish to exercise your data rights, please contact:",
+        "items": [
+          "Data Protection Officer: dpo@company.com",
+          "IT Support: it-support@company.com"
+        ]
+      }
+    ],
+    "noticeSections": [
+      {
+        "heading": "1. Nature of Service",
+        "body": "This system (\"Approval Assistant\") is an AI-powered office approval support tool. The approval suggestions and analysis results provided are for reference only and do not constitute legal, financial, or any form of professional advice. Final approval decisions should be made by authorized personnel based on actual circumstances.",
+        "items": []
+      },
+      {
+        "heading": "2. Disclaimer",
+        "body": "",
+        "items": [
+          "This system generates responses based on AI models and may contain inaccurate or incomplete information. Users should independently verify critical information.",
+          "To the fullest extent permitted by law, the system provider assumes no liability for any direct or indirect losses arising from the use of this system.",
+          "The system may be temporarily unavailable due to maintenance, upgrades, or force majeure events. The provider does not guarantee uninterrupted or error-free service."
+        ]
+      },
+      {
+        "heading": "3. Intellectual Property",
+        "body": "",
+        "items": [
+          "The software code, interface design, trademarks, and documentation of this system are protected by intellectual property laws. Unauthorized reproduction, modification, distribution, or creation of derivative works is prohibited.",
+          "The intellectual property rights of user-submitted content and generated approval results shall be governed by the relevant internal enterprise policies."
+        ]
+      },
+      {
+        "heading": "4. Usage Rules",
+        "body": "Users must comply with the following rules when using this system:",
+        "items": [
+          "Do not use the system for illegal activities or submit illegal content.",
+          "Do not attempt to bypass the system's security mechanisms or access unauthorized data.",
+          "Do not reverse engineer, decompile, or attempt to obtain the source code.",
+          "Do not use automated tools for large-scale requests or stress testing."
+        ]
+      },
+      {
+        "heading": "5. Data Compliance",
+        "body": "Data collection and processing in this system comply with the following laws and regulations:",
+        "items": [
+          "Personal Information Protection Law of the People's Republic of China (PIPL)",
+          "Data Security Law of the People's Republic of China",
+          "Cybersecurity Law of the People's Republic of China",
+          "Enterprise internal information security management policies"
+        ]
+      },
+      {
+        "heading": "6. Changes to Terms",
+        "body": "This legal notice may be updated from time to time. Updated versions will be published in the system with appropriate notice before taking effect. Continued use of the system constitutes acceptance of the updated terms.",
+        "items": []
+      },
+      {
+        "heading": "7. Governing Law & Dispute Resolution",
+        "body": "This notice is governed by the laws of the People's Republic of China. Disputes arising from this notice shall first be resolved through friendly negotiation; if negotiation fails, they shall be submitted to the competent people's court.",
+        "items": []
+      }
+    ]
+  }
+}

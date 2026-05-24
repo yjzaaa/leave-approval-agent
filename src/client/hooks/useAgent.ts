@@ -13,6 +13,7 @@
  *   - npm run dev:all (MODE = "server")    → server 模式，fetch /api/chat SSE
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Message, ConfirmRequest, AgentPhase, ChatHistory } from '../types';
 import type { MemoryItem } from '../../shared/memory';
 import { MEMORY_LIMITS } from '../../shared/memory';
@@ -30,6 +31,7 @@ interface UseAgentOptions {
 }
 
 export function useAgent(options?: UseAgentOptions) {
+  const { t } = useTranslation();
   const pluginId = options?.pluginId;
   const userId = options?.userId;
   const memories = options?.memories;
@@ -50,7 +52,7 @@ export function useAgent(options?: UseAgentOptions) {
     return [];
   });
   const [phase, setPhase] = useState<AgentPhase>('idle');
-  const [phaseText, setPhaseText] = useState('请输入您的需求');
+  const [phaseText, setPhaseText] = useState(t('agent.enterRequest'));
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +207,7 @@ export function useAgent(options?: UseAgentOptions) {
 
     addMessage('assistant', '');
     setPhase('processing');
-    setPhaseText('Agent 正在处理...');
+    setPhaseText(t('agent.processing'));
 
     // ── Local 模式：直接调用 runAgent ──
     if (isLocal) {
@@ -250,13 +252,13 @@ export function useAgent(options?: UseAgentOptions) {
                   fieldLabels: data.fieldLabels as Record<string, string>,
                 });
                 setPhase('awaiting_confirm');
-                setPhaseText((data.label as string) || '请确认');
+                setPhaseText((data.label as string) || t('agent.pleaseConfirm'));
                 break;
 
               case 'confirm_resolved':
                 setConfirmRequest(null);
                 setPhase('processing');
-                setPhaseText('Agent 正在处理...');
+                setPhaseText(t('agent.processing'));
                 break;
 
               case 'tool_result':
@@ -264,13 +266,13 @@ export function useAgent(options?: UseAgentOptions) {
 
               case 'done':
                 setPhase('done');
-                setPhaseText('流程结束');
+                setPhaseText(t('agent.done'));
                 setConfirmRequest(null);
                 lastConfirmToolRef.current = null;
                 break;
 
               case 'error':
-                updateLastAssistant(fullText + '\n\n⚠️ ' + data.message);
+                updateLastAssistant(fullText + '\n\n' + t('agent.errorPrefix') + data.message);
                 setPhase('error');
                 setPhaseText(data.message as string);
                 setError(data.message as string);
@@ -289,12 +291,12 @@ export function useAgent(options?: UseAgentOptions) {
         // 用户拒绝 HITL 也会抛错，这是正常流程，不显示错误
         if (err.message?.includes('用户拒绝')) {
           setPhase('done');
-          setPhaseText('流程结束');
+          setPhaseText(t('agent.done'));
         } else {
           setError(err.message || String(err));
           setPhase('error');
-          setPhaseText('连接失败');
-          updateLastAssistant('⚠️ 错误: ' + (err.message || String(err)));
+          setPhaseText(t('agent.connectionFailed'));
+          updateLastAssistant(t('agent.errorPrefix') + (err.message || String(err)));
         }
       } finally {
         setIsStreaming(false);
@@ -368,13 +370,13 @@ export function useAgent(options?: UseAgentOptions) {
                   fieldLabels: data.fieldLabels,
                 });
                 setPhase('awaiting_confirm');
-                setPhaseText(data.label || '请确认');
+                setPhaseText(data.label || t('agent.pleaseConfirm'));
                 break;
 
               case 'confirm_resolved':
                 setConfirmRequest(null);
                 setPhase('processing');
-                setPhaseText('Agent 正在处理...');
+                setPhaseText(t('agent.processing'));
                 break;
 
               case 'tool_result':
@@ -382,13 +384,13 @@ export function useAgent(options?: UseAgentOptions) {
 
               case 'done':
                 setPhase('done');
-                setPhaseText('流程结束');
+                setPhaseText(t('agent.done'));
                 setConfirmRequest(null);
                 lastConfirmToolRef.current = null;
                 break;
 
               case 'error':
-                updateLastAssistant(fullText + '\n\n⚠️ ' + data.message);
+                updateLastAssistant(fullText + '\n\n' + t('agent.errorPrefix') + data.message);
                 setPhase('error');
                 setPhaseText(data.message as string);
                 setError(data.message as string);
@@ -401,8 +403,8 @@ export function useAgent(options?: UseAgentOptions) {
       if (err.name !== 'AbortError') {
         setError(err.message);
         setPhase('error');
-        setPhaseText('连接失败');
-        updateLastAssistant('⚠️ 连接失败: ' + err.message);
+        setPhaseText(t('agent.connectionFailed'));
+        updateLastAssistant(t('agent.connectionErrorPrefix') + err.message);
       }
     } finally {
       setIsStreaming(false);
@@ -425,7 +427,7 @@ export function useAgent(options?: UseAgentOptions) {
       } else {
         hitlRef.current.reject();
       }
-      addMessage('system', approved ? '✓ 已确认' : '✕ 已拒绝');
+      addMessage('system', approved ? t('agent.confirmed') : t('agent.rejected'));
       return;
     }
 
@@ -438,7 +440,7 @@ export function useAgent(options?: UseAgentOptions) {
       });
     } catch { /* 忽略 */ }
 
-    addMessage('system', approved ? '✓ 已确认' : '✕ 已拒绝');
+    addMessage('system', approved ? t('agent.confirmed') : t('agent.rejected'));
   }, [confirmRequest, addMessage]);
 
   // ── 重置 ──
@@ -447,7 +449,7 @@ export function useAgent(options?: UseAgentOptions) {
     abortRef.current?.abort();
     setMessages([]);
     setPhase('idle');
-    setPhaseText('请输入您的需求');
+    setPhaseText(t('agent.enterRequest'));
     setConfirmRequest(null);
     setIsStreaming(false);
     setError(null);

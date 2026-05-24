@@ -1,0 +1,211 @@
+{
+  "app": {
+    "title": "审批助手",
+    "footer": {
+      "privacy": "隐私政策",
+      "legal": "法律声明",
+      "copyright": "© {{year}} 审批助手 v{{version}} — Enterprise Edition"
+    }
+  },
+  "header": {
+    "defaultTitle": "审批助手",
+    "serviceStatus": "服务运行中",
+    "modelLabel": "DeepSeek V4 Pro",
+    "frameworkLabel": "Pi Framework",
+    "logout": "退出登录"
+  },
+  "theme": {
+    "dark": "暗色",
+    "light": "亮色",
+    "system": "跟随系统",
+    "toggleTooltip": "主题：{{label}}（点击切换）",
+    "toggleAriaLabel": "主题切换，当前：{{label}}"
+  },
+  "language": {
+    "label": "中",
+    "switchTo": "切换语言"
+  },
+  "login": {
+    "title": "审批助手",
+    "subtitle": "企业内部审批 · 选择用户登录",
+    "roleEmployee": "员工",
+    "roleManager": "主管",
+    "roleAdmin": "管理员"
+  },
+  "chat": {
+    "emptyTitle": "审批助手",
+    "emptyDescription": "描述您的需求，助手会帮您填写申请、校验信息并提交审批。",
+    "scrollToBottom": "回到底部",
+    "ariaLog": "对话记录"
+  },
+  "input": {
+    "placeholder": "描述你的远程办公需求，例如：家人住院需要照顾...",
+    "placeholderDisabled": "请稍候...",
+    "ariaInput": "输入消息",
+    "sendTooltip": "发送 (Enter)",
+    "ariaSend": "发送消息"
+  },
+  "message": {
+    "ariaUser": "你的消息",
+    "ariaAssistant": "助手的消息",
+    "ariaTyping": "正在输入..."
+  },
+  "confirm": {
+    "description": "请仔细核对以下信息，确认无误后提交",
+    "reject": "拒绝",
+    "approve": "确认提交",
+    "formSummary": "申请信息摘要"
+  },
+  "status": {
+    "idle": "就绪",
+    "processing": "处理中",
+    "awaitingConfirm": "等待确认",
+    "done": "完成",
+    "ariaLabel": "当前状态：{{text}}"
+  },
+  "agent": {
+    "enterRequest": "请输入您的需求",
+    "processing": "Agent 正在处理...",
+    "pleaseConfirm": "请确认",
+    "done": "流程结束",
+    "connectionFailed": "连接失败",
+    "confirmed": "✓ 已确认",
+    "rejected": "✕ 已拒绝",
+    "errorPrefix": "⚠️ 错误: ",
+    "connectionErrorPrefix": "⚠️ 连接失败: "
+  },
+  "memory": {
+    "title": "记忆系统",
+    "count": "{{count}} 条",
+    "clearAll": "清空",
+    "close": "关闭",
+    "typeUser": "用户信息",
+    "typeFeedback": "反馈偏好",
+    "typeProject": "业务上下文",
+    "typeReference": "外部资源",
+    "tabShared": "共享 ({{count}})",
+    "tabPlugin": "插件 ({{count}})",
+    "emptyShared": "暂无共享记忆",
+    "emptySharedHint": "对话过程中会自动提取用户信息和偏好",
+    "emptyPlugin": "暂无业务记忆",
+    "emptyPluginHint": "使用插件对话后会自动提取",
+    "deleteTooltip": "删除",
+    "deleteAria": "删除记忆",
+    "summaryLabel": "对话摘要",
+    "footerText": "共享记忆跨插件 · 业务记忆按插件隔离 · 本地存储"
+  },
+  "legal": {
+    "privacyTitle": "隐私政策",
+    "noticeTitle": "法律声明",
+    "lastUpdated": "最后更新日期：2026 年 5 月",
+    "close": "关闭",
+    "privacySections": [
+      {
+        "heading": "1. 信息收集",
+        "body": "本系统在运行过程中可能收集以下信息：",
+        "items": [
+          "用户身份信息：用户 ID、姓名、部门等用于审批流程所需的身份标识。",
+          "申请内容：用户在审批表单中填写的业务数据（如请假事由、报销明细等）。",
+          "对话记录：用户与 AI 助手的交互记录，用于改进服务质量。",
+          "设备信息：浏览器类型、操作系统版本等基础设备信息。"
+        ]
+      },
+      {
+        "heading": "2. 信息使用",
+        "body": "收集的信息仅用于以下目的：",
+        "items": [
+          "处理审批请求：根据用户提交的信息完成审批流程。",
+          "优化 AI 模型：使用匿名的对话数据改进 AI 助手的理解和响应能力。",
+          "合规审计：按照企业内部规定和法律法规要求进行数据审计。"
+        ]
+      },
+      {
+        "heading": "3. 信息存储与安全",
+        "body": "所有数据存储在企业的安全服务器上，采用以下安全措施：",
+        "items": [
+          "传输加密：所有数据传输使用 TLS 1.3 加密。",
+          "访问控制：基于角色的访问控制（RBAC），仅授权人员可访问数据。",
+          "安全审计：定期进行安全漏洞扫描和渗透测试。",
+          "数据备份：每日自动备份，灾难恢复时间目标（RTO）< 4 小时。"
+        ]
+      },
+      {
+        "heading": "4. 用户权利",
+        "body": "您对自己的数据拥有以下权利：",
+        "items": [
+          "访问权：您可以请求查看我们收集的您的个人数据。",
+          "更正权：您可以请求更正不准确的个人数据。",
+          "删除权：在符合法律法规的前提下，您可以请求删除您的个人数据。",
+          "数据可携权：您可以请求以结构化、通用的格式导出您的数据。"
+        ]
+      },
+      {
+        "heading": "5. Cookie 使用",
+        "body": "本系统使用必要的 Cookie 来维持用户会话和语言偏好设置。我们不使用追踪型 Cookie 或第三方 Cookie。",
+        "items": []
+      },
+      {
+        "heading": "6. 联系方式",
+        "body": "如果您对本隐私政策有任何疑问，或希望行使您的数据权利，请联系：",
+        "items": [
+          "数据保护官：dpo@company.com",
+          "IT 支持：it-support@company.com"
+        ]
+      }
+    ],
+    "noticeSections": [
+      {
+        "heading": "1. 服务性质",
+        "body": "本系统（\"审批助手\"）是一个基于人工智能技术的办公审批辅助工具。系统提供的审批建议和分析结果仅供参考，不构成法律、财务或任何形式的专业建议。最终的审批决定应由具有相应权限的人员根据实际情况做出。",
+        "items": []
+      },
+      {
+        "heading": "2. 免责声明",
+        "body": "",
+        "items": [
+          "本系统基于 AI 模型生成回复，可能包含不准确或不完整的信息。用户应独立核实关键信息。",
+          "对于因使用本系统而产生的任何直接或间接损失，在法律允许的最大范围内，本系统提供方不承担责任。",
+          "系统可能因维护、升级或不可抗力因素而暂时不可用，提供方不保证服务的连续性和无错误性。"
+        ]
+      },
+      {
+        "heading": "3. 知识产权",
+        "body": "",
+        "items": [
+          "本系统的软件代码、界面设计、商标和文档均受知识产权法律保护。未经授权，不得复制、修改、分发或创建衍生作品。",
+          "用户在使用过程中输入的内容和生成的审批结果的知识产权归属，按照企业内部相关规定执行。"
+        ]
+      },
+      {
+        "heading": "4. 使用规范",
+        "body": "用户在使用本系统时应遵守以下规范：",
+        "items": [
+          "不得利用本系统从事违法活动或提交违法内容。",
+          "不得尝试绕过系统的安全机制或访问未经授权的数据。",
+          "不得对系统进行逆向工程、反编译或试图获取源代码。",
+          "不得使用自动化工具对系统进行大规模请求或压力测试。"
+        ]
+      },
+      {
+        "heading": "5. 数据合规",
+        "body": "本系统的数据收集和处理遵循以下法律法规：",
+        "items": [
+          "《中华人民共和国个人信息保护法》（PIPL）",
+          "《中华人民共和国数据安全法》",
+          "《中华人民共和国网络安全法》",
+          "企业内部信息安全管理制度"
+        ]
+      },
+      {
+        "heading": "6. 协议变更",
+        "body": "本法律声明可能不时更新。更新后的版本将在系统中发布，并在生效前通过适当方式通知用户。继续使用本系统即表示您接受更新后的条款。",
+        "items": []
+      },
+      {
+        "heading": "7. 适用法律与争议解决",
+        "body": "本声明受中华人民共和国法律管辖。因本声明引起的争议，双方应首先通过友好协商解决；协商不成的，提交有管辖权的人民法院解决。",
+        "items": []
+      }
+    ]
+  }
+}

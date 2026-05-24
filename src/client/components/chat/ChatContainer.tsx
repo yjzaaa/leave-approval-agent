@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 import type { Message } from '../../types';
 import { MessageBubble } from './MessageBubble';
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -66,12 +68,12 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="relative flex-1 overflow-y-auto px-4 py-4 custom-scrollbar scroll-smooth" ref={containerRef} role="log" aria-label="对话记录" aria-live="polite">
+    <div className="relative flex-1 overflow-y-auto px-4 py-4 custom-scrollbar scroll-smooth" ref={containerRef} role="log" aria-label={t('chat.ariaLog')} aria-live="polite">
       {isEmpty ? (
         <div className="flex flex-col items-center justify-center h-full text-center gap-4 max-w-3xl mx-auto">
           <MessageSquare className="h-12 w-12 text-muted-foreground/30" aria-hidden="true" />
-          <h3 className="text-lg font-semibold tracking-tight">审批助手</h3>
-          <p className="text-sm text-muted-foreground max-w-sm">描述您的需求，助手会帮您填写申请、校验信息并提交审批。</p>
+          <h3 className="text-lg font-semibold tracking-tight">{t('chat.emptyTitle')}</h3>
+          <p className="text-sm text-muted-foreground max-w-sm">{t('chat.emptyDescription')}</p>
           {suggestions && suggestions.length > 0 && (
             <div className="flex flex-wrap gap-2 justify-center mt-2">
               {suggestions.map(s => (
@@ -97,7 +99,7 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
             showScrollBtn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none',
           ].join(' ')}
           onClick={handleGoToBottom}
-          aria-label="回到底部"
+          aria-label={t('chat.scrollToBottom')}
         >
           <ChevronDown className="h-4 w-4" />
         </button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Header } from './client/components/layout/Header';
 import { StatusBar } from './client/components/approval/StatusBar';
 import { ChatContainer } from './client/components/chat/ChatContainer';
@@ -48,6 +49,7 @@ const MainApp: React.FC<{
   user: NonNullable<ReturnType<typeof useAuth>['user']>;
   onLogout: () => void;
 }> = ({ user, onLogout }) => {
+  const { t } = useTranslation();
   const [plugins, setPlugins] = useState<PluginInfo[]>(FALLBACK_PLUGINS);
   const [activePluginId, setActivePluginId] = useState('leave_approval');
   const [appTitle, setAppTitle] = useState('远程办公申请审批');
@@ -98,14 +100,14 @@ const MainApp: React.FC<{
     <div className="flex h-dvh flex-col bg-background">
       <Header title={appTitle} user={user} onLogout={onLogout}>
         <PluginDropdown plugins={plugins} value={activePluginId} onChange={switchPlugin} />
-        <Tooltip text="查看记忆" position="bottom">
+        <Tooltip text={t('memory.title')} position="bottom">
           <button
             className={cn(
               "inline-flex items-center justify-center rounded-full h-9 w-9 text-sm hover:bg-accent transition-colors",
               showMemory && "bg-accent text-accent-foreground"
             )}
             onClick={() => setShowMemory(v => !v)}
-            aria-label="查看记忆"
+            aria-label={t('memory.title')}
           >
             <Brain className="h-4 w-4" />
           </button>
@@ -121,14 +123,14 @@ const MainApp: React.FC<{
         <button
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setLegalModal('privacy')}
-        >隐私政策</button>
+        >{t('app.footer.privacy')}</button>
         <span className="text-xs text-muted-foreground/40">·</span>
         <button
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setLegalModal('legal')}
-        >法律声明</button>
+        >{t('app.footer.legal')}</button>
         <span className="text-xs text-muted-foreground/40">·</span>
-        <span className="text-xs text-muted-foreground/60">© 2026 审批助手 v2.1 — Enterprise Edition</span>
+        <span className="text-xs text-muted-foreground/60">{t('app.footer.copyright', { year: 2026, version: '2.1' })}</span>
       </footer>
       {confirmRequest && (<ConfirmCard confirmRequest={confirmRequest} onConfirm={confirm} />)}
       {showMemory && (

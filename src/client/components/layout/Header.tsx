@@ -1,5 +1,7 @@
 import React, { type ReactNode, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import type { MockUser } from '../../data/users';
 import { cn } from '../../../lib/utils';
 import { MessageSquare, User } from 'lucide-react';
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export const Header: React.FC<Props> = ({ title = '审批助手', user, onLogout, children }) => {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -36,13 +39,14 @@ export const Header: React.FC<Props> = ({ title = '审批助手', user, onLogout
       <div className="min-w-0">
         <h1 className="text-lg font-semibold tracking-tight truncate text-foreground">{title}</h1>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" aria-label="服务运行中" />
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" aria-label={t('header.serviceStatus')} />
           <span className="font-mono text-[10px] px-1.5 py-[1px] rounded-sm bg-muted text-muted-foreground whitespace-nowrap">DeepSeek V4 Pro</span>
           <span className="font-mono text-[10px] px-1.5 py-[1px] rounded-sm bg-muted text-muted-foreground whitespace-nowrap">Pi Framework</span>
         </div>
       </div>
       {children && <div className="flex items-center gap-2 px-3">{children}</div>}
       <div className="flex-1" />
+      <LanguageSwitcher />
       <ThemeToggle userId={user?.id} />
       {user && onLogout && (
         <div className="relative" ref={menuRef}>
@@ -64,7 +68,7 @@ export const Header: React.FC<Props> = ({ title = '审批助手', user, onLogout
                 className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-accent transition-colors"
                 onClick={() => { setMenuOpen(false); onLogout(); }}
               >
-                退出登录
+                {t('header.logout')}
               </button>
             </div>
           )}

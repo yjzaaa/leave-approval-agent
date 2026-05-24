@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Tooltip } from '../ui/Tooltip';
@@ -9,9 +10,9 @@ interface Props {
 }
 
 const MAX_LENGTH = 500;
-const PLACEHOLDER = '描述你的远程办公需求，例如：家人住院需要照顾...';
 
 export const InputBar: React.FC<Props> = ({ onSend, disabled }) => {
+  const { t } = useTranslation();
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,14 +52,14 @@ export const InputBar: React.FC<Props> = ({ onSend, disabled }) => {
         <textarea
           ref={inputRef}
           rows={1}
-          placeholder={disabled ? '请稍候...' : PLACEHOLDER}
+          placeholder={disabled ? t('input.placeholderDisabled') : t('input.placeholder')}
           value={value}
           onChange={e => setValue(e.target.value.replace(/[\r\n]+/g, ''))}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           className="flex-1 resize-none rounded-2xl border border-input bg-accent px-4 py-3 text-sm min-h-[48px] max-h-[200px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           maxLength={MAX_LENGTH + 50}
-          aria-label="输入消息"
+          aria-label={t('input.ariaInput')}
           autoFocus
         />
         {value.length > 0 && (
@@ -66,14 +67,14 @@ export const InputBar: React.FC<Props> = ({ onSend, disabled }) => {
             {value.length}/{MAX_LENGTH}
           </span>
         )}
-        <Tooltip text="发送 (Enter)">
+        <Tooltip text={t('input.sendTooltip')}>
           <Button
             variant="default"
             size="icon"
             className="rounded-full h-10 w-10 shrink-0"
             onClick={handleSend}
             disabled={!canSend}
-            aria-label="发送消息"
+            aria-label={t('input.ariaSend')}
           >
           <Send className="h-4 w-4" />
         </Button>
