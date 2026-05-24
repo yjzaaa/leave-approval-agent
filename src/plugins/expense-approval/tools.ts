@@ -1,9 +1,10 @@
 ﻿/**
  * 报销审批 — 全部 Tool 定义
+ *
+ * HITL 由 HitlManager 在 agent-factory 中自动注入，tool 只定义业务逻辑。
  */
 import { Type } from '@earendil-works/pi-ai';
 import type { AgentTool } from '@earendil-works/pi-agent-core';
-import { requestConfirm } from '../../agent/confirm-state.js';
 import { validateExpenseForm } from './validator.js';
 import { submitExpense, startExpenseProcess } from './api.js';
 
@@ -57,8 +58,6 @@ export const submitFormTool: AgentTool<any> = {
   }),
   execute: async (_id, params) => {
     const { form } = params as { form: any };
-    const approved = await requestConfirm('expense_approval_submit', form);
-    if (!approved) throw new Error('用户拒绝提交报销');
     const result = await submitExpense(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
@@ -67,7 +66,7 @@ export const submitFormTool: AgentTool<any> = {
 export const startProcessTool: AgentTool<any> = {
   name: 'expense_approval_start',
   label: '发起报销审批',
-  description: '发起报销审批流程，需要用户确认。',
+  description: '发起报销审批流程。',
   parameters: Type.Object({
     resultId: Type.String(),
     form: Type.Object({
@@ -79,8 +78,6 @@ export const startProcessTool: AgentTool<any> = {
   }),
   execute: async (_id, params) => {
     const { resultId, form } = params as { resultId: string; form: any };
-    const approved = await requestConfirm('expense_approval_start', { resultId, form });
-    if (!approved) throw new Error('用户拒绝发起报销审批');
     const result = await startExpenseProcess(resultId, form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },

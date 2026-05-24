@@ -1,12 +1,10 @@
 ﻿/**
  * 远程办公审批 — 全部 Tool 定义
  *
- * 每个插件完全拥有自己的 tool，框架不提供任何 tool。
- * HITL: submit 和 start 通过 import confirm-state 实现。
+ * HITL 由 HitlManager 在 agent-factory 中自动注入，tool 只定义业务逻辑。
  */
 import { Type } from '@earendil-works/pi-ai';
 import type { AgentTool } from '@earendil-works/pi-agent-core';
-import { requestConfirm } from '../../agent/confirm-state.js';
 import { validateLeaveForm } from './validator.js';
 import { submitLeaveForm, startLeaveProcess } from './api.js';
 
@@ -61,19 +59,16 @@ export const submitFormTool: AgentTool<any> = {
   }),
   execute: async (_id, params) => {
     const { form } = params as { form: any };
-    // ★ HITL: 插件自己决定调用 requestConfirm
-    const approved = await requestConfirm('leave_approval_submit', form);
-    if (!approved) throw new Error('用户拒绝提交表单');
     const result = await submitLeaveForm(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
 };
 
-/** 发起审批流程 — 需要用户二次确认 (HITL) */
+/** 发起审批流程 */
 export const startProcessTool: AgentTool<any> = {
   name: 'leave_approval_start',
   label: '发起流程',
-  description: '发起远程办公审批流程，需要 resultId 和用户确认。',
+  description: '发起远程办公审批流程，需要 resultId。',
   parameters: Type.Object({
     resultId: Type.String(),
     form: Type.Object({
@@ -85,9 +80,6 @@ export const startProcessTool: AgentTool<any> = {
   }),
   execute: async (_id, params) => {
     const { resultId, form } = params as { resultId: string; form: any };
-    // ★ HITL: 插件自己决定调用 requestConfirm
-    const approved = await requestConfirm('leave_approval_start', { resultId, form });
-    if (!approved) throw new Error('用户拒绝发起流程');
     const result = await startLeaveProcess(resultId, form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },

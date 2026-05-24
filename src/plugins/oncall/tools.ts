@@ -1,13 +1,10 @@
 ﻿/**
  * 值班排班插件 — Tool 定义
  *
- * 两个 tool:
- *   - query_schedule: 查询排班 (无 HITL)
- *   - submit_swap: 换班申请 (单步 HITL — 只需确认换班)
+ * HITL 由 HitlManager 在 agent-factory 中自动注入，tool 只定义业务逻辑。
  */
 import { Type } from '@earendil-works/pi-ai';
 import type { AgentTool } from '@earendil-works/pi-agent-core';
-import { requestConfirm } from '../../agent/confirm-state.js';
 import { querySchedule, submitSwapRequest } from './api.js';
 
 /** 获取当前日期 */
@@ -59,10 +56,6 @@ export const submitSwapTool: AgentTool<any> = {
     const { requester, targetDate, targetShift, reason } = params as {
       requester: string; targetDate: string; targetShift: string; reason: string;
     };
-    // ★ 单步 HITL — 只在提交换班时确认
-    const approved = await requestConfirm('oncall_swap', { requester, targetDate, targetShift, reason });
-    if (!approved) throw new Error('用户拒绝换班申请');
-
     const result = await submitSwapRequest(requester, targetDate, targetShift, reason);
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result) }],
