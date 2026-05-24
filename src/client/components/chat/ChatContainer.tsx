@@ -16,7 +16,7 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
 
   const scrollToBottom = useCallback(() => {
     const el = containerRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
   }, []);
 
   const handleGoToBottom = useCallback(() => {
@@ -30,7 +30,10 @@ export const ChatContainer: React.FC<Props> = ({ messages, suggestions }) => {
     if (!el) return;
     const onScroll = () => {
       const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      if (!atBottom && autoScrollRef.current) {
+      if (atBottom) {
+        autoScrollRef.current = true;
+        setShowScrollBtn(false);
+      } else if (autoScrollRef.current) {
         autoScrollRef.current = false;
         setShowScrollBtn(true);
       }
