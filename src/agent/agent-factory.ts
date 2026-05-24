@@ -14,7 +14,7 @@ import type { ChatMessage } from '../shared/types.js';
 import type { MemoryItem } from '../shared/memory.js';
 import { getPending } from './confirm-state.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from './memory-prompt.js';
-import { traceSpan } from './mlflow-tracer.js';
+import type { PiAgentTracer } from './mlflow-tracer.js';
 
 export type SSECallback = (event: string, data: Record<string, unknown>) => void;
 
@@ -27,6 +27,8 @@ export interface AgentFactoryParams {
   memories?: MemoryItem[];
   /** 对话摘要 (前端注入) */
   summary?: string;
+  /** MLflow tracer（可选，启用时自动收集） */
+  tracer?: PiAgentTracer;
 }
 
 /** 获取默认模型 */
@@ -103,7 +105,7 @@ function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
 
 /** 创建并运行 Agent */
 export async function runAgent(params: AgentFactoryParams): Promise<void> {
-  const { plugin, message, history, onSSE, memories, summary } = params;
+  const { plugin, message, history, onSSE, memories, summary, tracer } = params;
 
   const systemPrompt = buildSystemPrompt(plugin, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
@@ -122,13 +124,13 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
   let confirmTick: ReturnType<typeof setInterval> | null = null;
 
   agent.subscribe(async (event, _signal) => {
+    // MLflow: 转发所有事件给 tracer
+    tracer?.handleEvent(event as any);
+
     switch (event.type) {
       case 'tool_execution_start': {
-        traceSpan(`tool:${event.toolName}`, {
-          'tool.name': event.toolName,
-          'tool.confirm': isConfirmTool(event.toolName, plugin),
-        }, async () => {}).catch(() => {});
         if (isConfirmTool(event.toolName, plugin)) {
+          tracer?.markHitl(event.toolName);
           const tevent = event as any;
           const form = tevent.args?.form || {};
           confirmTick = setInterval(() => {
@@ -147,9 +149,6 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
         break;
       }
       case 'tool_execution_end':
-        traceSpan(`tool:${event.toolName}`, {
-          'tool.error': event.isError ?? false,
-        }, async () => {}).catch(() => {});
         onSSE('tool_result', { tool: event.toolName, error: event.isError });
         break;
       case 'message_update': {

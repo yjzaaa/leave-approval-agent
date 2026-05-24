@@ -49,6 +49,13 @@ export function useAgent(options?: UseAgentOptions) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Session ID（页面加载时生成，同一会话内所有请求共用） ──
+  const sessionIdRef = useRef<string>(
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
+
   // ── 聊天历史持久化 ──
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -186,6 +193,8 @@ export function useAgent(options?: UseAgentOptions) {
           plugin: pluginIdRef.current,
           memories: memoriesRef.current,
           summary: summaryRef.current,
+          userId,
+          sessionId: sessionIdRef.current,
         }),
         signal: controller.signal,
       });
