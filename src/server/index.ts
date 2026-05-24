@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAgent, getDefaultModel } from '../agent/agent-factory.js';
 import { PiAgentTracer } from '../agent/mlflow-tracer.js';
-import { approveConfirm, rejectConfirm } from '../agent/confirm-state.js';
+import type { HitlManager } from '../agent/hitl.js';
 import { getPlugin, getDefaultPlugin, registry } from '../plugins/registry.js';
 import type { ChatMessage } from '../shared/types.js';
 import { Agent } from '@earendil-works/pi-agent-core';
@@ -29,6 +29,9 @@ import { streamSimple, getModel } from '@earendil-works/pi-ai';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+/** 当前活跃的 HITL 管理器（供 /api/confirm 路由使用） */
+let activeHitl: HitlManager | null = null;
 
 app.use(express.json());
 // 开发: Vite dev server 独立运行; 生产: 从 dist/ 提供静态文件
@@ -185,7 +188,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     });
 
     await tracer.run(async () => {
-      await runAgent({
+      activeHitl = await runAgent({
         plugin,
         message,
         history,
@@ -207,11 +210,15 @@ app.post('/api/chat', async (req: Request, res: Response) => {
  */
 app.post('/api/confirm', (req: Request, res: Response) => {
   const { approved } = req.body;
+  if (!activeHitl) {
+    res.json({ ok: false, message: '无活跃会话' });
+    return;
+  }
   if (approved) {
-    const ok = approveConfirm();
+    const ok = activeHitl.approve();
     res.json({ ok, message: ok ? '已确认' : '无待确认请求' });
   } else {
-    const ok = rejectConfirm();
+    const ok = activeHitl.reject();
     res.json({ ok, message: ok ? '已拒绝' : '无待确认请求' });
   }
 });

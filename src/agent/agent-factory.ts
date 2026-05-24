@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Agent 工厂 — 根据 BusinessPlugin 创建 Pi Agent
  *
  * 支持:
  *   - plugin.tools 自主定义
- *   - HITL 由 confirmTools 决定
+ *   - HITL 由 HitlManager 管理，confirmTools 自动包装
  *   - 用户记忆注入 system prompt
  *   - 对话摘要作为 history 前缀
  */
@@ -12,7 +12,7 @@ import { streamSimple, getModel } from '@earendil-works/pi-ai';
 import type { BusinessPlugin } from '../shared/plugin.js';
 import type { ChatMessage } from '../shared/types.js';
 import type { MemoryItem } from '../shared/memory.js';
-import { getPending } from './confirm-state.js';
+import { HitlManager, wrapHitlTools } from './hitl.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from './memory-prompt.js';
 import type { PiAgentTracer } from './mlflow-tracer.js';
 
@@ -34,20 +34,6 @@ export interface AgentFactoryParams {
 /** 获取默认模型 */
 export function getDefaultModel() {
   return getModel('deepseek', 'deepseek-v4-pro' as any);
-}
-
-/** 判断某 tool 是否需要 HITL (由 plugin.confirmTools 决定) */
-function isConfirmTool(toolName: string, plugin: BusinessPlugin): boolean {
-  const tools = plugin.confirmTools || [];
-  return tools.includes(toolName);
-}
-
-/** 获取确认文案 */
-function getConfirmLabel(toolName: string, plugin: BusinessPlugin): string {
-  if (plugin.confirmLabels && plugin.confirmLabels[toolName]) {
-    return plugin.confirmLabels[toolName];
-  }
-  return '📋 确认操作';
 }
 
 /** 获取字段标签映射 */
@@ -104,50 +90,58 @@ function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
 }
 
 /** 创建并运行 Agent */
-export async function runAgent(params: AgentFactoryParams): Promise<void> {
+export async function runAgent(params: AgentFactoryParams): Promise<HitlManager> {
   const { plugin, message, history, onSSE, memories, summary, tracer } = params;
 
   const systemPrompt = buildSystemPrompt(plugin, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
+  const fieldLabels = getFieldLabels(plugin);
+
+  // 创建 HITL 管理器，事件驱动 SSE（替代轮询）
+  const hitl = new HitlManager({
+    onEvent: (event) => {
+      switch (event.type) {
+        case 'confirm_required':
+          tracer?.markHitl(event.tool);
+          onSSE('confirm_required', {
+            tool: event.tool,
+            label: event.label ?? '📋 确认操作',
+            form: plugin.formatFormForDisplay
+              ? plugin.formatFormForDisplay(event.form as Record<string, string>)
+              : event.form,
+            fieldLabels,
+          });
+          break;
+        case 'confirm_resolved':
+          onSSE('confirm_resolved', { tool: event.tool });
+          break;
+      }
+    },
+  });
+
+  // 自动包装 HITL tools（插件 tool 只含业务逻辑）
+  const tools = wrapHitlTools(
+    plugin.tools,
+    hitl,
+    plugin.confirmTools || [],
+    plugin.confirmLabels,
+  );
 
   const model = getDefaultModel();
   const agent = new Agent({
     initialState: {
       systemPrompt,
-      tools: plugin.tools,
+      tools,
       model,
       messages: initialMessages,
     },
     streamFn: streamSimple,
   });
 
-  let confirmTick: ReturnType<typeof setInterval> | null = null;
-
   agent.subscribe(async (event, _signal) => {
-    // MLflow: 转发所有事件给 tracer
     tracer?.handleEvent(event as any);
 
     switch (event.type) {
-      case 'tool_execution_start': {
-        if (isConfirmTool(event.toolName, plugin)) {
-          tracer?.markHitl(event.toolName);
-          const tevent = event as any;
-          const form = tevent.args?.form || {};
-          confirmTick = setInterval(() => {
-            if (!getPending()) {
-              if (confirmTick) { clearInterval(confirmTick); confirmTick = null; }
-              onSSE('confirm_resolved', { tool: event.toolName });
-            }
-          }, 200);
-          onSSE('confirm_required', {
-            tool: event.toolName,
-            label: getConfirmLabel(event.toolName, plugin),
-            form: plugin.formatFormForDisplay ? plugin.formatFormForDisplay(form) : form,
-            fieldLabels: getFieldLabels(plugin),
-          });
-        }
-        break;
-      }
       case 'tool_execution_end':
         onSSE('tool_result', { tool: event.toolName, error: event.isError });
         break;
@@ -160,7 +154,6 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
       }
       case 'message_end': break;
       case 'agent_end':
-        if (confirmTick) clearInterval(confirmTick);
         onSSE('done', {});
         break;
     }
@@ -168,4 +161,6 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
 
   await agent.prompt(message);
   await agent.waitForIdle();
+
+  return hitl;
 }
