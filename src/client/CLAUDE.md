@@ -14,8 +14,8 @@ React 前端，支持两种运行模式。不关心具体业务逻辑。
 graph LR
     subgraph Build["Vite 构建时"]
         Mode["--mode server?"]
-        Mode -->|"yes"| Server["__AGENT_MODE__ = 'server'"]
-        Mode -->|"no (default)"| Local["__AGENT_MODE__ = 'local'"]
+        Mode -->|"yes"| Server["MODE = 'server'"]
+        Mode -->|"no (default)"| Local["MODE = 'development'"]
     end
 
     subgraph Runtime["运行时"]
@@ -42,8 +42,8 @@ client/
 │   └── useMemory.ts                 # 记忆系统 Hook (localStorage)
 └── components/
     ├── chat/
-    │   ├── ChatContainer.tsx        # 消息列表 + 自动滚动
-    │   ├── MessageBubble.tsx        # 消息气泡 (react-markdown)
+    │   ├── ChatContainer.tsx        # 消息列表 + 自动滚动 + 回到底部按钮
+    │   ├── MessageBubble.tsx        # 消息气泡 (react-markdown + remark-gfm)
     │   └── InputBar.tsx             # 输入框 + 发送
     ├── approval/
     │   ├── ConfirmCard.tsx          # HITL 确认弹窗
@@ -199,8 +199,8 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 ### hooks/useAgent.ts
 
 - 聊天状态机 Hook v5.0，支持 server / local 双模式
-- `sendMessage()` 根据 `__AGENT_MODE__` 分支：
-  - local 模式: 动态 `import('../../agent/agent-factory.js')` 直接调用 `runAgent()`，`onSSE` 回调直接更新 React state
+- `sendMessage()` 根据 `import.meta.env.MODE` 分支：
+  - local 模式: 动态 `import('../../agent/agent-factory.js')` + `import('../../agent/mlflow-tracer.js')`，通过 `createTracer()` + `tracer.run()` 包裹 `runAgent()`
   - server 模式: `fetch('/api/chat')` 读 SSE 流，解析 text/confirm_required/done 事件
 - `confirm()` 同样分支：local 模式直接操作 `hitlRef`，server 模式 POST `/api/confirm`
 - `compactHistory()` / `extractMemories()` 在 local 模式使用 `local-utils.ts` 进程内处理，server 模式走 HTTP 端点
@@ -218,7 +218,7 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 - ✅ 业务信息全通过 SSE 事件/onSSE 回调获取
 - ✅ 记忆通过 `useMemory` Hook 管理
 - ✅ local 模式通过动态 `import()` 加载 agent/ 模块（编译时不依赖 Node.js 运行时）
-- ✅ `__AGENT_MODE__` 由 Vite `define` 在构建时注入，零运行时开销
+- ✅ 模式切换使用 `import.meta.env.MODE`（Vite 内置），无需手写 define 注入
 
 ---
 

@@ -30,7 +30,7 @@ graph TB
 
     subgraph Agent["⚙️ 框架层 (业务无关)"]
         Factory["agent-factory.ts<br/>创建 Agent"]
-        Confirm["confirm-state.ts<br/>HITL 状态机"]
+        Confirm["hitl.ts<br/>HITL 状态机"]
     end
 
     subgraph Plugins["📦 插件层"]
@@ -241,6 +241,7 @@ sequenceDiagram
 3. **HITL 是可选能力** — 框架提供 `confirm-state`，插件按需 import
 4. **前端零改动** — 新增插件或切换运行模式都不需要修改前端代码
 5. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
+6. **MLflow Tracing** — 纯 fetch() REST API，双环境兼容，Strategy 模式自动切换
 
 ## 目录职责
 
@@ -316,9 +317,9 @@ npm run cli -- --plugin=xxx  # 指定插件
 
 **运行模式**:
 
-| 命令 | 模式 | `__AGENT_MODE__` | 说明 |
-|------|------|------------------|------|
-| `npm run dev` | local | `"local"` | Vite 独立运行，Agent 直接在浏览器中执行 |
+| 命令 | 模式 | `import.meta.env.MODE` | 说明 |
+|------|------|------------------------|------|
+| `npm run dev` | local | `"development"` | Vite 独立运行，Agent 直接在浏览器中执行 |
 | `npm run dev:all` | server | `"server"` | Express + Vite，Vite 代理 `/api` → `:3000` |
 | `npm run dev:server` | 仅后端 | — | 只启动 Express，无前端 |
 

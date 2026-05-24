@@ -17,7 +17,7 @@ agent/
 ├── hitl.ts             # HitlManager 类 + withConfirm 包装器
 ├── local-utils.ts      # 浏览器端 compact/extract-memories 辅助函数
 ├── memory-prompt.ts    # 记忆格式化注入 system prompt
-├── mlflow-tracer.ts    # MLflow 追踪 (仅 Node.js 服务端)
+├── mlflow-tracer.ts    # MLflow 追踪 (Strategy 模式，双环境兼容)
 └── types.ts            # 框架级类型
 ```
 
@@ -141,8 +141,10 @@ stateDiagram-v2
 
 ### mlflow-tracer.ts
 
-- `PiAgentTracer` — MLflow tracing 集成（仅 Node.js 服务端使用）
-- 浏览器 local 模式不实例化 tracer，`agent-factory` 通过 `import type` 引用（编译时擦除）
+- **Strategy 模式**: `ITracer` 接口 + `FetchTracer` (REST API) + `NoopTracer` (空操作)
+- `createTracer(opts)` 工厂 — 有 `MLFLOW_TRACKING_URI` 时创建 FetchTracer，否则 NoopTracer
+- 纯 `fetch()` 实现，零 SDK 依赖，Node.js 和浏览器双环境兼容
+- `agent-factory` 通过 `import type { ITracer }` 引用接口（编译时擦除）
 
 ### hitl.ts
 

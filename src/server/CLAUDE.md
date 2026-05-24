@@ -64,7 +64,7 @@ sequenceDiagram
 
 ### MLflow Tracing
 
-仅 server 模式启用。`PiAgentTracer` 包装整个 `runAgent()` 调用，通过 `tracer.handleEvent()` 钩子接收 agent 事件。local 模式不实例化 tracer。
+通过 `createTracer()` 工厂创建 ITracer 实例（Strategy 模式）。local 和 server 模式均支持，由 `MLFLOW_TRACKING_URI` 环境变量控制启用。`tracer.run()` 包装 `runAgent()` 调用，`tracer.handleEvent()` 收集事件。
 
 ### 记忆压缩/提取端点
 
@@ -74,7 +74,7 @@ sequenceDiagram
 
 - [agent/agent-factory.ts](../agent/CLAUDE.md) — runAgent
 - [agent/hitl.ts](../agent/CLAUDE.md) — HitlManager
-- [agent/mlflow-tracer.ts](../agent/CLAUDE.md) — PiAgentTracer
+- [agent/mlflow-tracer.ts](../agent/CLAUDE.md) — ITracer / createTracer
 - [plugins/registry.ts](../plugins/CLAUDE.md) — 插件注册表
 
 ## 约束
