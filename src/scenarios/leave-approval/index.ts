@@ -10,6 +10,7 @@
  * 注册到 registry 后即可被 Agent 框架加载。
  */
 import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
 import { allLeaveTools } from './tools.js';
 import { leaveFields } from './fields.js';
 import { leavePrompt } from './prompt.js';
@@ -30,9 +31,8 @@ export const leaveScenario: Scenario = {
     '家人住院需要照顾',
     '身体不适在家办公',
   ],
-  confirmTools: ['leave_approval_submit', 'leave_approval_start'],
-  confirmLabels: {
-    leave_approval_submit: '📋 确认提交表单',
-    leave_approval_start: '🚀 确认发起审批流程',
-  },
+  confirmTools: [
+    { name: 'leave_approval_submit', label: '📋 确认提交表单' },
+    { name: 'leave_approval_start', label: '🚀 确认发起审批流程' },
+  ] as ConfirmToolConfig[],
 };

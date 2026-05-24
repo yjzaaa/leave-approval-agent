@@ -8,7 +8,7 @@ import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { validateSickLeaveForm } from './validator.js';
 import { submitSickLeave, startSickLeaveProcess } from './api.js';
 
-export const getCurrentDateTool: AgentTool<any> = {
+export const getCurrentDateTool: AgentTool = {
   name: 'get_current_date',
   label: '获取当前日期',
   description: '获取当前日期和时间。处理请求前必须调用。',
@@ -22,7 +22,7 @@ export const getCurrentDateTool: AgentTool<any> = {
   },
 };
 
-export const validateFormTool: AgentTool<any> = {
+export const validateFormTool: AgentTool = {
   name: 'sick_leave_validate',
   label: '校验病假表单',
   description: '校验病假申请表，返回 { valid, errors[] }。',
@@ -38,13 +38,13 @@ export const validateFormTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { form } = params as { form: any };
+    const { form } = params as { form: Record<string, string> };
     const result = validateSickLeaveForm(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
 };
 
-export const submitFormTool: AgentTool<any> = {
+export const submitFormTool: AgentTool = {
   name: 'sick_leave_submit',
   label: '提交病假申请',
   description: '提交病假申请，需要用户确认。',
@@ -57,13 +57,13 @@ export const submitFormTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { form } = params as { form: any };
+    const { form } = params as { form: Record<string, string> };
     const result = await submitSickLeave(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
 };
 
-export const startProcessTool: AgentTool<any> = {
+export const startProcessTool: AgentTool = {
   name: 'sick_leave_start',
   label: '发起病假审批',
   description: '发起病假审批流程。',
@@ -77,7 +77,7 @@ export const startProcessTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { resultId, form } = params as { resultId: string; form: any };
+    const { resultId, form } = params as { resultId: string; form: Record<string, string> };
     const result = await startSickLeaveProcess(resultId, form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },

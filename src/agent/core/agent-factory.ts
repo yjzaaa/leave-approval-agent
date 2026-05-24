@@ -8,6 +8,7 @@
  *   - 对话摘要作为 history 前缀
  */
 import { Agent } from '@earendil-works/pi-agent-core';
+import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
 import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import type { ChatMessage } from '../../domain/models/ChatMessage.js';
@@ -35,7 +36,7 @@ export interface AgentFactoryParams {
 
 /** 获取默认模型 */
 export function getDefaultModel() {
-  return getModel('deepseek', 'deepseek-v4-pro' as any);
+  return getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
 }
 
 /** 获取字段标签映射 */
@@ -62,8 +63,9 @@ function buildSystemPrompt(scenario: Scenario, memories?: MemoryItem[]): string 
 }
 
 /** 构建初始消息列表 (摘要 + 历史) */
-function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
-  const messages: any[] = [];
+/** 构建初始消息列表 (摘要 + 历史) */
+function buildInitialMessages(history: ChatMessage[], summary?: string) {
+  const messages: unknown[] = [];
 
   // 如果有摘要，作为 assistant 消息注入到最前面
   if (summary) {
@@ -83,9 +85,9 @@ function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
       role: m.role as 'user' | 'assistant',
       content: typeof m.content === 'string'
         ? [{ type: 'text' as const, text: m.content }]
-        : m.content as any,
+        : m.content,
       timestamp: Date.now(),
-    } as any);
+    });
   }
 
   return messages;
@@ -126,7 +128,6 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
     scenario.tools,
     hitl,
     scenario.confirmTools || [],
-    scenario.confirmLabels,
   );
 
   // 立即注册 HitlManager（在 agent.prompt() 之前），消除 session 竞态
@@ -138,13 +139,14 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
       systemPrompt,
       tools,
       model,
-      messages: initialMessages,
+      // ChatMessage 是前端简化格式，框架会兼容处理
+      messages: initialMessages as AgentMessage[],
     },
     streamFn: streamSimple,
   });
 
   agent.subscribe(async (event, _signal) => {
-    tracer?.handleEvent(event as any);
+    tracer?.handleEvent(event);
 
     switch (event.type) {
       case 'tool_execution_end':

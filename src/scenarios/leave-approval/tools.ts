@@ -9,7 +9,7 @@ import { validateLeaveForm } from './validator.js';
 import { submitLeaveForm, startLeaveProcess } from './api.js';
 
 /** 获取当前日期 — 每次对话第一步 */
-export const getCurrentDateTool: AgentTool<any> = {
+export const getCurrentDateTool: AgentTool = {
   name: 'get_current_date',
   label: '获取当前日期',
   description: '获取当前日期和时间。处理请求前必须调用。',
@@ -24,7 +24,7 @@ export const getCurrentDateTool: AgentTool<any> = {
 };
 
 /** 校验远程办公表单 */
-export const validateFormTool: AgentTool<any> = {
+export const validateFormTool: AgentTool = {
   name: 'leave_approval_validate',
   label: '校验表单',
   description: '校验远程办公申请表，返回 { valid, errors[] }。',
@@ -38,14 +38,14 @@ export const validateFormTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { form } = params as { form: any };
+    const { form } = params as { form: Record<string, string> };
     const result = validateLeaveForm(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
 };
 
 /** 提交表单 — 需要用户确认 (HITL) */
-export const submitFormTool: AgentTool<any> = {
+export const submitFormTool: AgentTool = {
   name: 'leave_approval_submit',
   label: '提交表单',
   description: '提交远程办公申请表单，需要用户确认。',
@@ -58,14 +58,14 @@ export const submitFormTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { form } = params as { form: any };
+    const { form } = params as { form: Record<string, string> };
     const result = await submitLeaveForm(form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },
 };
 
 /** 发起审批流程 */
-export const startProcessTool: AgentTool<any> = {
+export const startProcessTool: AgentTool = {
   name: 'leave_approval_start',
   label: '发起流程',
   description: '发起远程办公审批流程，需要 resultId。',
@@ -79,7 +79,7 @@ export const startProcessTool: AgentTool<any> = {
     }),
   }),
   execute: async (_id, params) => {
-    const { resultId, form } = params as { resultId: string; form: any };
+    const { resultId, form } = params as { resultId: string; form: Record<string, string> };
     const result = await startLeaveProcess(resultId, form);
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: result };
   },

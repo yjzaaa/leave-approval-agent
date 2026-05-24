@@ -19,12 +19,16 @@ function banner(displayName: string): void {
   console.log('');
 }
 
-function extractText(messages: any[]): string {
+function extractText(messages: Array<{ role: string; content?: string | Array<{ type: string; text?: string }> }>): string {
   const parts: string[] = [];
   for (const msg of messages) {
     if (msg.role === 'assistant' && msg.content) {
-      for (const block of msg.content) {
-        if (block.type === 'text') parts.push(block.text);
+      if (typeof msg.content === 'string') {
+        parts.push(msg.content);
+      } else {
+        for (const block of msg.content) {
+          if (block.type === 'text' && block.text) parts.push(block.text);
+        }
       }
     }
   }
@@ -43,8 +47,8 @@ async function main(): Promise<void> {
   try {
     model = getDefaultModel();
     console.log(`🤖 模型: ${model.name} | Provider: ${model.provider}`);
-  } catch (err: any) {
-    console.error(`❌ 模型加载失败: ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`❌ 模型加载失败: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
 
@@ -91,8 +95,8 @@ async function main(): Promise<void> {
         console.log('\n🤖');
         await agent.prompt(userInput);
         await agent.waitForIdle();
-      } catch (err: any) {
-        console.error(`\n❌ 错误: ${err.message ?? err}`);
+      } catch (err: unknown) {
+        console.error(`\n❌ 错误: ${err instanceof Error ? err.message : String(err)}`);
       }
       console.log('\n' + '─'.repeat(50) + '\n');
     }

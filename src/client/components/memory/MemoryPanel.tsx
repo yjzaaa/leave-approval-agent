@@ -33,7 +33,7 @@ function MemoryCard({ item, index, type, scenarioId, onRemove }: {
     <div className="rounded-lg border border-border p-3" style={{ borderLeftColor: config.color, borderLeftWidth: 3 }}>
       <div className="flex items-center justify-between mb-1">
         <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
-          {config.icon} {t(config.labelKey as any)}
+          {config.icon} {t(config.labelKey as string, { defaultValue: config.labelKey })}
         </span>
         <span className="text-xs text-muted-foreground">{timeStr}</span>
       </div>

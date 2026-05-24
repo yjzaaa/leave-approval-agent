@@ -2,6 +2,7 @@
  * 报销审批 — 场景入口
  */
 import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
 import { allExpenseTools } from './tools.js';
 import { expenseFields } from './fields.js';
 import { expensePrompt } from './prompt.js';
@@ -22,9 +23,8 @@ export const expenseScenario: Scenario = {
     '办公用品报销申请',
     '客户招待费用报销',
   ],
-  confirmTools: ['expense_approval_submit', 'expense_approval_start'],
-  confirmLabels: {
-    expense_approval_submit: '📋 确认报销信息',
-    expense_approval_start: '🚀 确认发起报销审批',
-  },
+  confirmTools: [
+    { name: 'expense_approval_submit', label: '📋 确认报销信息' },
+    { name: 'expense_approval_start', label: '🚀 确认发起报销审批' },
+  ] as ConfirmToolConfig[],
 };

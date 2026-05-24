@@ -5,6 +5,7 @@
  * 适合排班查询、换班申请等场景。
  */
 import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
 import { allOncallTools } from './tools.js';
 
 const systemPrompt = `你是公司值班排班管理助手。你的职责是：
@@ -28,10 +29,9 @@ export const oncallScenario: Scenario = {
   displayName: '值班排班',
   systemPrompt,
   tools: allOncallTools,
-  confirmTools: ['oncall_swap'],    // ★ 只有换班需要确认 — 单步 HITL
-  confirmLabels: {
-    oncall_swap: '🔄 确认换班申请',
-  },
+  confirmTools: [
+    { name: 'oncall_swap', label: '🔄 确认换班申请' },
+  ] as ConfirmToolConfig[],
   suggestions: [
     '查询这周的值班安排',
     '我想换下周三的班',

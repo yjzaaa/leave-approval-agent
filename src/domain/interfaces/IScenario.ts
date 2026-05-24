@@ -9,6 +9,7 @@ import type { FieldMeta } from '../models/FieldMeta.js';
 import type { ValidationResult } from '../models/ValidationResult.js';
 import type { PipelineStep } from '../models/PipelineStep.js';
 import type { SubmitResult, StartProcessResult } from '../dto/ApiResponses.js';
+import type { ConfirmToolConfig } from './ConfirmToolConfig.js';
 
 /**
  * 业务场景
@@ -34,7 +35,7 @@ export interface Scenario {
   systemPrompt: string;
 
   /** Agent Tools 列表 */
-  tools: AgentTool<any>[];
+  tools: AgentTool[];
 
   /** 表单校验函数 */
   validate?(form: Record<string, string>): ValidationResult;
@@ -45,11 +46,8 @@ export interface Scenario {
   /** 发起流程的 API */
   startProcessApi?: (resultId: string, form: Record<string, string>) => Promise<StartProcessResult>;
 
-  /** 确认阶段的文案 */
-  confirmLabels?: Record<string, string>;
-
-  /** HITL: 需要用户确认的 tool 名称列表。空数组 = 全自动无确认。 */
-  confirmTools?: string[];
+  /** HITL: 需要用户确认的 tool 列表。每项包含 tool 名称和确认弹窗标题。空数组 = 全自动无确认。 */
+  confirmTools?: ConfirmToolConfig[];
 
   /** 流水线阶段定义（可选，使用默认则从 fields 推导） */
   pipeline?: PipelineStep[];

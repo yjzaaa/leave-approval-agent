@@ -2,6 +2,7 @@
  * 病假申请 — 场景入口
  */
 import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
 import { allSickLeaveTools } from './tools.js';
 import { sickLeaveFields } from './fields.js';
 import { sickLeavePrompt } from './prompt.js';
@@ -22,9 +23,8 @@ export const sickLeaveScenario: Scenario = {
     '身体不适请 3 天病假',
     '急性肠胃炎需要休息',
   ],
-  confirmTools: ['sick_leave_submit', 'sick_leave_start'],
-  confirmLabels: {
-    sick_leave_submit: '📋 确认病假信息',
-    sick_leave_start: '🚀 确认发起病假审批',
-  },
+  confirmTools: [
+    { name: 'sick_leave_submit', label: '📋 确认病假信息' },
+    { name: 'sick_leave_start', label: '🚀 确认发起病假审批' },
+  ] as ConfirmToolConfig[],
 };

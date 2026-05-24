@@ -66,7 +66,7 @@ export const StatusBar: React.FC<Props> = ({ phase, text }) => {
                   )}
                   aria-hidden="true"
                 />
-                {t(PHASE_TO_LABEL_KEY[key] as any)}
+                {t(PHASE_TO_LABEL_KEY[key] as string, { defaultValue: PHASE_TO_LABEL_KEY[key] })}
               </span>
             </React.Fragment>
           );

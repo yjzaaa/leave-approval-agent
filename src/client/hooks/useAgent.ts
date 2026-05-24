@@ -91,7 +91,7 @@ export function useAgent(options?: UseAgentOptions) {
   const summaryRef = useRef<string>(summary || '');
   const messageCountRef = useRef(0);
   // local 模式的 HITL 管理器引用（server 模式通过 /api/confirm 间接操作）
-  const hitlRef = useRef<any>(null);
+  const hitlRef = useRef<{ approve: () => boolean; reject: () => boolean } | null>(null);
 
   // 同步外部变化
   scenarioIdRef.current = scenarioId || 'leave_approval';
@@ -287,16 +287,17 @@ export function useAgent(options?: UseAgentOptions) {
         });
         // runAgent 返回时流程已结束，保持 hitl 引用供下次使用
         void hitl;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // 用户拒绝 HITL 也会抛错，这是正常流程，不显示错误
-        if (err.message?.includes('用户拒绝')) {
+        if (err instanceof Error && err.message?.includes('用户拒绝')) {
           setPhase('done');
           setPhaseText(t('agent.done'));
         } else {
-          setError(err.message || String(err));
+          const errMsg = err instanceof Error ? err.message : String(err);
+          setError(errMsg);
           setPhase('error');
           setPhaseText(t('agent.connectionFailed'));
-          updateLastAssistant(t('agent.errorPrefix') + (err.message || String(err)));
+          updateLastAssistant(t('agent.errorPrefix') + errMsg);
         }
       } finally {
         setIsStreaming(false);
@@ -399,8 +400,8 @@ export function useAgent(options?: UseAgentOptions) {
           } catch { /* 跳过解析失败 */ }
         }
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
         setError(err.message);
         setPhase('error');
         setPhaseText(t('agent.connectionFailed'));

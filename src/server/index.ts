@@ -23,6 +23,7 @@ import { createTracer } from '../agent/tracing/mlflow-tracer.js';
 import type { HitlManager } from '../agent/hitl/hitl.js';
 import { getScenario, getDefaultScenario, registry } from '../scenarios/registry.js';
 import type { ChatMessage } from '../domain/models/ChatMessage.js';
+import type { MemoryItem } from '../domain/models/MemoryItem.js';
 import type { CompactResponse, ExtractMemoriesResponse, ConfirmResponse, ApiErrorResponse } from '../domain/dto/ApiResponses.js';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
@@ -61,7 +62,7 @@ app.post('/api/compact', express.json(), async (req, res) => {
 
     // 构建压缩 prompt
     const messagesText = messages
-      .map((m: any) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
+      .map((m: { role: string; content: unknown }) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
       .join('\n');
 
     const compactPrompt = `请将以下对话历史压缩为一段简洁的摘要，保留关键信息（用户身份、操作、结果、偏好）。用中文回复，不超过 300 字。
@@ -70,7 +71,7 @@ app.post('/api/compact', express.json(), async (req, res) => {
 ${messagesText}`;
 
     // 直接调用模型生成摘要（不走 Agent）
-        const model = getModel('deepseek', 'deepseek-v4-pro' as any);
+        const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
         
     let summary = '';
     const agent = new Agent({
@@ -83,7 +84,7 @@ ${messagesText}`;
       streamFn: streamSimple,
     });
 
-    agent.subscribe((event: any) => {
+    agent.subscribe((event) => {
       if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
         summary += event.assistantMessageEvent.delta;
       }
@@ -94,8 +95,8 @@ ${messagesText}`;
 
     const result: CompactResponse = { summary: summary.trim() };
     res.json(result);
-  } catch (err: any) {
-    const errorResp: ApiErrorResponse = { error: err.message };
+  } catch (err: unknown) {
+    const errorResp: ApiErrorResponse = { error: err instanceof Error ? err.message : String(err) };
     res.status(500).json(errorResp);
   }
 });
@@ -106,7 +107,7 @@ app.post('/api/extract-memories', express.json(), async (req, res) => {
     const { messages, scenario: scenarioId } = req.body;
 
     const messagesText = messages
-      .map((m: any) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
+      .map((m: { role: string; content: unknown }) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
       .join('\n');
 
     const extractPrompt = `分析以下对话，提取用户记忆。返回 JSON 格式，严格按照以下结构:
@@ -126,7 +127,7 @@ app.post('/api/extract-memories', express.json(), async (req, res) => {
 对话记录:
 ${messagesText}`;
 
-            const model = getModel('deepseek', 'deepseek-v4-pro' as any);
+            const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
     
     let result = '';
     const agent = new Agent({
@@ -139,7 +140,7 @@ ${messagesText}`;
       streamFn: streamSimple,
     });
 
-    agent.subscribe((event: any) => {
+    agent.subscribe((event) => {
       if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
         result += event.assistantMessageEvent.delta;
       }
@@ -157,21 +158,23 @@ ${messagesText}`;
       const empty: ExtractMemoriesResponse = { user: [], feedback: [], project: [], reference: [] };
       res.json(empty);
     }
-  } catch (err: any) {
-    const errorResp: ApiErrorResponse = { error: err.message };
+  } catch (err: unknown) {
+    const errorResp: ApiErrorResponse = { error: err instanceof Error ? err.message : String(err) };
     res.status(500).json(errorResp);
   }
 });
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { message, history, scenario: scenarioId, memories, summary } = req.body as {
+  const { message, history, scenario: scenarioId, memories, summary, sessionId, userId } = req.body as {
     message?: string;
     history?: ChatMessage[];
     scenario?: string;
-    memories?: any[];
+    memories?: MemoryItem[];
     summary?: string;
+    sessionId?: string;
+    userId?: string;
   };
 
-  const sessionId = (req.body as any).sessionId || 'default';
+  const resolvedSessionId = sessionId || 'default';
 
   if (!message) {
     const badReq: ApiErrorResponse = { error: 'message required' };
@@ -192,8 +195,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   try {
     const tracer = createTracer({
       scenario: scenario.id,
-      userId: (req.body as any).userId,
-      sessionId,
+      userId,
+      sessionId: resolvedSessionId,
       message,
     });
 
@@ -206,11 +209,11 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         summary,
         onSSE: (event, data) => sendSSE(res, event, data),
         tracer,
-        onHitlCreated: (hitl) => { hitlSessions.set(sessionId, hitl); },
+        onHitlCreated: (hitl) => { hitlSessions.set(resolvedSessionId, hitl); },
       });
     });
-  } catch (err: any) {
-    sendSSE(res, 'error', { message: err.message || String(err) });
+  } catch (err: unknown) {
+    sendSSE(res, 'error', { message: err instanceof Error ? err.message : String(err) });
   } finally {
     res.end();
   }

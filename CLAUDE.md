@@ -44,7 +44,8 @@
 - 字体: Crimson Pro + Noto Serif SC + IBM Plex Mono + Noto Sans SC
 - 主题: 墨韵 (warm paper + ink-dark + vermillion accent)，dark/light/system
 - 依赖注入: 通过 `Scenario` 接口，禁止直接 import 具体业务
-- **禁止裸 JSON 返回值** — tool / API / 函数返回结构化数据时，必须使用 `interface` 或 `type` 约束，禁止直接返回 `{ success: true, processId, message: '...' }` 等未类型化的对象字面量。所有返回结构必须在 `domain/` 或 `shared/` 中定义对应类型
+- **禁止裸 JSON 返回值** — tool / API / 函数返回结构化数据时，必须使用 `interface` 或 `type` 约束，禁止直接返回 `{ success: true, processId, message: '...' }` 等未类型化的对象字面量。所有返回结构必须在 `domain/` 中定义对应类型
+- **禁止使用 `any`** — 禁止在类型注解、函数参数、返回值、泛型参数中使用 `any`。必须使用具体类型、泛型或 `unknown`
 - **CLAUDE.md 文档规范** — 每个 CLAUDE.md 必须包含以下四项:
   1. **目录结构** — 当前层的文件树 (`tree` 代码块)
   2. **架构图** — 模块关系或组件结构 (`mermaid graph`)

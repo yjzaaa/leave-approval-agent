@@ -18,7 +18,7 @@ export async function compactHistoryLocal(messages: Array<{ role: string; conten
 对话记录:
 ${messagesText}`;
 
-  const model = getModel('deepseek', 'deepseek-v4-pro' as any);
+  const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
 
   let summary = '';
   const agent = new Agent({
@@ -31,7 +31,7 @@ ${messagesText}`;
     streamFn: streamSimple,
   });
 
-  agent.subscribe((event: any) => {
+  agent.subscribe((event) => {
     if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
       summary += event.assistantMessageEvent.delta;
     }
@@ -71,7 +71,7 @@ export async function extractMemoriesLocal(messages: Array<{ role: string; conte
 对话记录:
 ${messagesText}`;
 
-  const model = getModel('deepseek', 'deepseek-v4-pro' as any);
+  const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
 
   let result = '';
   const agent = new Agent({
@@ -84,7 +84,7 @@ ${messagesText}`;
     streamFn: streamSimple,
   });
 
-  agent.subscribe((event: any) => {
+  agent.subscribe((event) => {
     if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
       result += event.assistantMessageEvent.delta;
     }

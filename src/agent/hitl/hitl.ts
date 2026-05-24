@@ -13,6 +13,7 @@
  *   4. 服务端通过 hitl.approve() / hitl.reject() 响应用户操作
  */
 import type { AgentTool } from '@earendil-works/pi-agent-core';
+import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
 
 /** HITL 事件 */
 export type HitlEvent =
@@ -131,7 +132,7 @@ export class HitlManager {
  * @param hitl HitlManager 实例
  * @param options.label 确认弹窗标题
  */
-export function withConfirm<T extends AgentTool<any>>(
+export function withConfirm<T extends AgentTool>(
   tool: T,
   hitl: HitlManager,
   options?: { label?: string },
@@ -153,15 +154,14 @@ export function withConfirm<T extends AgentTool<any>>(
  * 遍历 plugin 的 tools，对 confirmTools 中声明的 tool 注入 HITL
  */
 export function wrapHitlTools(
-  tools: AgentTool<any>[],
+  tools: AgentTool[],
   hitl: HitlManager,
-  confirmTools: string[],
-  confirmLabels?: Record<string, string>,
-): AgentTool<any>[] {
-  const set = new Set(confirmTools);
+  confirmTools: ConfirmToolConfig[],
+): AgentTool[] {
+  const map = new Map(confirmTools.map(c => [c.name, c.label]));
   return tools.map(tool => {
-    if (set.has(tool.name)) {
-      return withConfirm(tool, hitl, { label: confirmLabels?.[tool.name] });
+    if (map.has(tool.name)) {
+      return withConfirm(tool, hitl, { label: map.get(tool.name) });
     }
     return tool;
   });

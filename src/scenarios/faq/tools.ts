@@ -20,7 +20,7 @@ const KNOWLEDGE_BASE: Record<string, string> = {
 };
 
 /** 检索知识库 Tool */
-export const searchKnowledgeBaseTool: AgentTool<any> = {
+export const searchKnowledgeBaseTool: AgentTool = {
   name: 'search_knowledge_base',
   label: '检索知识库',
   description: '检索公司内部知识库，查找政策、流程、制度相关信息。输入关键词返回匹配结果。',

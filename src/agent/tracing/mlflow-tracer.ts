@@ -47,7 +47,7 @@ function hexToBase64(hex: string, expectedBytes: number): string {
 }
 
 /** JSON.stringify BigInt replacer — 将 BigInt 转为字符串 */
-function bigIntReplacer(_key: string, value: any): any {
+function bigIntReplacer(_key: string, value: unknown): unknown {
   if (typeof value === 'bigint') return value.toString();
   return value;
 }
@@ -94,7 +94,7 @@ export interface ITracer {
   /** 执行完整 trace 生命周期，返回 fn 的结果 */
   run<T>(fn: () => Promise<T>): Promise<T>;
   /** 接收 agent 事件 */
-  handleEvent(event: any): void;
+  handleEvent(event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void;
   /** 标记 HITL 触发 */
   markHitl(toolName: string): void;
 }
@@ -103,7 +103,7 @@ export interface ITracer {
 
 class NoopTracer implements ITracer {
   async run<T>(fn: () => Promise<T>): Promise<T> { return fn(); }
-  handleEvent(_event: any): void { /* no-op */ }
+  handleEvent(_event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void { /* no-op */ }
   markHitl(_toolName: string): void { /* no-op */ }
 }
 
@@ -182,63 +182,65 @@ class FetchTracer implements ITracer {
   }
 
   /** 接收 agent 事件 */
-  handleEvent(event: any): void {
+  handleEvent(event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void {
     try {
       switch (event.type) {
         case 'tool_execution_start': {
-          this.toolTimings.set(event.toolName, Date.now());
+          const toolName = event.toolName ?? '';
+          this.toolTimings.set(toolName, Date.now());
 
           const toolSpan: SpanData = {
             trace_id: hexToBase64(this.traceId.slice(3), 16),
             span_id: hexToBase64(generateHexId(8), 8),
             parent_span_id: hexToBase64(this.rootSpanId, 8),
-            name: `tool:${event.toolName}`,
+            name: `tool:${toolName}`,
             start_time_unix_nano: String(BigInt(Date.now()) * 1_000_000n),
             status: { code: 'STATUS_CODE_UNSET', message: '' },
             attributes: {
               'mlflow.traceRequestId': this.traceId,
               'mlflow.spanType': 'TOOL',
-              'mlflow.spanInputs': JSON.stringify((event as any).args ?? {}),
+              'mlflow.spanInputs': JSON.stringify(event.args ?? {}),
               'mlflow.experimentId': EXPERIMENT_ID,
-              'tool.name': event.toolName,
+              'tool.name': toolName,
             },
             events: [],
           };
-          this.toolSpans.set(event.toolName, toolSpan);
+          this.toolSpans.set(toolName, toolSpan);
           this.spans.push(toolSpan);
           break;
         }
 
         case 'tool_execution_end': {
-          const span = this.toolSpans.get(event.toolName);
-          const startMs = this.toolTimings.get(event.toolName) ?? 0;
+          const toolName = event.toolName ?? '';
+          const span = this.toolSpans.get(toolName);
+          const startMs = this.toolTimings.get(toolName) ?? 0;
           const endMs = Date.now();
           const duration = startMs ? endMs - startMs : 0;
 
           if (span) {
             span.end_time_unix_nano = String(BigInt(endMs) * 1_000_000n);
             span.status = event.isError
-              ? { code: 'STATUS_CODE_ERROR', message: event.errorMessage || '' }
+              ? { code: 'STATUS_CODE_ERROR', message: event.errorMessage ?? '' }
               : { code: 'STATUS_CODE_OK', message: '' };
             span.attributes['tool.duration_ms'] = duration;
-            span.attributes['mlflow.spanOutputs'] = JSON.stringify((event as any).result ?? {});
-            this.toolSpans.delete(event.toolName);
+            span.attributes['mlflow.spanOutputs'] = JSON.stringify(event.result ?? {});
+            this.toolSpans.delete(toolName);
           }
 
-          this.tools.push({ name: event.toolName, ms: duration, error: !!event.isError });
-          this.toolTimings.delete(event.toolName);
+          this.tools.push({ name: toolName, ms: duration, error: !!event.isError });
+          this.toolTimings.delete(toolName);
           break;
         }
 
         case 'message_update': {
           if (event.assistantMessageEvent?.type === 'text_delta') {
-            this.responseText += event.assistantMessageEvent.delta;
+            this.responseText += event.assistantMessageEvent.delta ?? '';
           }
           break;
         }
       }
     } catch (e) {
-      console.warn('[MLflow] handleEvent error:', (e as Error).message);
+      console.warn('[MLflow] handleEvent error:', e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -297,7 +299,7 @@ class FetchTracer implements ITracer {
             },
             request_preview: this.opts.message.slice(0, 100),
             response_preview: this.responseText.slice(0, 100),
-            client_request_id: this.opts.sessionId || undefined as any,
+            client_request_id: this.opts.sessionId || undefined,
             tags,
             assessments: [],
           },
@@ -319,7 +321,7 @@ class FetchTracer implements ITracer {
         return;
       }
 
-      const created = (await res1.json()) as any;
+      const created = (await res1.json()) as { trace?: { trace_info?: { tags?: Record<string, string> } } };
       const artifactUri: string | undefined =
         created?.trace?.trace_info?.tags?.['mlflow.artifactLocation'];
 

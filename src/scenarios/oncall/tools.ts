@@ -8,7 +8,7 @@ import type { AgentTool } from '@earendil-works/pi-agent-core';
 import { querySchedule, submitSwapRequest } from './api.js';
 
 /** 获取当前日期 */
-export const getCurrentDateTool: AgentTool<any> = {
+export const getCurrentDateTool: AgentTool = {
   name: 'get_current_date',
   label: '获取当前日期',
   description: '获取当前日期和时间。',
@@ -23,7 +23,7 @@ export const getCurrentDateTool: AgentTool<any> = {
 };
 
 /** 查询排班 — 无需 HITL */
-export const queryScheduleTool: AgentTool<any> = {
+export const queryScheduleTool: AgentTool = {
   name: 'oncall_query',
   label: '查询排班',
   description: '查询指定日期的值班排班信息。返回值班人员、部门、班次。',
@@ -42,7 +42,7 @@ export const queryScheduleTool: AgentTool<any> = {
 };
 
 /** 换班申请 — 单步 HITL (只有提交时确认) */
-export const submitSwapTool: AgentTool<any> = {
+export const submitSwapTool: AgentTool = {
   name: 'oncall_swap',
   label: '换班申请',
   description: '提交换班申请，需要用户确认。',
