@@ -14,6 +14,7 @@ import type { ChatMessage } from '../shared/types.js';
 import type { MemoryItem } from '../shared/memory.js';
 import { getPending } from './confirm-state.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from './memory-prompt.js';
+import { traceSpan } from './mlflow-tracer.js';
 
 export type SSECallback = (event: string, data: Record<string, unknown>) => void;
 
@@ -123,6 +124,10 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
   agent.subscribe(async (event, _signal) => {
     switch (event.type) {
       case 'tool_execution_start': {
+        traceSpan(`tool:${event.toolName}`, {
+          'tool.name': event.toolName,
+          'tool.confirm': isConfirmTool(event.toolName, plugin),
+        }, async () => {}).catch(() => {});
         if (isConfirmTool(event.toolName, plugin)) {
           const tevent = event as any;
           const form = tevent.args?.form || {};
@@ -142,6 +147,9 @@ export async function runAgent(params: AgentFactoryParams): Promise<void> {
         break;
       }
       case 'tool_execution_end':
+        traceSpan(`tool:${event.toolName}`, {
+          'tool.error': event.isError ?? false,
+        }, async () => {}).catch(() => {});
         onSSE('tool_result', { tool: event.toolName, error: event.isError });
         break;
       case 'message_update': {

@@ -19,6 +19,7 @@ import type { Request, Response } from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAgent, getDefaultModel } from '../agent/agent-factory.js';
+import { traceChatRequest } from '../agent/mlflow-tracer.js';
 import { approveConfirm, rejectConfirm } from '../agent/confirm-state.js';
 import { getPlugin, getDefaultPlugin, registry } from '../plugins/registry.js';
 import type { ChatMessage } from '../shared/types.js';
@@ -176,7 +177,10 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   });
 
   try {
-    await runAgent({
+    await traceChatRequest(
+      { plugin: plugin.id, message },
+      async () => {
+        await runAgent({
       plugin,
       message,
       history,
@@ -184,6 +188,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       summary,
       onSSE: (event, data) => sendSSE(res, event, data),
     });
+      },
+    );
   } catch (err: any) {
     sendSSE(res, 'error', { message: err.message || String(err) });
   } finally {
