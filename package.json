@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:server": "tsx --env-file=.env src/server/index.ts",
     "dev:mlflow": "mlflow server --host 0.0.0.0 --port 5000",
-    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "dev:all": "concurrently \"npm run dev:server\" \"vite --mode server\"",
     "build": "vite build",
     "cli": "tsx src/server/cli.ts",
     "test": "vitest run",

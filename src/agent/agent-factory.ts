@@ -29,6 +29,8 @@ export interface AgentFactoryParams {
   summary?: string;
   /** MLflow tracer（可选，启用时自动收集） */
   tracer?: PiAgentTracer;
+  /** HITL 管理器创建回调 — 在 agent.prompt() 之前触发，用于注册到会话映射 */
+  onHitlCreated?: (hitl: HitlManager) => void;
 }
 
 /** 获取默认模型 */
@@ -91,7 +93,7 @@ function buildInitialMessages(history: ChatMessage[], summary?: string): any[] {
 
 /** 创建并运行 Agent */
 export async function runAgent(params: AgentFactoryParams): Promise<HitlManager> {
-  const { plugin, message, history, onSSE, memories, summary, tracer } = params;
+  const { plugin, message, history, onSSE, memories, summary, tracer, onHitlCreated } = params;
 
   const systemPrompt = buildSystemPrompt(plugin, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
@@ -126,6 +128,9 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
     plugin.confirmTools || [],
     plugin.confirmLabels,
   );
+
+  // 立即注册 HitlManager（在 agent.prompt() 之前），消除 session 竞态
+  onHitlCreated?.(hitl);
 
   const model = getDefaultModel();
   const agent = new Agent({

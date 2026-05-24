@@ -190,7 +190,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     });
 
     await tracer.run(async () => {
-      const hitl = await runAgent({
+      await runAgent({
         plugin,
         message,
         history,
@@ -198,8 +198,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         summary,
         onSSE: (event, data) => sendSSE(res, event, data),
         tracer,
+        onHitlCreated: (hitl) => { hitlSessions.set(sessionId, hitl); },
       });
-      hitlSessions.set(sessionId, hitl);
     });
   } catch (err: any) {
     sendSSE(res, 'error', { message: err.message || String(err) });

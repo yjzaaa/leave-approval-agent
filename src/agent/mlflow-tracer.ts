@@ -2,8 +2,9 @@
  * MLflow Tracing 集成 — Pi Agent Instrumentation
  *
  * 单一类封装全部 tracing 逻辑，通过 handleEvent() 钩子接收 agent 事件。
- * withSpan 创建根 span + updateCurrentTrace 写 metadata + startSpan 创建嵌套 tool span。
  * 无 MLFLOW_TRACKING_URI 时完全 no-op。
+ *
+ * 注意: 本模块仅在 Node.js 服务端使用，浏览器 local 模式不实例化 tracer。
  *
  * Trace 结构:
  *   CHAIN: chat:{plugin}           ← withSpan（根 span）
@@ -168,7 +169,7 @@ export class PiAgentTracer {
     const toolTimings = this.tools.map(t => `${t.name}:${t.ms}ms`).join(';') || 'none';
     const toolErrors = this.tools.filter(t => t.error).map(t => t.name).join(',') || 'none';
 
-    const updateOpts: Parameters<typeof updateCurrentTrace>[0] = {
+    updateCurrentTrace({
       tags,
       metadata: {
         'response.length': String(this.responseText.length),
@@ -182,12 +183,7 @@ export class PiAgentTracer {
       },
       requestPreview: this.opts.message.slice(0, 100),
       responsePreview: this.responseText.slice(0, 100),
-    };
-
-    if (this.opts.sessionId) {
-      updateOpts.clientRequestId = this.opts.sessionId;
-    }
-
-    updateCurrentTrace(updateOpts);
+      clientRequestId: this.opts.sessionId,
+    });
   }
 }

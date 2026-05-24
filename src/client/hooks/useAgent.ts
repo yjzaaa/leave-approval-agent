@@ -1,18 +1,28 @@
-﻿/**
- * useAgent — 聊天状态机 Hook v4.0
+/**
+ * useAgent — 聊天状态机 Hook v5.0
  *
  * 核心职责:
- *   1. SSE 流式对话管理
+ *   1. SSE 流式对话管理（server 模式）/ 直接 Agent 调用（local 模式）
  *   2. 确认流程 — 去重由 lastConfirmToolRef 实现
- *   3. 阶段追踪 — SSE 事件驱动
- *   4. 记忆注入 — 把用户记忆和对话摘要传给后端
- *   5. 压缩触发 — 消息数超阈值时调 /api/compact
+ *   3. 阶段追踪 — 事件驱动
+ *   4. 记忆注入 — 把用户记忆和对话摘要传给后端/Agent
+ *   5. 压缩触发 — 消息数超阈值时执行对话压缩
+ *
+ * 模式切换:
+ *   - 构建时由 Vite define 的 __AGENT_MODE__ 决定，无需前端代码改动
+ *   - local 模式: 直接调用 runAgent()，绕过 Express，无网络往返
+ *   - server 模式: 通过 fetch /api/chat SSE 与 Express 通信（向后兼容）
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Message, ConfirmRequest, AgentPhase, ChatHistory } from '../types';
 import type { MemoryItem } from '../../shared/memory';
 import { MEMORY_LIMITS } from '../../shared/memory';
 
+/** Vite 构建时注入的模式标记 */
+declare const __AGENT_MODE__: 'local' | 'server';
+
+/** Agent 模式 */
+const isLocal = typeof __AGENT_MODE__ !== 'undefined' ? __AGENT_MODE__ === 'local' : false;
 
 interface UseAgentOptions {
   pluginId?: string;
@@ -82,6 +92,8 @@ export function useAgent(options?: UseAgentOptions) {
   const memoriesRef = useRef<MemoryItem[]>(memories || []);
   const summaryRef = useRef<string>(summary || '');
   const messageCountRef = useRef(0);
+  // local 模式的 HITL 管理器引用（server 模式通过 /api/confirm 间接操作）
+  const hitlRef = useRef<any>(null);
 
   // 同步外部变化
   pluginIdRef.current = pluginId || 'leave_approval';
@@ -110,45 +122,64 @@ export function useAgent(options?: UseAgentOptions) {
     });
   }, []);
 
-  // ── 压缩对话历史 ──
+  // ── 压缩对话历史（server 模式: HTTP; local 模式: 进程内） ──
   const compactHistory = useCallback(async (oldMessages: Message[]) => {
     if (oldMessages.length < MEMORY_LIMITS.compactThreshold) return;
     try {
-      const res = await fetch('/api/compact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: oldMessages,
-          plugin: pluginIdRef.current,
-        }),
-      });
-      const data = await res.json();
-      if (data.summary && onSummaryUpdate) {
-        onSummaryUpdate(data.summary, oldMessages.length);
+      let result: string | null = null;
+
+      if (isLocal) {
+        const { compactHistoryLocal } = await import('../../agent/local-utils.js');
+        result = await compactHistoryLocal(
+          oldMessages.map(m => ({ role: m.role, content: m.content }))
+        );
+      } else {
+        const res = await fetch('/api/compact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: oldMessages.map(m => ({ role: m.role, content: m.content })),
+            plugin: pluginIdRef.current,
+          }),
+        });
+        const data = await res.json();
+        result = data.summary || null;
+      }
+
+      if (result && onSummaryUpdate) {
+        onSummaryUpdate(result, oldMessages.length);
       }
     } catch { /* 压缩失败不影响主流程 */ }
   }, [onSummaryUpdate]);
 
-  // ── 提取记忆 ──
+  // ── 提取记忆（server 模式: HTTP; local 模式: 进程内） ──
   const extractMemories = useCallback(async (recentMessages: Message[]) => {
     if (!onMemoriesExtracted) return;
     try {
-      const res = await fetch('/api/extract-memories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: recentMessages,
-          plugin: pluginIdRef.current,
-        }),
-      });
-      const data = await res.json();
-      if (data && onMemoriesExtracted) {
+      if (isLocal) {
+        const { extractMemoriesLocal } = await import('../../agent/local-utils.js');
+        const data = await extractMemoriesLocal(
+          recentMessages.map(m => ({ role: m.role, content: m.content }))
+        );
         onMemoriesExtracted(data);
+      } else {
+        const res = await fetch('/api/extract-memories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: recentMessages.map(m => ({ role: m.role, content: m.content })),
+            plugin: pluginIdRef.current,
+          }),
+        });
+        const data = await res.json();
+        if (data && onMemoriesExtracted) {
+          onMemoriesExtracted(data);
+        }
       }
     } catch { /* 提取失败不影响主流程 */ }
   }, [onMemoriesExtracted]);
 
-  // ── SSE 流处理 ──
+  // ── 流处理 ──
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
@@ -180,6 +211,92 @@ export function useAgent(options?: UseAgentOptions) {
     setPhase('processing');
     setPhaseText('Agent 正在处理...');
 
+    // ── Local 模式：直接调用 runAgent ──
+    if (isLocal) {
+      let fullText = '';
+
+      try {
+        const [{ runAgent }, { getPlugin }] = await Promise.all([
+          import('../../agent/agent-factory.js'),
+          import('../../plugins/registry.js'),
+        ]);
+
+        const plugin = getPlugin(pluginIdRef.current);
+
+        const hitl = await runAgent({
+          plugin,
+          message: text,
+          history,
+          memories: memoriesRef.current,
+          summary: summaryRef.current,
+          onSSE: (event, data) => {
+            switch (event) {
+              case 'text':
+                fullText += data.content as string;
+                updateLastAssistant(fullText);
+                break;
+
+              case 'confirm_required':
+                if (lastConfirmToolRef.current === data.tool) break;
+                setConfirmRequest({
+                  tool: data.tool as string,
+                  label: data.label as string,
+                  form: data.form as Record<string, string>,
+                  fieldLabels: data.fieldLabels as Record<string, string>,
+                });
+                setPhase('awaiting_confirm');
+                setPhaseText((data.label as string) || '请确认');
+                break;
+
+              case 'confirm_resolved':
+                setConfirmRequest(null);
+                setPhase('processing');
+                setPhaseText('Agent 正在处理...');
+                break;
+
+              case 'tool_result':
+                break;
+
+              case 'done':
+                setPhase('done');
+                setPhaseText('流程结束');
+                setConfirmRequest(null);
+                lastConfirmToolRef.current = null;
+                break;
+
+              case 'error':
+                updateLastAssistant(fullText + '\n\n⚠️ ' + data.message);
+                setPhase('error');
+                setPhaseText(data.message as string);
+                setError(data.message as string);
+                break;
+            }
+          },
+          onHitlCreated: (h) => {
+            hitlRef.current = h;
+          },
+        });
+        // runAgent 返回时流程已结束，保持 hitl 引用供下次使用
+        void hitl;
+      } catch (err: any) {
+        // 用户拒绝 HITL 也会抛错，这是正常流程，不显示错误
+        if (err.message?.includes('用户拒绝')) {
+          setPhase('done');
+          setPhaseText('流程结束');
+        } else {
+          setError(err.message || String(err));
+          setPhase('error');
+          setPhaseText('连接失败');
+          updateLastAssistant('⚠️ 错误: ' + (err.message || String(err)));
+        }
+      } finally {
+        setIsStreaming(false);
+        hitlRef.current = null;
+      }
+      return;
+    }
+
+    // ── Server 模式：SSE over HTTP（原有逻辑） ──
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -284,7 +401,7 @@ export function useAgent(options?: UseAgentOptions) {
       setIsStreaming(false);
       abortRef.current = null;
     }
-  }, [isStreaming, messages, addMessage, updateLastAssistant, compactHistory, extractMemories]);
+  }, [isStreaming, messages, addMessage, updateLastAssistant, compactHistory, extractMemories, userId]);
 
   // ── 确认处理 ──
 
@@ -294,6 +411,18 @@ export function useAgent(options?: UseAgentOptions) {
     lastConfirmToolRef.current = confirmRequest.tool;
     setConfirmRequest(null);
 
+    // Local 模式：直接操作 HitlManager
+    if (isLocal && hitlRef.current) {
+      if (approved) {
+        hitlRef.current.approve();
+      } else {
+        hitlRef.current.reject();
+      }
+      addMessage('system', approved ? '✓ 已确认' : '✕ 已拒绝');
+      return;
+    }
+
+    // Server 模式：POST /api/confirm
     try {
       await fetch('/api/confirm', {
         method: 'POST',
@@ -317,6 +446,7 @@ export function useAgent(options?: UseAgentOptions) {
     setError(null);
     lastConfirmToolRef.current = null;
     messageCountRef.current = 0;
+    hitlRef.current = null;
   }, []);
 
   return {
