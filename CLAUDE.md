@@ -4,13 +4,16 @@
 >
 > | 层 | 目录 | 文档 | 说明 |
 > |---|------|------|------|
+> | 🧱 | `src/domain/` | [CLAUDE.md](src/domain/CLAUDE.md) | 领域模型 — models/DTO/VO/接口 |
+> | 🏗️ | `src/infrastructure/` | [CLAUDE.md](src/infrastructure/CLAUDE.md) | 基础设施 — 错误/工具/常量/记忆运行时 |
+> | ⚙️ | `src/agent/` | [CLAUDE.md](src/agent/CLAUDE.md) | Agent 框架层 (业务无关) |
+> | 🔀 | `src/services/` | [CLAUDE.md](src/services/CLAUDE.md) | 服务层 — 业务逻辑编排 |
+> | 📦 | `src/plugins/` | [CLAUDE.md](src/plugins/CLAUDE.md) | 业务插件层 |
 > | 🎨 | `src/client/` | [CLAUDE.md](src/client/CLAUDE.md) | 前端 UI 壳层 |
 > | 🔧 | `src/server/` | [CLAUDE.md](src/server/CLAUDE.md) | Express 服务端 |
-> | ⚙️ | `src/agent/` | [CLAUDE.md](src/agent/CLAUDE.md) | Agent 框架层 (业务无关) |
-> | 📦 | `src/plugins/` | [CLAUDE.md](src/plugins/CLAUDE.md) | 业务插件层 |
-> | 📋 | `src/shared/` | [CLAUDE.md](src/shared/CLAUDE.md) | 共享类型和接口 |
+> | 🌐 | `src/i18n/` | — | 多语言翻译 (i18next) |
 >
-> **延伸阅读:** 各子目录 [CLAUDE.md](src/client/CLAUDE.md) 包含层内详细文档
+> **延伸阅读:** 各子目录 CLAUDE.md 包含层内详细文档
 
 ---
 
@@ -28,9 +31,16 @@ graph TB
         SSE["SSE Bridge<br/>EventSource 流"]
     end
 
+    subgraph Services["🔀 业务编排"]
+        ChatSvc["chat/service.ts<br/>对话编排"]
+        MemSvc["memory/service.ts<br/>记忆编排"]
+        PluginSvc["plugins/service.ts<br/>插件发现"]
+    end
+
     subgraph Agent["⚙️ 框架层 (业务无关)"]
         Factory["agent-factory.ts<br/>创建 Agent"]
-        Confirm["hitl.ts<br/>HITL 状态机"]
+        HitlMgr["hitl.ts<br/>HITL 状态机"]
+        Tracer["mlflow-tracer.ts<br/>MLflow 追踪"]
     end
 
     subgraph Plugins["📦 插件层"]
@@ -39,49 +49,75 @@ graph TB
         Sick["病假申请"]
     end
 
-    subgraph Shared["📋 共享层"]
-        Interface["BusinessPlugin 接口"]
+    subgraph Domain["🧱 领域层"]
+        Models["models/<br/>领域实体"]
+        DTOs["dto/<br/>数据传输"]
+        VOs["vo/<br/>视图对象"]
+        Interfaces["interfaces/<br/>契约接口"]
+    end
+
+    subgraph Infra["🏗️ 基础设施"]
+        Errors["errors/<br/>错误体系"]
+        Utils["utils/<br/>工具函数"]
+        Constants["constants/<br/>全局常量"]
+        MemoryRT["memory/<br/>记忆运行时"]
     end
 
     Browser --> API
-    Browser -.->|"local 模式"| Factory
-    CLI --> Factory
+    Browser -.->|"local 模式"| Services
+    CLI --> Services
     API --> SSE
-    SSE --> Factory
-    Factory --> Confirm
-    Factory --> Plugins
-    Plugins --> Shared
-    Agent --> Shared
+    SSE --> Services
+    Services --> Agent
+    Services --> Plugins
+    Agent --> Plugins
+    Agent --> Infra
+    Plugins --> Domain
+    Services --> Domain
+    Server --> Domain
+    UI --> Domain
+    Agent --> Domain
+    Infra --> Domain
 
     style UI fill:#dbe4ff,stroke:#495057,color:#1a1a1a
     style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Plugins fill:#fff4e6,stroke:#495057,color:#1a1a1a
-    style Shared fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
 ```
 
-## 三层依赖方向图
+## 依赖方向图
 
 ```mermaid
 graph TD
-    Server["server/<br/>Express 路由"]
+    Domain["domain/<br/>模型·DTO·VO·接口"]
+    Infra["infrastructure/<br/>错误·工具·常量·记忆运行时"]
     Agent["agent/<br/>Agent 运行时"]
     Plugins["plugins/<br/>业务插件"]
+    Services["services/<br/>业务编排"]
+    Server["server/<br/>Express 路由"]
     Client["client/<br/>React 前端"]
-    Shared["shared/<br/>接口与类型"]
 
-    Server -->|"依赖"| Agent
+    Domain --> Infra
+    Server -->|"依赖"| Services
+    Services -->|"依赖"| Agent
     Agent -->|"依赖"| Plugins
-    Plugins -->|"依赖"| Shared
-    Agent -.->|"依赖"| Shared
-    Client -.->|"依赖"| Shared
-    Client -.->|"local 模式依赖"| Agent
+    Agent -->|"依赖"| Infra
+    Plugins -->|"依赖"| Domain
+    Services -->|"依赖"| Domain
+    Server -->|"依赖"| Domain
+    Client -->|"依赖"| Domain
+    Client -.->|"local 模式"| Services
 
-    style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
+    style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Plugins fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
     style Client fill:#dbe4ff,stroke:#495057,color:#1a1a1a
-    style Shared fill:#ebfbee,stroke:#495057,color:#1a1a1a
 ```
 
 ## 记忆系统
@@ -95,11 +131,15 @@ graph LR
     end
 
     subgraph Agent["⚙️ 框架层"]
-        Format["memory-prompt.ts<br/>格式化注入"]
+        Format["agent/memory/<br/>memory-prompt.ts"]
     end
 
-    subgraph Shared["📋 共享层"]
-        Types["memory.ts<br/>类型 + 常量"]
+    subgraph Infra["🏗️ 基础设施"]
+        Types["infrastructure/memory/<br/>运行时函数"]
+    end
+
+    subgraph Domain["🧱 领域层"]
+        MemTypes["domain/models/<br/>记忆类型+常量"]
     end
 
     Hook --> LS
@@ -107,10 +147,12 @@ graph LR
     Hook --> Types
     Format --> Types
     Agent --> Format
+    Types --> Domain
 
     style Frontend fill:#dbe4ff,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Shared fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
+    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
 ```
 
 **设计原则**: 服务端无状态，前端 localStorage 持久化。
@@ -236,22 +278,26 @@ sequenceDiagram
 
 ## 核心原则
 
-1. **框架不知道 tool** — `agent/` 不定义任何 tool，tool 由插件完全自主提供
-2. **插件完全自主** — 每个插件自带 prompt + tools + api + validator
-3. **HITL 是可选能力** — 框架提供 `confirm-state`，插件按需 import
-4. **前端零改动** — 新增插件或切换运行模式都不需要修改前端代码
-5. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
-6. **MLflow Tracing** — 纯 fetch() REST API，双环境兼容，Strategy 模式自动切换
+1. **领域层零依赖** — `domain/` 只定义类型和接口，不 import 任何外部包
+2. **框架不知道 tool** — `agent/` 不定义任何 tool，tool 由插件完全自主提供
+3. **插件完全自主** — 每个插件自带 prompt + tools + api + validator
+4. **HITL 是可选能力** — 框架提供 `hitl/`，插件按需 import
+5. **前端零改动** — 新增插件或切换运行模式都不需要修改前端代码
+6. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
+7. **结构化错误** — 统一 `AppError` 体系，按 `ErrorCode` 分类，前端按 code 处理
+8. **Service 编排** — 复杂业务逻辑（对话/记忆/插件发现）集中在 `services/` 层
 
 ## 目录职责
 
 | 目录 | 职责 | 详细文档 |
 |------|------|---------|
+| `src/domain/` | 领域模型 (models/DTO/VO/interfaces) | [CLAUDE.md](src/domain/CLAUDE.md) |
+| `src/infrastructure/` | 基础设施 (errors/utils/constants/memory) | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
 | `src/agent/` | Agent 框架层（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
+| `src/services/` | 服务层 — 业务逻辑编排 | [CLAUDE.md](src/services/CLAUDE.md) |
 | `src/plugins/` | 业务插件层（完全自主） | [CLAUDE.md](src/plugins/CLAUDE.md) |
 | `src/client/` | 前端 UI 壳 | [CLAUDE.md](src/client/CLAUDE.md) |
 | `src/server/` | Express 服务端 | [CLAUDE.md](src/server/CLAUDE.md) |
-| `src/shared/` | 共享类型和接口 | [CLAUDE.md](src/shared/CLAUDE.md) |
 | `src/i18n/` | 多语言翻译 (i18next) | — |
 
 ## 编码规范
@@ -341,11 +387,13 @@ npm run cli -- --plugin=xxx  # 指定插件
 After every commit, review the diff and update the corresponding CLAUDE.md file(s) to reflect what changed.
 
 Mapping:
-- `src/client/**` → `src/client/CLAUDE.md`
+- `src/domain/**` → `src/domain/CLAUDE.md`
+- `src/infrastructure/**` → `src/infrastructure/CLAUDE.md`
 - `src/agent/**` → `src/agent/CLAUDE.md`
-- `src/shared/**` → `src/shared/CLAUDE.md`
-- `src/server/**` → `src/server/CLAUDE.md`
+- `src/services/**` → `src/services/CLAUDE.md`
 - `src/plugins/**` → `src/plugins/CLAUDE.md` + the specific plugin's `CLAUDE.md`
+- `src/client/**` → `src/client/CLAUDE.md`
+- `src/server/**` → `src/server/CLAUDE.md`
 - `src/App.tsx`, `src/App.css` → `src/client/CLAUDE.md`
 - Root-level files → root `CLAUDE.md`
 

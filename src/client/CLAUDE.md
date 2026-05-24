@@ -1,6 +1,6 @@
 # 前端 UI 壳层
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md) · [agent/](../agent/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md) · 📋 可选依赖: [agent/](../agent/CLAUDE.md) (local 模式)
 
 ## 职责
 
@@ -39,7 +39,12 @@ client/
 ├── types.ts                         # 泛化类型
 ├── hooks/
 │   ├── useAgent.ts                  # 聊天状态机 Hook v5.0（双模式，i18n 翻译）
-│   └── useMemory.ts                 # 记忆系统 Hook (localStorage)
+│   ├── useMemory.ts                 # 记忆系统 Hook (localStorage)
+│   └── useAuth.ts                   # 用户认证 Hook
+├── stores/                          # 状态管理 (Zustand / Jotai)
+│   └── ...                          # 前端全局状态 store
+├── data/
+│   └── users.ts                     # 模拟用户数据
 └── components/
     ├── chat/
     │   ├── ChatContainer.tsx        # 消息列表 + 自动滚动 + 回到底部按钮
@@ -54,9 +59,13 @@ client/
     │   └── LanguageSwitcher.tsx     # 语言切换 (zh-CN ↔ en)
     ├── memory/
     │   └── MemoryPanel.tsx          # 记忆面板 (抽屉式，TYPE_CONFIG 使用 labelKey)
-    └── legal/
-        ├── PrivacyPolicy.tsx        # 隐私政策 (JSON 数组驱动渲染)
-        └── LegalNotice.tsx          # 法律声明 (JSON 数组驱动渲染)
+    ├── auth/
+    │   └── LoginScreen.tsx          # 登录/角色选择
+    ├── legal/
+    │   ├── PrivacyPolicy.tsx        # 隐私政策 (JSON 数组驱动渲染)
+    │   └── LegalNotice.tsx          # 法律声明 (JSON 数组驱动渲染)
+    └── ui/
+        └── Tooltip.tsx              # 通用 Tooltip 组件
 ```
 
 ## 前端状态机图
@@ -149,6 +158,7 @@ graph TD
     App --> ConfirmCard
     App --> InputBar
     App --> MemoryPanel["MemoryPanel (抽屉)"]
+    App --> LoginScreen["LoginScreen"]
     App --> PrivacyPolicy["PrivacyPolicy (JSON 驱动)"]
     App --> LegalNotice["LegalNotice (JSON 驱动)"]
 
@@ -211,6 +221,8 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 | Hook | `useMemory.ts` — CRUD + 容量管理 (FIFO 淘汰) |
 | UI | `MemoryPanel.tsx` — 桌面右侧抽屉 / 平板覆盖层 / 手机底部抽屉 |
 | 隔离 | user/feedback 跨插件共享，project/reference 按插件隔离 |
+| 类型 | 引用 `domain/models/MemoryItem.ts`, `domain/enums/MemoryType.ts` |
+| 常量 | 引用 `infrastructure/constants/memory.ts` |
 
 ## 文件说明
 
@@ -221,7 +233,7 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
   - local 模式: 动态 `import('../../agent/agent-factory.js')` + `import('../../agent/mlflow-tracer.js')`，通过 `createTracer()` + `tracer.run()` 包裹 `runAgent()`
   - server 模式: `fetch('/api/chat')` 读 SSE 流，解析 text/confirm_required/done 事件
 - `confirm()` 同样分支：local 模式直接操作 `hitlRef`，server 模式 POST `/api/confirm`
-- `compactHistory()` / `extractMemories()` 在 local 模式使用 `local-utils.ts` 进程内处理，server 模式走 HTTP 端点
+- `compactHistory()` / `extractMemories()` 在 local 模式使用 `agent/local/local-utils.ts` 进程内处理，server 模式走 HTTP 端点
 - `hitlRef` — local 模式通过 `onHitlCreated` 回调获取 HitlManager 引用
 - HITL 用户拒绝（`'用户拒绝'`）视为正常流程结束，不显示错误
 
@@ -229,6 +241,12 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 
 - localStorage 持久化 (`agent_memory_store`)，FIFO 容量管理
 - user/feedback 跨插件共享，project/reference 按插件隔离
+- 类型引用 `domain/models/MemoryItem.ts`
+
+### types.ts
+
+- 前端泛化类型（不依赖具体业务）
+- 引用 `domain/dto/` 和 `domain/models/` 的类型定义
 
 ## 约束
 
@@ -240,4 +258,4 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 
 ---
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md)

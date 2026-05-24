@@ -1,6 +1,6 @@
-﻿# 服务端
+# 服务端
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md) · [client/](../client/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md) · [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md)
 
 ## 职责
 
@@ -12,9 +12,21 @@ Express 服务端，HTTP 路由、SSE 流转发、插件注入。前端与 Agent
 
 ```
 server/
-├── CLAUDE.md   # 本文档
-├── index.ts    # Express 主入口（SSE 路由 / 记忆端点 / 静态文件）
-└── cli.ts      # CLI 入口（独立终端模式）
+├── routes/            # Express 路由
+│   ├── chat.ts            # POST /api/chat — SSE 流式对话
+│   ├── confirm.ts         # POST /api/confirm — HITL 确认
+│   ├── compact.ts         # POST /api/compact — 对话压缩
+│   ├── extract-memories.ts # POST /api/extract-memories — 记忆提取
+│   └── plugins.ts         # GET /api/plugins — 插件列表
+├── middleware/         # Express 中间件
+│   ├── sse.ts             # SSE 响应头 + sendSSE 辅助
+│   └── error.ts           # 统一错误处理
+├── controllers/        # 路由处理器（业务逻辑编排）
+│   ├── chat-controller.ts
+│   ├── confirm-controller.ts
+│   └── compact-controller.ts
+├── index.ts            # Express 主入口（app 组装 + 启动）
+└── cli.ts              # CLI 入口（独立终端模式）
 ```
 
 ## 请求时序图
@@ -68,14 +80,16 @@ sequenceDiagram
 
 ### 记忆压缩/提取端点
 
-`/api/compact` 和 `/api/extract-memories` 使用独立的 mini Agent 实例（不经过业务插件），直接调用模型生成摘要/提取记忆。local 模式下由 `local-utils.ts` 在浏览器进程内处理。
+`/api/compact` 和 `/api/extract-memories` 使用独立的 mini Agent 实例（不经过业务插件），直接调用模型生成摘要/提取记忆。local 模式下由 `agent/local/local-utils.ts` 在浏览器进程内处理。
 
 ## 依赖
 
-- [agent/agent-factory.ts](../agent/CLAUDE.md) — runAgent
-- [agent/hitl.ts](../agent/CLAUDE.md) — HitlManager
-- [agent/mlflow-tracer.ts](../agent/CLAUDE.md) — ITracer / createTracer
+- [agent/core/agent-factory.ts](../agent/CLAUDE.md) — runAgent
+- [agent/hitl/hitl.ts](../agent/CLAUDE.md) — HitlManager
+- [agent/tracing/mlflow-tracer.ts](../agent/CLAUDE.md) — ITracer / createTracer
 - [plugins/registry.ts](../plugins/CLAUDE.md) — 插件注册表
+- [domain/interfaces/](../domain/CLAUDE.md) — IBusinessPlugin, ITracer
+- [domain/dto/](../domain/CLAUDE.md) — ChatRequest, ConfirmRequest
 
 ## 约束
 
@@ -86,4 +100,4 @@ sequenceDiagram
 
 ---
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md)

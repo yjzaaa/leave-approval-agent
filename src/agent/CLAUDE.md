@@ -1,6 +1,6 @@
-﻿# Agent 框架层
+# Agent 框架层
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md) · 📋 被引用: [server/](../server/CLAUDE.md) · [client/](../client/CLAUDE.md)
 
 ## 职责
 
@@ -12,13 +12,17 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 
 ```
 agent/
-├── CLAUDE.md           # 本文档
-├── agent-factory.ts    # 创建 Agent、SSE 转发、HITL 注册
-├── hitl.ts             # HitlManager 类 + withConfirm 包装器
-├── local-utils.ts      # 浏览器端 compact/extract-memories 辅助函数
-├── memory-prompt.ts    # 记忆格式化注入 system prompt
-├── mlflow-tracer.ts    # MLflow 追踪 (Strategy 模式，双环境兼容)
-└── types.ts            # 框架级类型
+├── core/             # 核心运行时
+│   ├── agent-factory.ts  # 创建 Agent、SSE 转发、HITL 注册
+│   └── types.ts          # 框架级类型
+├── hitl/             # HITL 确认
+│   └── hitl.ts           # HitlManager 类 + withConfirm 包装器
+├── tracing/          # 追踪
+│   └── mlflow-tracer.ts  # MLflow 追踪 (Strategy 模式，双环境兼容)
+├── memory/           # 记忆注入
+│   └── memory-prompt.ts  # 记忆格式化注入 system prompt
+└── local/            # 浏览器端辅助
+    └── local-utils.ts    # compact/extract-memories 辅助函数
 ```
 
 ## Agent 运行时序图
@@ -124,7 +128,7 @@ stateDiagram-v2
 
 ## 文件说明
 
-### agent-factory.ts
+### core/agent-factory.ts
 
 - `runAgent(params)` — 创建 Agent，订阅事件，SSE 转发
   - `onHitlCreated` 回调在 `agent.prompt()` 之前触发，用于注册 HitlManager 到会话映射
@@ -132,21 +136,11 @@ stateDiagram-v2
 - `getDefaultModel()` — DeepSeek 模型配置
 - 不 import 任何 tool，直接使用 `plugin.tools`
 
-### local-utils.ts
+### core/types.ts
 
-- `compactHistoryLocal(messages)` — 浏览器端对话压缩，创建 mini Agent 生成摘要
-- `extractMemoriesLocal(messages)` — 浏览器端记忆提取，创建 mini Agent 返回结构化记忆
-- 替代 `/api/compact` 和 `/api/extract-memories` HTTP 端点
-- 仅 local 模式使用（通过 `useAgent` 动态 import）
+- 框架级类型定义（Agent 配置、运行参数、事件回调等）
 
-### mlflow-tracer.ts
-
-- **Strategy 模式**: `ITracer` 接口 + `FetchTracer` (REST API) + `NoopTracer` (空操作)
-- `createTracer(opts)` 工厂 — 有 `MLFLOW_TRACKING_URI` 时创建 FetchTracer，否则 NoopTracer
-- 纯 `fetch()` 实现，零 SDK 依赖，Node.js 和浏览器双环境兼容
-- `agent-factory` 通过 `import type { ITracer }` 引用接口（编译时擦除）
-
-### hitl.ts
+### hitl/hitl.ts
 
 - `HitlManager` — HITL 确认管理器类
   - `requestConfirm()` — 挂起 Promise，事件驱动 SSE
@@ -155,7 +149,21 @@ stateDiagram-v2
 - `withConfirm()` — 声明式 HITL 工具包装器
 - `wrapHitlTools()` — 批量包装 HITL tools（agent-factory 使用）
 
-### memory-prompt.ts
+### local/local-utils.ts
+
+- `compactHistoryLocal(messages)` — 浏览器端对话压缩，创建 mini Agent 生成摘要
+- `extractMemoriesLocal(messages)` — 浏览器端记忆提取，创建 mini Agent 返回结构化记忆
+- 替代 `/api/compact` 和 `/api/extract-memories` HTTP 端点
+- 仅 local 模式使用（通过 `useAgent` 动态 import）
+
+### tracing/mlflow-tracer.ts
+
+- **Strategy 模式**: `ITracer` 接口 + `FetchTracer` (REST API) + `NoopTracer` (空操作)
+- `createTracer(opts)` 工厂 — 有 `MLFLOW_TRACKING_URI` 时创建 FetchTracer，否则 NoopTracer
+- 纯 `fetch()` 实现，零 SDK 依赖，Node.js 和浏览器双环境兼容
+- `core/agent-factory` 通过 `import type { ITracer }` 引用接口（编译时擦除）
+
+### memory/memory-prompt.ts
 
 - `formatMemoriesForPrompt(memories)` — 将记忆列表格式化为 system prompt 区块
 - `formatSummaryForHistory(summary)` — 将对话摘要格式化为 history 注入
@@ -164,14 +172,17 @@ stateDiagram-v2
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- `shared/plugin.ts` · `shared/types.ts`
+- `domain/interfaces/` — `IBusinessPlugin`, `ITracer` 等接口契约
+- `domain/models/` — `ChatMessage`, `MemoryItem` 等领域实体
+- `infrastructure/memory/` — 记忆存储运行时
 
 ## 约束
 
 - ❌ 不 import plugins/ 下的任何模块
 - ❌ 不定义任何 tool
-- ✅ 只通过 BusinessPlugin 接口通信
+- ✅ 只通过 IBusinessPlugin 接口通信
+- ❌ 不 import server/ 或 client/
 
 ---
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md)
