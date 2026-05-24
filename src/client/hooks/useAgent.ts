@@ -298,7 +298,7 @@ export function useAgent(options?: UseAgentOptions) {
       await fetch('/api/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approved }),
+        body: JSON.stringify({ approved, sessionId: sessionIdRef.current }),
       });
     } catch { /* 忽略 */ }
 

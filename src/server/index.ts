@@ -30,8 +30,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/** 当前活跃的 HITL 管理器（供 /api/confirm 路由使用） */
-let activeHitl: HitlManager | null = null;
+/** sessionId → HitlManager 映射（支持并发会话） */
+const hitlSessions = new Map<string, HitlManager>();
 
 app.use(express.json());
 // 开发: Vite dev server 独立运行; 生产: 从 dist/ 提供静态文件
@@ -166,6 +166,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     summary?: string;
   };
 
+  const sessionId = (req.body as any).sessionId || 'default';
+
   if (!message) return res.status(400).json({ error: 'message required' });
 
   // 根据请求选择插件
@@ -183,12 +185,12 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const tracer = new PiAgentTracer({
       plugin: plugin.id,
       userId: (req.body as any).userId,
-      sessionId: (req.body as any).sessionId,
+      sessionId,
       message,
     });
 
     await tracer.run(async () => {
-      activeHitl = await runAgent({
+      const hitl = await runAgent({
         plugin,
         message,
         history,
@@ -197,6 +199,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         onSSE: (event, data) => sendSSE(res, event, data),
         tracer,
       });
+      hitlSessions.set(sessionId, hitl);
     });
   } catch (err: any) {
     sendSSE(res, 'error', { message: err.message || String(err) });
@@ -209,16 +212,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
  * POST /api/confirm — 用户确认/拒绝
  */
 app.post('/api/confirm', (req: Request, res: Response) => {
-  const { approved } = req.body;
-  if (!activeHitl) {
+  const { approved, sessionId } = req.body;
+  const hitl = hitlSessions.get(sessionId || 'default');
+  if (!hitl) {
     res.json({ ok: false, message: '无活跃会话' });
     return;
   }
   if (approved) {
-    const ok = activeHitl.approve();
+    const ok = hitl.approve();
     res.json({ ok, message: ok ? '已确认' : '无待确认请求' });
   } else {
-    const ok = activeHitl.reject();
+    const ok = hitl.reject();
     res.json({ ok, message: ok ? '已拒绝' : '无待确认请求' });
   }
 });
