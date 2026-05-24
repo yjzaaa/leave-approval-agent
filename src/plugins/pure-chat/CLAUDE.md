@@ -1,6 +1,6 @@
 ﻿# 纯聊天插件 (pure-chat)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)
 
 ## 业务描述
 
@@ -22,4 +22,4 @@ fields: 无          → 无表单
 
 ---
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)

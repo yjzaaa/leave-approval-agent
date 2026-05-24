@@ -1,6 +1,6 @@
 ﻿# 病假申请插件 (sick-leave)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)
 
 ## 校验流程图
 
@@ -44,4 +44,4 @@ flowchart TD
 
 ---
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)

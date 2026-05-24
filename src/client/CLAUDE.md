@@ -1,6 +1,6 @@
 # 前端 UI 壳层
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
 
 ## 职责
 
@@ -154,4 +154,4 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)

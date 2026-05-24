@@ -4,13 +4,13 @@
 >
 > | 层 | 目录 | 文档 | 说明 |
 > |---|------|------|------|
-> | 🎨 | `src/client/` | [AGENTS.md](src/client/AGENTS.md) | 前端 UI 壳层 |
-> | 🔧 | `src/server/` | [AGENTS.md](src/server/AGENTS.md) | Express 服务端 |
-> | ⚙️ | `src/agent/` | [AGENTS.md](src/agent/AGENTS.md) | Agent 框架层 (业务无关) |
-> | 📦 | `src/plugins/` | [AGENTS.md](src/plugins/AGENTS.md) | 业务插件层 |
-> | 📋 | `src/shared/` | [AGENTS.md](src/shared/AGENTS.md) | 共享类型和接口 |
+> | 🎨 | `src/client/` | [CLAUDE.md](src/client/CLAUDE.md) | 前端 UI 壳层 |
+> | 🔧 | `src/server/` | [CLAUDE.md](src/server/CLAUDE.md) | Express 服务端 |
+> | ⚙️ | `src/agent/` | [CLAUDE.md](src/agent/CLAUDE.md) | Agent 框架层 (业务无关) |
+> | 📦 | `src/plugins/` | [CLAUDE.md](src/plugins/CLAUDE.md) | 业务插件层 |
+> | 📋 | `src/shared/` | [CLAUDE.md](src/shared/CLAUDE.md) | 共享类型和接口 |
 >
-> **延伸阅读:** 各子目录 [AGENTS.md](src/client/AGENTS.md) 包含层内详细文档
+> **延伸阅读:** 各子目录 [CLAUDE.md](src/client/CLAUDE.md) 包含层内详细文档
 
 ---
 
@@ -185,11 +185,11 @@ sequenceDiagram
 
 | 目录 | 职责 | 详细文档 |
 |------|------|---------|
-| `src/agent/` | Agent 框架层（业务无关） | [AGENTS.md](src/agent/AGENTS.md) |
-| `src/plugins/` | 业务插件层（完全自主） | [AGENTS.md](src/plugins/AGENTS.md) |
-| `src/client/` | 前端 UI 壳 | [AGENTS.md](src/client/AGENTS.md) |
-| `src/server/` | Express 服务端 | [AGENTS.md](src/server/AGENTS.md) |
-| `src/shared/` | 共享类型和接口 | [AGENTS.md](src/shared/AGENTS.md) |
+| `src/agent/` | Agent 框架层（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
+| `src/plugins/` | 业务插件层（完全自主） | [CLAUDE.md](src/plugins/CLAUDE.md) |
+| `src/client/` | 前端 UI 壳 | [CLAUDE.md](src/client/CLAUDE.md) |
+| `src/server/` | Express 服务端 | [CLAUDE.md](src/server/CLAUDE.md) |
+| `src/shared/` | 共享类型和接口 | [CLAUDE.md](src/shared/CLAUDE.md) |
 
 ## 编码规范
 
@@ -223,6 +223,27 @@ npm run cli -- --plugin=xxx  # 指定插件
 
 - Express: `3000` / Vite dev: `5173` / 代理 `/api` → `:3000`
 
+## Post-Commit: Update CLAUDE.md
+
+After every commit, review the diff and update the corresponding CLAUDE.md file(s) to reflect what changed.
+
+Mapping:
+- `src/client/**` → `src/client/CLAUDE.md`
+- `src/agent/**` → `src/agent/CLAUDE.md`
+- `src/shared/**` → `src/shared/CLAUDE.md`
+- `src/server/**` → `src/server/CLAUDE.md`
+- `src/plugins/**` → `src/plugins/CLAUDE.md` + the specific plugin's `CLAUDE.md`
+- `src/App.tsx`, `src/App.css` → `src/client/CLAUDE.md`
+- Root-level files → root `CLAUDE.md`
+
+What to update:
+- Added/removed/renamed files or exports
+- New components, hooks, types, or API endpoints
+- Changed architecture or data flow
+- New dependencies or config changes
+
+Do NOT rewrite the entire file — only update the relevant sections. If nothing meaningful changed (typo fix, style tweak), skip the update.
+
 ---
 
-> **延伸阅读:** 各子目录 [AGENTS.md](src/client/AGENTS.md) 包含层内详细文档
+> **延伸阅读:** 各子目录 [CLAUDE.md](src/client/CLAUDE.md) 包含层内详细文档

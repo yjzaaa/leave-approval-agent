@@ -1,6 +1,6 @@
 ﻿# 服务端
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [agent/](../agent/AGENTS.md) · [plugins/](../plugins/AGENTS.md) · [shared/](../shared/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md)
 
 ## 职责
 
@@ -10,7 +10,7 @@ Express 服务端，HTTP 路由、SSE 流转发、插件注入。前端与 Agent
 
 ```
 server/
-├── AGENTS.md   # 本文档
+├── CLAUDE.md   # 本文档
 ├── index.ts    # Express 主入口
 └── cli.ts      # CLI 入口
 ```
@@ -53,10 +53,10 @@ sequenceDiagram
 
 ## 依赖
 
-- [agent/agent-factory.ts](../agent/AGENTS.md) — runAgent
-- [agent/confirm-state.ts](../agent/AGENTS.md) — HITL
-- [plugins/registry.ts](../plugins/AGENTS.md) — 插件注册表
-- [shared/config.ts](../shared/AGENTS.md) — 配置
+- [agent/agent-factory.ts](../agent/CLAUDE.md) — runAgent
+- [agent/confirm-state.ts](../agent/CLAUDE.md) — HITL
+- [plugins/registry.ts](../plugins/CLAUDE.md) — 插件注册表
+- [shared/config.ts](../shared/CLAUDE.md) — 配置
 
 ## 约束
 
@@ -66,4 +66,4 @@ sequenceDiagram
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [agent/](../agent/AGENTS.md) · [plugins/](../plugins/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md)

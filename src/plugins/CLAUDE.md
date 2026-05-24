@@ -1,17 +1,17 @@
 ﻿# 业务插件层
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [agent/](../agent/AGENTS.md) · [shared/](../shared/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [agent/](../agent/CLAUDE.md) · [shared/](../shared/CLAUDE.md)
 
 ## 子插件文档
 
 | 插件 | 文档 | 类型 | HITL |
 |------|------|------|------|
-| 远程办公审批 | [leave-approval/AGENTS.md](leave-approval/AGENTS.md) | 审批类 | 2 步 |
-| 报销审批 | [expense-approval/AGENTS.md](expense-approval/AGENTS.md) | 审批类 | 2 步 |
-| 病假申请 | [sick-leave/AGENTS.md](sick-leave/AGENTS.md) | 审批类 | 2 步 |
-| 智能助手 | [pure-chat/AGENTS.md](pure-chat/AGENTS.md) | 纯聊天 | 无 |
-| 政策咨询 | [faq/AGENTS.md](faq/AGENTS.md) | FAQ 咨询 | 无 |
-| 值班排班 | [oncall/AGENTS.md](oncall/AGENTS.md) | 混合型 | 1 步 |
+| 远程办公审批 | [leave-approval/CLAUDE.md](leave-approval/CLAUDE.md) | 审批类 | 2 步 |
+| 报销审批 | [expense-approval/CLAUDE.md](expense-approval/CLAUDE.md) | 审批类 | 2 步 |
+| 病假申请 | [sick-leave/CLAUDE.md](sick-leave/CLAUDE.md) | 审批类 | 2 步 |
+| 智能助手 | [pure-chat/CLAUDE.md](pure-chat/CLAUDE.md) | 纯聊天 | 无 |
+| 政策咨询 | [faq/CLAUDE.md](faq/CLAUDE.md) | FAQ 咨询 | 无 |
+| 值班排班 | [oncall/CLAUDE.md](oncall/CLAUDE.md) | 混合型 | 1 步 |
 
 ## 职责
 
@@ -87,7 +87,7 @@ sequenceDiagram
 
 ## BusinessPlugin 接口
 
-> 完整定义见 [shared/plugin.ts](../shared/AGENTS.md)
+> 完整定义见 [shared/plugin.ts](../shared/CLAUDE.md)
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
@@ -113,8 +113,8 @@ sequenceDiagram
 
 ## 依赖
 
-- [agent/confirm-state.ts](../agent/AGENTS.md) — 按需使用
-- [shared/plugin.ts](../shared/AGENTS.md) — BusinessPlugin
+- [agent/confirm-state.ts](../agent/CLAUDE.md) — 按需使用
+- [shared/plugin.ts](../shared/CLAUDE.md) — BusinessPlugin
 
 ## 约束
 
@@ -124,4 +124,4 @@ sequenceDiagram
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · ⬇️ [leave-approval](leave-approval/AGENTS.md) · [expense-approval](expense-approval/AGENTS.md) · [sick-leave](sick-leave/AGENTS.md) · [pure-chat](pure-chat/AGENTS.md) · [faq](faq/AGENTS.md) · [oncall](oncall/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · ⬇️ [leave-approval](leave-approval/CLAUDE.md) · [expense-approval](expense-approval/CLAUDE.md) · [sick-leave](sick-leave/CLAUDE.md) · [pure-chat](pure-chat/CLAUDE.md) · [faq](faq/CLAUDE.md) · [oncall](oncall/CLAUDE.md)

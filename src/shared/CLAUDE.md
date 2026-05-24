@@ -1,6 +1,6 @@
 ﻿# 共享类型和接口
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 被引用: [agent/](../agent/AGENTS.md) · [plugins/](../plugins/AGENTS.md) · [server/](../server/AGENTS.md) · [client/](../client/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 被引用: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md) · [server/](../server/CLAUDE.md) · [client/](../client/CLAUDE.md)
 
 ## 职责
 
@@ -89,4 +89,4 @@ classDiagram
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 被引用: [agent/](../agent/AGENTS.md) · [plugins/](../plugins/AGENTS.md) · [server/](../server/AGENTS.md) · [client/](../client/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 被引用: [agent/](../agent/CLAUDE.md) · [plugins/](../plugins/CLAUDE.md) · [server/](../server/CLAUDE.md) · [client/](../client/CLAUDE.md)

@@ -1,6 +1,6 @@
 ﻿# 值班排班插件 (oncall)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)
 
 ## 业务描述
 
@@ -40,4 +40,4 @@ flowchart TD
 
 ---
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)

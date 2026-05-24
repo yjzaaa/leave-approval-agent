@@ -1,6 +1,6 @@
 ﻿# 远程办公审批插件 (leave-approval)
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)
 
 ## 审批流程图
 
@@ -43,4 +43,4 @@ applicantName, department, employeeId, remoteStartDate, remoteEndDate, reason, w
 
 ---
 
-> ⬆️ [返回 plugins/](../AGENTS.md) · [项目根目录](../../../AGENTS.md)
+> ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)

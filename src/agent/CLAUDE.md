@@ -1,6 +1,6 @@
 ﻿# Agent 框架层
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [plugins/](../plugins/AGENTS.md) · [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
 
 ## 职责
 
@@ -12,7 +12,7 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 
 ```
 agent/
-├── AGENTS.md           # 本文档
+├── CLAUDE.md           # 本文档
 ├── agent-factory.ts    # 创建 Agent、SSE 转发
 ├── confirm-state.ts    # HITL 通用状态机
 ├── memory-prompt.ts    # 记忆格式化注入 system prompt
@@ -109,7 +109,7 @@ stateDiagram-v2
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- [shared/plugin.ts](../shared/AGENTS.md) · [shared/types.ts](../shared/AGENTS.md)
+- [shared/plugin.ts](../shared/CLAUDE.md) · [shared/types.ts](../shared/CLAUDE.md)
 
 ## 约束
 
@@ -119,4 +119,4 @@ stateDiagram-v2
 
 ---
 
-> ⬆️ [返回项目根目录](../../AGENTS.md) · 📋 相关: [plugins/](../plugins/AGENTS.md) · [shared/](../shared/AGENTS.md) · [server/](../server/AGENTS.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [plugins/](../plugins/CLAUDE.md) · [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
