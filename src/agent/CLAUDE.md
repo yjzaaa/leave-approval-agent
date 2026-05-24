@@ -14,8 +14,9 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 agent/
 ├── CLAUDE.md           # 本文档
 ├── agent-factory.ts    # 创建 Agent、SSE 转发
-├── confirm-state.ts    # HITL 通用状态机
+├── hitl.ts             # HitlManager 类 + withConfirm 包装器
 ├── memory-prompt.ts    # 记忆格式化注入 system prompt
+├── mlflow-tracer.ts    # MLflow 追踪 (可选)
 └── types.ts            # 框架级类型
 ```
 
@@ -93,12 +94,14 @@ stateDiagram-v2
 - `getDefaultModel()` — DeepSeek 模型配置
 - 不 import 任何 tool，直接使用 `plugin.tools`
 
-### confirm-state.ts
+### hitl.ts
 
-- `requestConfirm()` — 挂起 Promise
-- `approveConfirm()` / `rejectConfirm()` — 解除挂起
-- `getPending()` — 获取当前请求
-- 通用工具库，插件按需 import
+- `HitlManager` — HITL 确认管理器类
+  - `requestConfirm()` — 挂起 Promise，事件驱动 SSE
+  - `approve()` / `reject()` — 解除挂起
+  - `pending` — 当前待确认项（只读）
+- `withConfirm()` — 声明式 HITL 工具包装器
+- `wrapHitlTools()` — 批量包装 HITL tools（agent-factory 使用）
 
 ### memory-prompt.ts
 
@@ -109,7 +112,7 @@ stateDiagram-v2
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- [shared/plugin.ts](../shared/CLAUDE.md) · [shared/types.ts](../shared/CLAUDE.md)
+- `shared/plugin.ts` · `shared/types.ts`
 
 ## 约束
 
