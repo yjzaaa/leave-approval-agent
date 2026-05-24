@@ -252,6 +252,7 @@ sequenceDiagram
 | `src/client/` | 前端 UI 壳 | [CLAUDE.md](src/client/CLAUDE.md) |
 | `src/server/` | Express 服务端 | [CLAUDE.md](src/server/CLAUDE.md) |
 | `src/shared/` | 共享类型和接口 | [CLAUDE.md](src/shared/CLAUDE.md) |
+| `src/i18n/` | 多语言翻译 (i18next) | — |
 
 ## 编码规范
 

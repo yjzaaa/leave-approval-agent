@@ -38,7 +38,7 @@ graph LR
 client/
 ├── types.ts                         # 泛化类型
 ├── hooks/
-│   ├── useAgent.ts                  # 聊天状态机 Hook v5.0（双模式）
+│   ├── useAgent.ts                  # 聊天状态机 Hook v5.0（双模式，i18n 翻译）
 │   └── useMemory.ts                 # 记忆系统 Hook (localStorage)
 └── components/
     ├── chat/
@@ -50,9 +50,13 @@ client/
     │   └── StatusBar.tsx            # 流水线状态栏
     ├── layout/
     │   ├── Header.tsx               # 顶部导航 + 插件选择
-    │   └── ThemeToggle.tsx          # 主题切换 (system/dark/light)
-    └── memory/
-        └── MemoryPanel.tsx          # 记忆面板 (抽屉式)
+    │   ├── ThemeToggle.tsx          # 主题切换 (system/dark/light)
+    │   └── LanguageSwitcher.tsx     # 语言切换 (zh-CN ↔ en)
+    ├── memory/
+    │   └── MemoryPanel.tsx          # 记忆面板 (抽屉式，TYPE_CONFIG 使用 labelKey)
+    └── legal/
+        ├── PrivacyPolicy.tsx        # 隐私政策 (JSON 数组驱动渲染)
+        └── LegalNotice.tsx          # 法律声明 (JSON 数组驱动渲染)
 ```
 
 ## 前端状态机图
@@ -136,6 +140,7 @@ sequenceDiagram
 graph TD
     App --> Header
     Header --> ThemeToggle
+    Header --> LanguageSwitcher["LanguageSwitcher"]
     Header --> PluginSelector
     App --> StatusBar
     App --> ChatContainer
@@ -144,6 +149,8 @@ graph TD
     App --> ConfirmCard
     App --> InputBar
     App --> MemoryPanel["MemoryPanel (抽屉)"]
+    App --> PrivacyPolicy["PrivacyPolicy (JSON 驱动)"]
+    App --> LegalNotice["LegalNotice (JSON 驱动)"]
 
     style App fill:#dbe4ff,stroke:#495057,color:#1a1a1a
     style ChatContainer fill:#dbe4ff,stroke:#495057,color:#1a1a1a
@@ -166,6 +173,17 @@ graph TD
 | 主题 | system (auto) / dark / light | 三态切换 |
 | 布局 | 全宽 + 内容居中 `max(24px, (100%-820px)/2)` | 自适应 |
 | 断点 | 820px / 640px | 响应式 |
+
+### i18n 多语言
+
+| 概念 | 实现 |
+|------|------|
+| 引擎 | `i18next` + `react-i18next` |
+| 检测 | `i18next-browser-languagedetector` (localStorage → navigator → zh-CN fallback) |
+| 翻译 | `src/i18n/locales/{zh-CN,en}/translation.json` |
+| 切换 | `LanguageSwitcher` 组件 (Header 内，ThemeToggle 旁) |
+| 类型 | `CustomTypeOptions` 增强，IDE 键自动补全 |
+| 法律文档 | PrivacyPolicy/LegalNotice 使用 `t('legal.*', { returnObjects: true })` 数组驱动渲染 |
 
 ### 主题系统
 
