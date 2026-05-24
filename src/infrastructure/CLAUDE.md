@@ -18,6 +18,93 @@ infrastructure/
 └── memory/        # 记忆系统运行时
 ```
 
+## 模块架构图
+
+```mermaid
+graph TD
+    subgraph Errors["errors/"]
+        AppError["AppError<br/>NetworkError<br/>BusinessError<br/>AuthError"]
+        ErrorCode["ErrorCode 枚举"]
+    end
+
+    subgraph Utils["utils/"]
+        Cn["cn.ts<br/>className 合并"]
+        Format["format.ts<br/>日期格式化"]
+        Env["env.ts<br/>envInt / envStr"]
+        Json["json.ts<br/>safeJsonParse"]
+        Async["async.ts<br/>debounce / throttle"]
+        Id["id.ts<br/>mockId"]
+    end
+
+    subgraph Constants["constants/"]
+        MemConst["memory.ts<br/>MEMORY_LIMITS"]
+        AgentConst["agent.ts<br/>MAX_FORM_RETRIES"]
+        UiConst["ui.ts<br/>MAX_MESSAGE_LENGTH"]
+    end
+
+    subgraph MemRuntime["memory/"]
+        Store["store.ts<br/>createEmptyStore()<br/>getPluginMemories()"]
+    end
+
+    Domain["domain/models/<br/>MemoryItem, MemoryStore"]
+
+    Errors -->|"引用"| ErrorCode
+    Store -->|"import type"| Domain
+
+    style Errors fill:#ffe3e3,stroke:#495057,color:#1a1a1a
+    style Utils fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+    style Constants fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style MemRuntime fill:#ebfbee,stroke:#495057,color:#1a1a1a
+```
+
+## 数据流
+
+```mermaid
+graph LR
+    subgraph Infra["infrastructure/"]
+        Errors["errors/"]
+        Utils["utils/"]
+        Constants["constants/"]
+        MemRT["memory/"]
+    end
+
+    Agent["agent/"]
+    Plugins["plugins/"]
+    Client["client/"]
+    Server["server/"]
+
+    Agent -->|"cn(), MEMORY_LIMITS"| Infra
+    Plugins -->|"envInt(), config"| Infra
+    Client -->|"cn(), format()"| Infra
+    Client -->|"createEmptyStore()"| MemRT
+    Server -->|"AppError"| Errors
+
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
+```
+
+## 调用时序图
+
+```mermaid
+sequenceDiagram
+    participant Client as client/
+    participant Store as memory/store.ts
+    participant Limits as constants/memory.ts
+    participant Domain as domain/models/
+
+    Note over Client,Domain: 记忆系统初始化
+
+    Client->>Store: createEmptyStore()
+    Store-->>Client: MemoryStore (空)
+    Store->>Domain: import type MemoryStore
+
+    Client->>Client: 写入记忆 (FIFO)
+    Client->>Limits: MEMORY_LIMITS.maxUserMemories
+    Limits-->>Client: 20
+
+    Client->>Store: getPluginMemories(store, pluginId)
+    Store-->>Client: MemoryItem[]
+```
+
 ## 各子目录说明
 
 ### errors/ — 统一错误体系

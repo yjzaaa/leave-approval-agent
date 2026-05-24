@@ -29,6 +29,49 @@ server/
 └── cli.ts              # CLI 入口（独立终端模式）
 ```
 
+## 模块架构图
+
+```mermaid
+graph TD
+    Index["index.ts<br/>Express 主入口"]
+    CLI["cli.ts<br/>CLI 入口"]
+    Routes["routes/<br/>路由定义"]
+    Middleware["middleware/<br/>SSE + 错误处理"]
+    Controllers["controllers/<br/>业务编排"]
+
+    Index --> Routes
+    Index --> Middleware
+    Routes --> Controllers
+    Controllers -->|"调用"| AgentFactory["agent/core/agent-factory"]
+    Controllers -->|"调用"| Registry["plugins/registry"]
+
+    CLI --> AgentFactory
+
+    style Index fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style CLI fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Routes fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+    style Middleware fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+    style Controllers fill:#fff4e6,stroke:#495057,color:#1a1a1a
+```
+
+## 数据流
+
+```mermaid
+graph LR
+    Request["HTTP Request<br/>POST /api/chat"] --> Parse["JSON 解析"]
+    Parse --> Plugin["getPlugin(id)<br/>插件查找"]
+    Plugin --> Factory["runAgent()<br/>Agent 创建"]
+    Factory -->|SSE| Stream["text/event-stream<br/>流式响应"]
+    Stream --> Browser["Browser<br/>EventSource"]
+
+    ConfirmReq["POST /api/confirm"] --> Session["hitlSessions<br/>Map 查找"]
+    Session --> Hitl["hitl.approve()<br/>/ reject()"]
+
+    style Request fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style Stream fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style ConfirmReq fill:#ffe3e3,stroke:#495057,color:#1a1a1a
+```
+
 ## 请求时序图
 
 ```mermaid

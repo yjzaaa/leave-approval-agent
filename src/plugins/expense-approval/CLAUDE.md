@@ -2,6 +2,39 @@
 
 > ⬆️ [返回 plugins/](../CLAUDE.md) · [项目根目录](../../../CLAUDE.md)
 
+## 目录结构
+
+```
+expense-approval/
+├── index.ts       # BusinessPlugin 实例导出
+├── tools.ts       # 4 个 Tool 定义
+├── prompt.ts      # System Prompt
+├── fields.ts      # 表单字段
+├── validator.ts   # 校验规则 (金额/类别/日期)
+└── api.ts         # Mock API (submit → EX-xxx, process → EP-xxx)
+```
+
+## 审批流程图
+
+```mermaid
+flowchart TD
+    Start([👤 用户: 报销申请]) --> Collect[Agent 收集信息]
+    Collect --> Validate{校验通过?}
+    Validate -->|❌| Collect
+    Validate -->|✅| HITL1["📋 HITL #1: 确认提交"]
+    HITL1 -->|拒绝| Collect
+    HITL1 -->|确认| Submit["submitApi() → EX-xxx"]
+    Submit --> HITL2["🚀 HITL #2: 确认发起"]
+    HITL2 -->|拒绝| Collect
+    HITL2 -->|确认| Process["startProcessApi() → EP-xxx"]
+    Process --> Done([✅ 流程发起成功])
+
+    style Start fill:#dbe4ff,stroke:#495057
+    style HITL1 fill:#ffe3e3,stroke:#e03131
+    style HITL2 fill:#ffe3e3,stroke:#e03131
+    style Done fill:#b2f2bb,stroke:#2b8a3e
+```
+
 ## 校验流程图
 
 ```mermaid

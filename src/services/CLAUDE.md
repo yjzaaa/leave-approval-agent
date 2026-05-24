@@ -76,6 +76,71 @@ graph TD
     style Services fill:#fff4e6,stroke:#495057,color:#1a1a1a
 ```
 
+## 数据流
+
+```mermaid
+graph LR
+    subgraph Input["入口"]
+        Client["client/hooks/"]
+        Server["server/index.ts"]
+    end
+
+    subgraph SvcChat["services/chat/"]
+        ChatSvc["chat-service"]
+        CompactSvc["compact-service"]
+    end
+
+    subgraph SvcMem["services/memory/"]
+        MemSvc["memory-service"]
+        ExtractSvc["extract-service"]
+    end
+
+    subgraph SvcPlugin["services/plugins/"]
+        Reg["registry"]
+        Disc["discovery"]
+    end
+
+    Client -->|"local 模式"| ChatSvc
+    Server -->|"server 模式"| ChatSvc
+    ChatSvc -->|"压缩触发"| CompactSvc
+    ChatSvc -->|"记忆注入"| MemSvc
+    MemSvc -->|"提取触发"| ExtractSvc
+    ChatSvc -->|"插件查找"| Reg
+
+    style Input fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style SvcChat fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style SvcMem fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style SvcPlugin fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+```
+
+## 服务调用时序图
+
+```mermaid
+sequenceDiagram
+    participant Caller as server/ 或 client
+    participant ChatSvc as chat-service
+    participant PluginSvc as plugins/registry
+    participant Agent as agent/core
+    participant DeepSeek as DeepSeek API
+
+    Caller->>ChatSvc: send(message, pluginId)
+    ChatSvc->>PluginSvc: getPlugin(id)
+    PluginSvc-->>ChatSvc: BusinessPlugin
+    ChatSvc->>ChatSvc: buildContext(memories, summary)
+    ChatSvc->>Agent: runAgent({plugin, message, ...})
+    Agent->>DeepSeek: stream 请求
+
+    loop 流式响应
+        DeepSeek-->>Agent: text_delta
+        Agent-->>ChatSvc: onSSE('text')
+        ChatSvc-->>Caller: 流式数据
+    end
+
+    Agent-->>ChatSvc: done
+    ChatSvc->>ChatSvc: checkCompact(messages)
+    ChatSvc-->>Caller: 完成
+```
+
 ## 与其他层的对比
 
 | 层 | 定义 | 举例 |

@@ -19,6 +19,93 @@ domain/
 └── enums/         # 枚举常量 — 状态码/错误码/类型标签
 ```
 
+## 类型关系图
+
+```mermaid
+graph TD
+    subgraph Enums["enums/"]
+        ErrorCode["ErrorCode"]
+        MemoryType["MemoryType"]
+        AgentPhase["AgentPhase"]
+        SSEEventType["SSEEventType"]
+    end
+
+    subgraph Models["models/"]
+        ChatMsg["ChatMessage"]
+        LeaveForm["LeaveApplication"]
+        MemoryItem["MemoryItem"]
+        FieldMeta["FieldMeta"]
+    end
+
+    subgraph DTOs["dto/"]
+        ChatReq["ChatRequest"]
+        ConfirmReq["ConfirmRequest"]
+        SSEPayload["SSEEventPayload"]
+        SubmitResp["SubmitFormResponse"]
+    end
+
+    subgraph VOs["vo/"]
+        PluginInfo["PluginInfo"]
+        ChatHistory["ChatHistory"]
+        StatusStep["StatusStep"]
+        ConfirmCard["ConfirmCardData"]
+    end
+
+    subgraph Ifaces["interfaces/"]
+        IBusinessPlugin["IBusinessPlugin"]
+        ITracer["ITracer"]
+    end
+
+    IBusinessPlugin --> FieldMeta
+    IBusinessPlugin -->|"validate()"| Models
+    SSEPayload --> SSEEventType
+    MemoryItem --> MemoryType
+
+    style Enums fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Models fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style DTOs fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+    style VOs fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+    style Ifaces fill:#ffe3e3,stroke:#495057,color:#1a1a1a
+```
+
+## 数据流 — 类型引用路径
+
+```mermaid
+graph LR
+    Domain["domain/<br/>纯类型定义"]
+
+    Infra["infrastructure/<br/>运行时函数"]
+    Agent["agent/<br/>框架层"]
+    Plugins["plugins/<br/>业务插件"]
+    Server["server/<br/>Express"]
+    Client["client/<br/>React UI"]
+
+    Infra -->|"import type"| Domain
+    Agent -->|"import type"| Domain
+    Plugins -->|"import type"| Domain
+    Server -->|"import type"| Domain
+    Client -->|"import type"| Domain
+
+    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
+```
+
+## 类型使用时序图
+
+```mermaid
+sequenceDiagram
+    participant Plugin as plugins/
+    participant Factory as agent/core/
+    participant Server as server/
+    participant Client as client/
+
+    Note over Plugin,Client: 所有层 import domain/ 的类型 (编译时擦除)
+
+    Plugin->>Plugin: BusinessPlugin, FieldMeta, ValidationResult
+    Factory->>Factory: ChatMessage, MemoryItem, ITracer
+    Server->>Server: ChatRequest, ConfirmRequest, SSEEventPayload
+    Client->>Client: PluginInfo, StatusStep, ConfirmCardData
+```
+
 ## 各子目录说明
 
 ### models/ — 领域实体

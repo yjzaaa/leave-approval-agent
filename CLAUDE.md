@@ -318,6 +318,14 @@ sequenceDiagram
 - 字体: Crimson Pro + Noto Serif SC + IBM Plex Mono + Noto Sans SC
 - 主题: 墨韵 (warm paper + ink-dark + vermillion accent)，dark/light/system
 - 依赖注入: 通过 `BusinessPlugin` 接口，禁止直接 import 具体业务
+- **CLAUDE.md 文档规范** — 每个 CLAUDE.md 必须包含以下四项:
+  1. **目录结构** — 当前层的文件树 (`tree` 代码块)
+  2. **架构图** — 模块关系或组件结构 (`mermaid graph`)
+  3. **数据流** — 数据在层内/层间的流转路径 (`mermaid graph` 或表格)
+  4. **时序图** — 关键交互流程 (`mermaid sequenceDiagram`)
+  - 插件级 CLAUDE.md (plugins/xxx/) 可简化为审批流程图 + Tool 列表
+  - 越底层的文档越精简，越上层的越完整
+  - 新增/删除文件后必须同步更新对应 CLAUDE.md
 
 ## 行为准则
 

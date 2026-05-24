@@ -25,6 +25,42 @@ agent/
     └── local-utils.ts    # compact/extract-memories 辅助函数
 ```
 
+## 模块架构图
+
+```mermaid
+graph TD
+    subgraph Core["core/"]
+        Factory["agent-factory.ts<br/>runAgent()"]
+        Types["types.ts<br/>SSEEventType<br/>CreateAgentParams"]
+    end
+
+    subgraph Hitl["hitl/"]
+        HitlMgr["hitl.ts<br/>HitlManager<br/>withConfirm()"]
+    end
+
+    subgraph Tracing["tracing/"]
+        Tracer["mlflow-tracer.ts<br/>ITracer<br/>createTracer()"]
+    end
+
+    subgraph Memory["memory/"]
+        MemPrompt["memory-prompt.ts<br/>formatMemoriesForPrompt()"]
+    end
+
+    subgraph Local["local/"]
+        LocalUtils["local-utils.ts<br/>compactHistoryLocal()<br/>extractMemoriesLocal()"]
+    end
+
+    Factory --> HitlMgr
+    Factory --> MemPrompt
+    Factory -.->|import type| Tracer
+
+    style Core fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+    style Hitl fill:#ffe3e3,stroke:#495057,color:#1a1a1a
+    style Tracing fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Memory fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Local fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+```
+
 ## Agent 运行时序图
 
 **Server 模式** (Express 调用):

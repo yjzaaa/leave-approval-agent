@@ -11,6 +11,55 @@
 
 当前 `shared/` 中的文件将逐步迁移，迁移期间两套路径共存。
 
+## 目录结构
+
+```
+shared/               ← ⚠️ 弃用中
+├── plugin.ts         # BusinessPlugin 核心契约 + FieldMeta + ValidationResult
+├── types.ts          # LeaveForm, ProcessForm, ChatMessage, FormSubmitResult
+├── memory.ts         # MemoryType, MemoryItem, MemoryStore + 运行时函数
+└── config.ts         # envInt() + config.maxFormRetries
+```
+
+## 迁移数据流
+
+```mermaid
+graph LR
+    subgraph Old["shared/ (弃用)"]
+        Plugin["plugin.ts"]
+        Types["types.ts"]
+        Memory["memory.ts"]
+        Config["config.ts"]
+    end
+
+    subgraph Domain["domain/ (新)"]
+        Models["models/"]
+        DTOs["dto/"]
+        Enums["enums/"]
+        Ifaces["interfaces/"]
+    end
+
+    subgraph Infra["infrastructure/ (新)"]
+        Utils["utils/"]
+        Constants["constants/"]
+        MemStore["memory/"]
+    end
+
+    Plugin --> Ifaces
+    Types --> Models
+    Types --> DTOs
+    Memory --> Models
+    Memory --> Enums
+    Memory --> Constants
+    Memory --> MemStore
+    Config --> Utils
+    Config --> Constants
+
+    style Old fill:#ffe3e3,stroke:#495057,color:#1a1a1a
+    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
+```
+
 ## 迁移映射
 
 | 旧文件 | 旧内容 | 迁移到 |

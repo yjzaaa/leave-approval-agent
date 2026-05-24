@@ -17,6 +17,58 @@
 
 每个插件完全自主：自带 prompt + tools + api + validator。框架不假设插件有哪些 tool。
 
+## 目录结构
+
+```
+plugins/
+├── registry.ts              # 插件注册表 — getPlugin() / getDefaultPlugin()
+├── leave-approval/          # 远程办公审批
+│   ├── index.ts                 # BusinessPlugin 导出
+│   ├── tools.ts                 # Tool 定义
+│   ├── prompt.ts                # System Prompt
+│   ├── fields.ts                # 表单字段
+│   ├── validator.ts             # 校验规则
+│   └── api.ts                   # Mock API
+├── expense-approval/        # 报销审批
+│   └── ... (同 leave-approval 结构)
+├── sick-leave/              # 病假申请
+│   └── ...
+├── pure-chat/               # 纯聊天
+│   └── index.ts
+├── faq/                     # 政策咨询
+│   └── index.ts
+└── oncall/                  # 值班排班
+    └── index.ts
+```
+
+## 插件数据流
+
+```mermaid
+graph LR
+    Registry["registry.ts<br/>getPlugin(id)"]
+    Leave["leave-approval"]
+    Expense["expense-approval"]
+    Sick["sick-leave"]
+    Chat["pure-chat"]
+    FAQ["faq"]
+    Oncall["oncall"]
+
+    Server["server/<br/>Express"]
+    Client["client/<br/>React"]
+
+    Registry --> Leave
+    Registry --> Expense
+    Registry --> Sick
+    Registry --> Chat
+    Registry --> FAQ
+    Registry --> Oncall
+
+    Server -->|"getPlugin()"| Registry
+    Client -->|"GET /api/plugins"| Registry
+
+    style Registry fill:#fff4e6,stroke:#495057,color:#1a1a1a
+```
+
 ## 插件类型对比图
 
 ```mermaid
