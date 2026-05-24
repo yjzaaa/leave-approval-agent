@@ -18,7 +18,10 @@ function ensureInit() {
   if (initialized) return;
   if (!TRACKING_URI) return;
   try {
-    init({ trackingUri: TRACKING_URI });
+    init({
+      trackingUri: TRACKING_URI,
+      experimentId: process.env.MLFLOW_EXPERIMENT_ID || '0',
+    });
     initialized = true;
     console.log(`[MLflow] tracing → ${TRACKING_URI}`);
   } catch (e) {
@@ -38,20 +41,22 @@ export async function traceChatRequest(
 ): Promise<void> {
   if (!TRACKING_URI) { return fn(); }
   ensureInit();
+  if (!initialized) { return fn(); }
 
   try {
     await withSpan(
       async (_span: LiveSpan) => {
-        updateCurrentTrace({
-          tags: {
-            plugin: metadata.plugin,
-            userId: metadata.userId || 'anonymous',
-          },
-          requestPreview: metadata.message.slice(0, 100),
-        });
         await fn();
       },
-      { name: metadata.plugin, spanType: SpanType.CHAIN, attributes: { plugin: metadata.plugin } },
+      {
+        name: metadata.plugin,
+        spanType: SpanType.CHAIN,
+        attributes: {
+          plugin: metadata.plugin,
+          userId: metadata.userId || 'anonymous',
+          messagePreview: metadata.message.slice(0, 100),
+        },
+      },
     );
     await flushTraces();
   } catch (e) {
