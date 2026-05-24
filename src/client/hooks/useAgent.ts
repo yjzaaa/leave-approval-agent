@@ -127,7 +127,7 @@ export function useAgent(options?: UseAgentOptions) {
       let result: string | null = null;
 
       if (isLocal) {
-        const { compactHistoryLocal } = await import('../../agent/local-utils.js');
+        const { compactHistoryLocal } = await import('../../agent/local/local-utils.js');
         result = await compactHistoryLocal(
           oldMessages.map(m => ({ role: m.role, content: m.content }))
         );
@@ -155,7 +155,7 @@ export function useAgent(options?: UseAgentOptions) {
     if (!onMemoriesExtracted) return;
     try {
       if (isLocal) {
-        const { extractMemoriesLocal } = await import('../../agent/local-utils.js');
+        const { extractMemoriesLocal } = await import('../../agent/local/local-utils.js');
         const data = await extractMemoriesLocal(
           recentMessages.map(m => ({ role: m.role, content: m.content }))
         );
@@ -215,9 +215,9 @@ export function useAgent(options?: UseAgentOptions) {
 
       try {
         const [{ runAgent }, { getPlugin }, { createTracer }] = await Promise.all([
-          import('../../agent/agent-factory.js'),
+          import('../../agent/core/agent-factory.js'),
           import('../../plugins/registry.js'),
-          import('../../agent/mlflow-tracer.js'),
+          import('../../agent/tracing/mlflow-tracer.js'),
         ]);
 
         const plugin = getPlugin(pluginIdRef.current);

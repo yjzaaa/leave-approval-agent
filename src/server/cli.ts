@@ -6,7 +6,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
 import { getPlugin } from '../plugins/registry.js';
-import { getDefaultModel } from '../agent/agent-factory.js';
+import { getDefaultModel } from '../agent/core/agent-factory.js';
 
 function banner(displayName: string): void {
   console.log('');
