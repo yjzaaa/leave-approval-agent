@@ -13,8 +13,9 @@ export default defineConfig(({ mode }) => {
       __AGENT_MODE__: JSON.stringify(isLocal ? 'local' : 'server'),
       /** DeepSeek API Key — 构建时从环境变量注入（local 模式需要在浏览器中使用） */
       'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
-      /** MLflow — local 模式强制为空（跳过浏览器端 mlflow 初始化） */
-      'process.env.MLFLOW_TRACKING_URI': JSON.stringify(isLocal ? '' : (process.env.MLFLOW_TRACKING_URI || '')),
+      /** MLflow — local/server 模式均支持，未设置时自动 no-op */
+      'process.env.MLFLOW_TRACKING_URI': JSON.stringify(process.env.MLFLOW_TRACKING_URI || ''),
+      'process.env.MLFLOW_EXPERIMENT_ID': JSON.stringify(process.env.MLFLOW_EXPERIMENT_ID || '0'),
     },
     plugins: [react(), tailwindcss()],
     server: {

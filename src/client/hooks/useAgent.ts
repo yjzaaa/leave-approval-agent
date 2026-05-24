@@ -216,14 +216,23 @@ export function useAgent(options?: UseAgentOptions) {
       let fullText = '';
 
       try {
-        const [{ runAgent }, { getPlugin }] = await Promise.all([
+        const [{ runAgent }, { getPlugin }, { PiAgentTracer }] = await Promise.all([
           import('../../agent/agent-factory.js'),
           import('../../plugins/registry.js'),
+          import('../../agent/mlflow-tracer.js'),
         ]);
 
         const plugin = getPlugin(pluginIdRef.current);
 
-        const hitl = await runAgent({
+        const tracer = new PiAgentTracer({
+          plugin: plugin.id,
+          userId: userId,
+          sessionId: `local-${Date.now()}`,
+          message: text,
+        });
+
+        const hitl = await tracer.run(async () => {
+          return runAgent({
           plugin,
           message: text,
           history,
@@ -275,6 +284,8 @@ export function useAgent(options?: UseAgentOptions) {
           onHitlCreated: (h) => {
             hitlRef.current = h;
           },
+          tracer,
+        });
         });
         // runAgent 返回时流程已结束，保持 hitl 引用供下次使用
         void hitl;

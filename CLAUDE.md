@@ -44,6 +44,7 @@ graph TB
     end
 
     Browser --> API
+    Browser -.->|"local 模式"| Factory
     CLI --> Factory
     API --> SSE
     SSE --> Factory
@@ -74,6 +75,7 @@ graph TD
     Plugins -->|"依赖"| Shared
     Agent -.->|"依赖"| Shared
     Client -.->|"依赖"| Shared
+    Client -.->|"local 模式依赖"| Agent
 
     style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
@@ -122,6 +124,8 @@ graph LR
 
 ## 聊天请求时序图
 
+**Server 模式** (Express 中转):
+
 ```mermaid
 sequenceDiagram
     actor User as 👤 用户
@@ -145,31 +149,87 @@ sequenceDiagram
     Express-->>Browser: SSE: done
 ```
 
-## HITL 确认流程时序图
+**Local 模式** (浏览器直接调用 Agent，无网络往返):
 
 ```mermaid
 sequenceDiagram
     actor User as 👤 用户
     participant Browser as Browser
-    participant State as confirm-state
+    participant Factory as agent-factory (in-browser)
+    participant DeepSeek as DeepSeek API
+
+    User->>Browser: 输入消息
+    Browser->>Factory: runAgent({plugin, message, onSSE})
+    Factory->>Factory: new Agent({tools: plugin.tools})
+
+    loop 流式响应
+        Factory-->>Browser: onSSE('text', {content})
+        Browser-->>User: 流式渲染
+    end
+
+    Factory-->>Browser: onSSE('done', {})
+```
+
+## HITL 确认流程时序图
+
+**Server 模式** (通过 HTTP):
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 用户
+    participant Browser as Browser
+    participant Express as Express
+    participant Hitl as HitlManager
     participant Tool as 插件 Tool
 
     Note over Tool: tool.execute() 中
-    Tool->>State: requestConfirm(toolName, form)
-    Note over State: Promise 挂起 ⏳
+    Tool->>Hitl: requestConfirm(toolName, form)
+    Note over Hitl: Promise 挂起 ⏳
+    Note over Express: onHitlCreated 在 agent.prompt() 之前注册
 
-    State-->>Browser: SSE: confirm_required
+    Hitl-->>Browser: SSE: confirm_required
     Browser-->>User: 弹出确认卡片 📋
 
     alt 用户确认 ✅
         User->>Browser: 点击确认
-        Browser->>State: POST /api/confirm {approved: true}
-        State-->>Tool: resolve(true)
+        Browser->>Express: POST /api/confirm {approved: true}
+        Express->>Hitl: approve()
+        Hitl-->>Tool: resolve(true)
         Tool->>Tool: 执行 submitApi()
     else 用户拒绝 ❌
         User->>Browser: 点击拒绝
-        Browser->>State: POST /api/confirm {approved: false}
-        State-->>Tool: resolve(false)
+        Browser->>Express: POST /api/confirm {approved: false}
+        Express->>Hitl: reject()
+        Hitl-->>Tool: resolve(false)
+        Tool->>Tool: throw Error
+    end
+```
+
+**Local 模式** (直接操作 HitlManager):
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 用户
+    participant Browser as Browser
+    participant Hitl as HitlManager
+    participant Tool as 插件 Tool
+
+    Note over Tool: tool.execute() 中
+    Tool->>Hitl: requestConfirm(toolName, form)
+    Note over Hitl: Promise 挂起 ⏳
+
+    Hitl-->>Browser: onEvent → React setState
+    Browser-->>User: 弹出确认卡片 📋
+
+    alt 用户确认 ✅
+        User->>Browser: 点击确认
+        Browser->>Hitl: hitl.approve() (直接调用)
+        Hitl-->>Tool: resolve(true)
+        Tool->>Tool: 执行 submitApi()
+    else 用户拒绝 ❌
+        User->>Browser: 点击拒绝
+        Browser->>Hitl: hitl.reject() (直接调用)
+        Hitl-->>Tool: resolve(false)
         Tool->>Tool: throw Error
     end
 ```
@@ -179,7 +239,8 @@ sequenceDiagram
 1. **框架不知道 tool** — `agent/` 不定义任何 tool，tool 由插件完全自主提供
 2. **插件完全自主** — 每个插件自带 prompt + tools + api + validator
 3. **HITL 是可选能力** — 框架提供 `confirm-state`，插件按需 import
-4. **前端零改动** — 新增插件不需要修改前端代码
+4. **前端零改动** — 新增插件或切换运行模式都不需要修改前端代码
+5. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
 
 ## 目录职责
 
@@ -245,13 +306,21 @@ sequenceDiagram
 这些准则起作用的表现是: diff 中不必要的改动变少、无过度设计导致的返工、实现前提出澄清问题而非实现后出错。
 
 ```bash
-npm run dev:all       # Express :3000 + Vite :5173
-npm run dev:server    # 仅后端
-npm run dev           # 仅前端
+npm run dev           # 前端 local 模式 (浏览器直接运行 Agent，无需后端)
+npm run dev:server    # Express 服务端
+npm run dev:all       # Server 模式 (Express :3000 + Vite :5173 代理)
 npm run build         # 生产构建
 npm run cli           # CLI 模式
 npm run cli -- --plugin=xxx  # 指定插件
 ```
+
+**运行模式**:
+
+| 命令 | 模式 | `__AGENT_MODE__` | 说明 |
+|------|------|------------------|------|
+| `npm run dev` | local | `"local"` | Vite 独立运行，Agent 直接在浏览器中执行 |
+| `npm run dev:all` | server | `"server"` | Express + Vite，Vite 代理 `/api` → `:3000` |
+| `npm run dev:server` | 仅后端 | — | 只启动 Express，无前端 |
 
 ## Git 规范
 
@@ -261,7 +330,9 @@ npm run cli -- --plugin=xxx  # 指定插件
 
 ## 端口
 
-- Express: `3000` / Vite dev: `5173` / 代理 `/api` → `:3000`
+- Express: `3000` / Vite dev: `5173`
+- Local 模式: 无代理，前端直接调用 Agent
+- Server 模式: Vite 代理 `/api` → `:3000` (由 `vite --mode server` 激活)
 
 ## Post-Commit: Update CLAUDE.md
 

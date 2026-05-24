@@ -1,12 +1,36 @@
 # 前端 UI 壳层
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md)
+> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 相关: [shared/](../shared/CLAUDE.md) · [server/](../server/CLAUDE.md) · [agent/](../agent/CLAUDE.md)
 
 ## 职责
 
-React 前端，通过 SSE 与后端通信。不关心具体业务逻辑。
+React 前端，支持两种运行模式。不关心具体业务逻辑。
 
 **核心约束：前端不知道任何具体业务插件的存在。**
+
+## 双模式架构
+
+```mermaid
+graph LR
+    subgraph Build["Vite 构建时"]
+        Mode["--mode server?"]
+        Mode -->|"yes"| Server["__AGENT_MODE__ = 'server'"]
+        Mode -->|"no (default)"| Local["__AGENT_MODE__ = 'local'"]
+    end
+
+    subgraph Runtime["运行时"]
+        Server --> SSE["SSE over HTTP<br/>fetch /api/chat"]
+        Local --> Direct["直接调用<br/>runAgent()"]
+    end
+
+    style Build fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Runtime fill:#e7f5ff,stroke:#495057,color:#1a1a1a
+```
+
+| 模式 | 通信方式 | 后端 | 适用场景 |
+|------|---------|------|---------|
+| server | SSE (`/api/chat`) | Express :3000 | 生产部署、多客户端 |
+| local | 直接 `runAgent()` | 不需要 | 开发调试、单机使用 |
 
 ## 架构
 
@@ -14,7 +38,7 @@ React 前端，通过 SSE 与后端通信。不关心具体业务逻辑。
 client/
 ├── types.ts                         # 泛化类型
 ├── hooks/
-│   ├── useAgent.ts                  # 聊天状态机 Hook
+│   ├── useAgent.ts                  # 聊天状态机 Hook v5.0（双模式）
 │   └── useMemory.ts                 # 记忆系统 Hook (localStorage)
 └── components/
     ├── chat/
@@ -40,44 +64,69 @@ stateDiagram-v2
 
     state processing {
         [*] --> streaming
-        streaming : SSE text → 流式渲染
+        streaming : 流式渲染
         streaming : InputBar 禁用
     }
 
-    processing --> awaiting_confirm : SSE confirm_required
-    processing --> done : SSE done
-    processing --> error : 网络错误
+    processing --> awaiting_confirm : confirm_required
+    processing --> done : done
+    processing --> error : 错误
 
     state awaiting_confirm {
         [*] --> show_card
         show_card : ConfirmCard 弹出
     }
 
-    awaiting_confirm --> processing : 确认/拒绝 → POST confirm
+    awaiting_confirm --> processing : 确认/拒绝
     done --> idle
     error --> idle
 ```
 
-## SSE 事件处理流程
+## 事件处理流程（两种模式对比）
+
+**Server 模式 — SSE over HTTP：**
 
 ```mermaid
 sequenceDiagram
-    participant SSE as EventSource
+    participant HTTP as fetch /api/chat
     participant Hook as useAgent.ts
     participant UI as 组件
 
-    SSE->>Hook: event: text {content}
-    Hook->>UI: appendMessage()
-    UI->>UI: MessageBubble 渲染
+    HTTP->>Hook: SSE event: text {content}
+    Hook->>UI: updateLastAssistant()
+    UI->>UI: MessageBubble 流式渲染
 
-    SSE->>Hook: event: confirm_required
+    HTTP->>Hook: SSE event: confirm_required
     Hook->>UI: setConfirmRequest()
     UI->>UI: ConfirmCard 弹出
 
-    SSE->>Hook: event: confirm_resolved
+    HTTP->>Hook: SSE event: confirm_resolved
     Hook->>UI: 关闭 ConfirmCard
 
-    SSE->>Hook: event: done {}
+    HTTP->>Hook: SSE event: done {}
+    Hook->>UI: setPhase('done')
+```
+
+**Local 模式 — 直接 Agent 调用：**
+
+```mermaid
+sequenceDiagram
+    participant Agent as runAgent()
+    participant Hook as useAgent.ts
+    participant UI as 组件
+
+    Agent->>Hook: onSSE('text', {content})
+    Hook->>UI: updateLastAssistant()
+    UI->>UI: MessageBubble 流式渲染
+
+    Agent->>Hook: onSSE('confirm_required', ...)
+    Hook->>UI: setConfirmRequest()
+    UI->>UI: ConfirmCard 弹出
+
+    Agent->>Hook: onSSE('confirm_resolved', ...)
+    Hook->>UI: 关闭 ConfirmCard
+
+    Agent->>Hook: onSSE('done', {})
     Hook->>UI: setPhase('done')
 ```
 
@@ -145,12 +194,31 @@ Google Fonts 通过 `media="print" onload="this.media='all'"` 异步加载，避
 | UI | `MemoryPanel.tsx` — 桌面右侧抽屉 / 平板覆盖层 / 手机底部抽屉 |
 | 隔离 | user/feedback 跨插件共享，project/reference 按插件隔离 |
 
+## 文件说明
+
+### hooks/useAgent.ts
+
+- 聊天状态机 Hook v5.0，支持 server / local 双模式
+- `sendMessage()` 根据 `__AGENT_MODE__` 分支：
+  - local 模式: 动态 `import('../../agent/agent-factory.js')` 直接调用 `runAgent()`，`onSSE` 回调直接更新 React state
+  - server 模式: `fetch('/api/chat')` 读 SSE 流，解析 text/confirm_required/done 事件
+- `confirm()` 同样分支：local 模式直接操作 `hitlRef`，server 模式 POST `/api/confirm`
+- `compactHistory()` / `extractMemories()` 在 local 模式使用 `local-utils.ts` 进程内处理，server 模式走 HTTP 端点
+- `hitlRef` — local 模式通过 `onHitlCreated` 回调获取 HitlManager 引用
+- HITL 用户拒绝（`'用户拒绝'`）视为正常流程结束，不显示错误
+
+### hooks/useMemory.ts
+
+- localStorage 持久化 (`agent_memory_store`)，FIFO 容量管理
+- user/feedback 跨插件共享，project/reference 按插件隔离
+
 ## 约束
 
-- ❌ 不 import plugins/ agent/
 - ❌ 不硬编码具体 tool 名称
-- ✅ 业务信息全通过 SSE 事件获取
+- ✅ 业务信息全通过 SSE 事件/onSSE 回调获取
 - ✅ 记忆通过 `useMemory` Hook 管理
+- ✅ local 模式通过动态 `import()` 加载 agent/ 模块（编译时不依赖 Node.js 运行时）
+- ✅ `__AGENT_MODE__` 由 Vite `define` 在构建时注入，零运行时开销
 
 ---
 

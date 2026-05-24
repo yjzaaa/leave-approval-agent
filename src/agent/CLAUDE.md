@@ -13,14 +13,17 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 ```
 agent/
 ├── CLAUDE.md           # 本文档
-├── agent-factory.ts    # 创建 Agent、SSE 转发
+├── agent-factory.ts    # 创建 Agent、SSE 转发、HITL 注册
 ├── hitl.ts             # HitlManager 类 + withConfirm 包装器
+├── local-utils.ts      # 浏览器端 compact/extract-memories 辅助函数
 ├── memory-prompt.ts    # 记忆格式化注入 system prompt
-├── mlflow-tracer.ts    # MLflow 追踪 (可选)
+├── mlflow-tracer.ts    # MLflow 追踪 (仅 Node.js 服务端)
 └── types.ts            # 框架级类型
 ```
 
 ## Agent 运行时序图
+
+**Server 模式** (Express 调用):
 
 ```mermaid
 sequenceDiagram
@@ -29,7 +32,8 @@ sequenceDiagram
     participant Agent as Pi Agent
     participant API as DeepSeek API
 
-    Server->>Factory: runAgent({plugin, message, onSSE})
+    Server->>Factory: runAgent({plugin, message, onSSE, onHitlCreated})
+    Factory->>Server: onHitlCreated(hitl) ← 立即注册
     Factory->>Agent: new Agent({tools: plugin.tools})
     Factory->>Agent: agent.prompt(message)
     Agent->>API: stream 请求
@@ -43,12 +47,44 @@ sequenceDiagram
     alt tool 调用 (在 confirmTools 中)
         Agent->>Factory: tool_execution_start
         Factory-->>Server: onSSE('confirm_required')
-        Server-->>Factory: POST /api/confirm
+        Server-->>Factory: POST /api/confirm → hitl.approve()
         Factory->>Agent: continue
     end
 
     Agent-->>Factory: agent_end
     Factory-->>Server: onSSE('done')
+```
+
+**Local 模式** (浏览器直接调用):
+
+```mermaid
+sequenceDiagram
+    participant Browser as useAgent.ts
+    participant Factory as agent-factory
+    participant Agent as Pi Agent
+    participant API as DeepSeek API
+
+    Browser->>Factory: runAgent({plugin, message, onSSE, onHitlCreated})
+    Factory->>Browser: onHitlCreated(hitl) ← 保存 hitlRef
+    Factory->>Agent: new Agent({tools: plugin.tools})
+    Factory->>Agent: agent.prompt(message)
+    Agent->>API: stream 请求
+
+    loop 流式响应
+        API-->>Agent: text_delta
+        Agent-->>Factory: message_update
+        Factory-->>Browser: onSSE('text') → React setState
+    end
+
+    alt tool 调用 (在 confirmTools 中)
+        Agent->>Factory: tool_execution_start
+        Factory-->>Browser: onSSE('confirm_required')
+        Browser-->>Factory: hitlRef.approve() (直接调用)
+        Factory->>Agent: continue
+    end
+
+    Agent-->>Factory: agent_end
+    Factory-->>Browser: onSSE('done')
 ```
 
 ## HITL 状态机
@@ -91,8 +127,22 @@ stateDiagram-v2
 ### agent-factory.ts
 
 - `runAgent(params)` — 创建 Agent，订阅事件，SSE 转发
+  - `onHitlCreated` 回调在 `agent.prompt()` 之前触发，用于注册 HitlManager 到会话映射
+  - 返回 `Promise<HitlManager>`（流程结束后 resolve）
 - `getDefaultModel()` — DeepSeek 模型配置
 - 不 import 任何 tool，直接使用 `plugin.tools`
+
+### local-utils.ts
+
+- `compactHistoryLocal(messages)` — 浏览器端对话压缩，创建 mini Agent 生成摘要
+- `extractMemoriesLocal(messages)` — 浏览器端记忆提取，创建 mini Agent 返回结构化记忆
+- 替代 `/api/compact` 和 `/api/extract-memories` HTTP 端点
+- 仅 local 模式使用（通过 `useAgent` 动态 import）
+
+### mlflow-tracer.ts
+
+- `PiAgentTracer` — MLflow tracing 集成（仅 Node.js 服务端使用）
+- 浏览器 local 模式不实例化 tracer，`agent-factory` 通过 `import type` 引用（编译时擦除）
 
 ### hitl.ts
 

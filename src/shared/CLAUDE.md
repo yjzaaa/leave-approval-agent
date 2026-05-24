@@ -70,8 +70,10 @@ classDiagram
 
 ### config.ts
 
-- `MAX_FORM_RETRIES` = 5
-- `PORT` = 3000
+- `envInt(key, fallback)` — 浏览器兼容的 env 读取辅助（`typeof process !== 'undefined'` 守卫）
+- `config.maxFormRetries` — 最大表单修正重试次数（默认 5，环境变量 `MAX_FORM_RETRIES`）
+- 不 import `dotenv`，由各运行环境自行加载 env（Node.js: dotenv/config，浏览器: Vite define）
+- PORT 不再集中管理，由各入口文件自行处理（`server/index.ts` 用 `process.env.PORT || 3000`）
 
 ### memory.ts
 
