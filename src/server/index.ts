@@ -19,7 +19,7 @@ import type { Request, Response } from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAgent, getDefaultModel } from '../agent/agent-factory.js';
-import { PiAgentTracer } from '../agent/mlflow-tracer.js';
+import { createTracer } from '../agent/mlflow-tracer.js';
 import type { HitlManager } from '../agent/hitl.js';
 import { getPlugin, getDefaultPlugin, registry } from '../plugins/registry.js';
 import type { ChatMessage } from '../shared/types.js';
@@ -182,7 +182,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   });
 
   try {
-    const tracer = new PiAgentTracer({
+    const tracer = createTracer({
       plugin: plugin.id,
       userId: (req.body as any).userId,
       sessionId,

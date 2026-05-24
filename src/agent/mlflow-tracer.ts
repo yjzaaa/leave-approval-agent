@@ -1,14 +1,15 @@
 /**
- * MLflow Tracing 集成 — Pi Agent Instrumentation
+ * MLflow Tracing 集成 — Strategy 模式
  *
  * 纯 fetch() REST API 实现，零 SDK 依赖。
  * 支持 Node.js 和浏览器双环境运行。
  *
- * 无 MLFLOW_TRACKING_URI 时完全 no-op。
+ * 设计模式:
+ *   ITracer (接口)
+ *     ├── FetchTracer   — 有 MLFLOW_TRACKING_URI 时，通过 REST API 上报
+ *     └── NoopTracer    — 无 MLFLOW_TRACKING_URI 时，空操作零开销
  *
- * Trace 结构:
- *   CHAIN: chat:{plugin}           ← root span
- *     └── TOOL: tool:{name}        ← child span
+ * 工厂: createTracer(opts) → ITracer
  */
 const TRACKING_URI: string =
   typeof process !== 'undefined' && process.env?.MLFLOW_TRACKING_URI
@@ -22,7 +23,7 @@ const EXPERIMENT_ID: string =
 
 const TIMEOUT_MS = 2000;
 
-// ═══ ID 生成 (浏览器 + Node.js 兼容) ═══
+// ═══ 工具函数 ═══
 
 /** 生成指定字节数的十六进制随机 ID */
 function generateHexId(bytes: number): string {
@@ -84,18 +85,31 @@ interface SpanData {
 }
 
 /**
- * PiAgentTracer — 一次请求一个实例
+ * ITracer — Tracer 接口
  *
- * 用法:
- *   const tracer = new PiAgentTracer(opts);
- *   await tracer.run(async () => {
- *     agent.subscribe(e => tracer.handleEvent(e));
- *     await agent.prompt(msg);
- *     await agent.waitForIdle();
- *   });
+ * 所有 tracer 实现必须满足此接口。
+ * 调用方不关心具体实现（FetchTracer / NoopTracer），只依赖接口。
  */
-export class PiAgentTracer {
-  private readonly enabled: boolean;
+export interface ITracer {
+  /** 执行完整 trace 生命周期，返回 fn 的结果 */
+  run<T>(fn: () => Promise<T>): Promise<T>;
+  /** 接收 agent 事件 */
+  handleEvent(event: any): void;
+  /** 标记 HITL 触发 */
+  markHitl(toolName: string): void;
+}
+
+// ═══ NoopTracer — 工厂模式 Null Object ═══
+
+class NoopTracer implements ITracer {
+  async run<T>(fn: () => Promise<T>): Promise<T> { return fn(); }
+  handleEvent(_event: any): void { /* no-op */ }
+  markHitl(_toolName: string): void { /* no-op */ }
+}
+
+// ═══ FetchTracer — REST API 上报 ═══
+
+class FetchTracer implements ITracer {
   private readonly traceId: string;
   private readonly rootSpanId: string;
   private readonly spans: SpanData[] = [];
@@ -109,15 +123,12 @@ export class PiAgentTracer {
   private hitlTool = '';
 
   constructor(private readonly opts: TracerOptions) {
-    this.enabled = !!TRACKING_URI;
     this.traceId = 'tr-' + generateHexId(16);
     this.rootSpanId = generateHexId(8);
   }
 
   /** 执行完整 trace 生命周期 */
   async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (!this.enabled) return fn();
-
     this.startTime = Date.now();
 
     const rootSpan: SpanData = {
@@ -172,8 +183,6 @@ export class PiAgentTracer {
 
   /** 接收 agent 事件 */
   handleEvent(event: any): void {
-    if (!this.enabled) return;
-
     try {
       switch (event.type) {
         case 'tool_execution_start': {
@@ -320,7 +329,6 @@ export class PiAgentTracer {
       }
 
       // 第2步: PUT .../traces.json — 上传 span 数据
-      // artifactUri = "mlflow-artifacts:/0/traces/tr-xxx/artifacts"
       const artifactPath = artifactUri.replace('mlflow-artifacts:', '');
       const uploadUrl = `${TRACKING_URI}/api/2.0/mlflow-artifacts/artifacts${artifactPath}/traces.json`;
 
@@ -343,4 +351,16 @@ export class PiAgentTracer {
       console.warn(`[MLflow] 上传错误: ${(e as Error).message}`);
     }
   }
+}
+
+// ═══ 工厂函数 ═══
+
+/**
+ * 创建 Tracer — 根据环境自动选择实现
+ *
+ * - 有 MLFLOW_TRACKING_URI → FetchTracer (REST API 上报)
+ * - 无 MLFLOW_TRACKING_URI → NoopTracer (空操作零开销)
+ */
+export function createTracer(opts: TracerOptions): ITracer {
+  return TRACKING_URI ? new FetchTracer(opts) : new NoopTracer();
 }

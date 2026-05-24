@@ -9,8 +9,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
-      /** Agent 模式标记 — useAgent Hook 据此选择 server / local 分支 */
-      __AGENT_MODE__: JSON.stringify(isLocal ? 'local' : 'server'),
       /** DeepSeek API Key — 构建时从环境变量注入（local 模式需要在浏览器中使用） */
       'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
       /** MLflow — local/server 模式均支持，未设置时自动 no-op */

@@ -14,7 +14,7 @@ import type { ChatMessage } from '../shared/types.js';
 import type { MemoryItem } from '../shared/memory.js';
 import { HitlManager, wrapHitlTools } from './hitl.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from './memory-prompt.js';
-import type { PiAgentTracer } from './mlflow-tracer.js';
+import type { ITracer } from './mlflow-tracer.js';
 
 export type SSECallback = (event: string, data: Record<string, unknown>) => void;
 
@@ -28,7 +28,7 @@ export interface AgentFactoryParams {
   /** 对话摘要 (前端注入) */
   summary?: string;
   /** MLflow tracer（可选，启用时自动收集） */
-  tracer?: PiAgentTracer;
+  tracer?: ITracer;
   /** HITL 管理器创建回调 — 在 agent.prompt() 之前触发，用于注册到会话映射 */
   onHitlCreated?: (hitl: HitlManager) => void;
 }

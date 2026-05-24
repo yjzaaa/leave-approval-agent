@@ -9,20 +9,16 @@
  *   5. 压缩触发 — 消息数超阈值时执行对话压缩
  *
  * 模式切换:
- *   - 构建时由 Vite define 的 __AGENT_MODE__ 决定，无需前端代码改动
- *   - local 模式: 直接调用 runAgent()，绕过 Express，无网络往返
- *   - server 模式: 通过 fetch /api/chat SSE 与 Express 通信（向后兼容）
+ *   - npm run dev (MODE = "development") → local 模式，直接调用 runAgent()
+ *   - npm run dev:all (MODE = "server")    → server 模式，fetch /api/chat SSE
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Message, ConfirmRequest, AgentPhase, ChatHistory } from '../types';
 import type { MemoryItem } from '../../shared/memory';
 import { MEMORY_LIMITS } from '../../shared/memory';
 
-/** Vite 构建时注入的模式标记 */
-declare const __AGENT_MODE__: 'local' | 'server';
-
-/** Agent 模式 */
-const isLocal = typeof __AGENT_MODE__ !== 'undefined' ? __AGENT_MODE__ === 'local' : false;
+/** 非 "server" 模式均视为 local */
+const isLocal = import.meta.env.MODE !== 'server';
 
 interface UseAgentOptions {
   pluginId?: string;
@@ -216,7 +212,7 @@ export function useAgent(options?: UseAgentOptions) {
       let fullText = '';
 
       try {
-        const [{ runAgent }, { getPlugin }, { PiAgentTracer }] = await Promise.all([
+        const [{ runAgent }, { getPlugin }, { createTracer }] = await Promise.all([
           import('../../agent/agent-factory.js'),
           import('../../plugins/registry.js'),
           import('../../agent/mlflow-tracer.js'),
@@ -224,7 +220,7 @@ export function useAgent(options?: UseAgentOptions) {
 
         const plugin = getPlugin(pluginIdRef.current);
 
-        const tracer = new PiAgentTracer({
+        const tracer = createTracer({
           plugin: plugin.id,
           userId: userId,
           sessionId: `local-${Date.now()}`,
