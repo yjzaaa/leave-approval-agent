@@ -9,3 +9,5 @@ mlartifacts/
 mlflow.db
 test-results/
 *.png
+.claude/
+study/
