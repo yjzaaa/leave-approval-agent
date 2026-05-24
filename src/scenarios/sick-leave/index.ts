@@ -1,7 +1,7 @@
 ﻿/**
  * 病假申请 — 场景入口
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import { allSickLeaveTools } from './tools.js';
 import { sickLeaveFields } from './fields.js';
 import { sickLeavePrompt } from './prompt.js';

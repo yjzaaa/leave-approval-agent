@@ -1,7 +1,7 @@
 /**
  * 远程办公审批 — 表单字段定义
  */
-import type { FieldMeta } from '../../shared/scenario.js';
+import type { FieldMeta } from '../../domain/models/FieldMeta.js';
 
 export const leaveFields: FieldMeta[] = [
   { key: 'applicantName',      label: '申请人',           type: 'text',  required: true },

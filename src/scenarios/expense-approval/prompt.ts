@@ -1,7 +1,7 @@
 /**
  * 报销审批 — System Prompt 模板
  */
-import { config } from '../../shared/config.js';
+import { config } from '../../infrastructure/constants/agent.js';
 
 export const expensePrompt = `你是报销审批助手。请按以下流程处理，主动帮用户补全缺失信息。
 

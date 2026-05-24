@@ -1,7 +1,7 @@
 ﻿/**
  * 报销审批 — 场景入口
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import { allExpenseTools } from './tools.js';
 import { expenseFields } from './fields.js';
 import { expensePrompt } from './prompt.js';

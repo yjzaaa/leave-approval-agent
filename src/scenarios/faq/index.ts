@@ -4,7 +4,7 @@
  * 演示咨询类业务：有 tool 但不需要确认。
  * 适合知识库问答、HR 咨询、IT 支持等场景。
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import { allFaqTools } from './tools.js';
 
 const systemPrompt = `你是公司内部政策咨询助手。你的职责是：

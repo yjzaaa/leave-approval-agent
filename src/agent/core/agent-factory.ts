@@ -9,9 +9,9 @@
  */
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
-import type { Scenario } from '../../shared/scenario.js';
-import type { ChatMessage } from '../../shared/types.js';
-import type { MemoryItem } from '../../shared/memory.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { ChatMessage } from '../../domain/models/ChatMessage.js';
+import type { MemoryItem } from '../../domain/models/MemoryItem.js';
 import { HitlManager, wrapHitlTools } from '../hitl/hitl.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from '../memory/memory-prompt.js';
 import type { ITracer } from '../tracing/mlflow-tracer.js';

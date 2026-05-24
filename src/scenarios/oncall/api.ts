@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 值班排班 Mock API
  */
 
@@ -8,6 +8,19 @@ interface OncallRecord {
   person: string;
   department: string;
   shift: string;
+}
+
+/** 排班查询结果 */
+interface ScheduleQueryResult {
+  success: boolean;
+  data: OncallRecord[];
+}
+
+/** 换班申请结果 */
+interface SwapRequestResult {
+  success: boolean;
+  requestId: string;
+  message: string;
 }
 
 /** 模拟当前排班数据 */
@@ -21,13 +34,14 @@ const SCHEDULE: OncallRecord[] = [
 ];
 
 /** 查询排班 */
-export async function querySchedule(date: string, department?: string): Promise<{ success: boolean; data: OncallRecord[] }> {
+export async function querySchedule(date: string, department?: string): Promise<ScheduleQueryResult> {
   const filtered = SCHEDULE.filter(s => {
     if (date && s.date !== date) return false;
     if (department && s.department !== department) return false;
     return true;
   });
-  return { success: true, data: filtered };
+  const result: ScheduleQueryResult = { success: true, data: filtered };
+  return result;
 }
 
 /** 换班申请 */
@@ -36,11 +50,12 @@ export async function submitSwapRequest(
   targetDate: string,
   targetShift: string,
   reason: string,
-): Promise<{ success: boolean; requestId: string; message: string }> {
+): Promise<SwapRequestResult> {
   const id = `SW-${Date.now().toString(36).toUpperCase()}`;
-  return {
+  const result: SwapRequestResult = {
     success: true,
     requestId: id,
     message: `换班申请已提交：${requester} 申请 ${targetDate} ${targetShift} 换班。原因：${reason}`,
   };
+  return result;
 }

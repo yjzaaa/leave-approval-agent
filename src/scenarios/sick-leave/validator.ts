@@ -1,7 +1,7 @@
 /**
  * 病假申请 — 表单校验规则
  */
-import type { ValidationResult } from '../../shared/scenario.js';
+import type { ValidationResult } from '../../domain/models/ValidationResult.js';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 

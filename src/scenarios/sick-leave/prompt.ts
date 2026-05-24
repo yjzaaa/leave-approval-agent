@@ -1,7 +1,7 @@
 /**
  * 病假申请 — System Prompt 模板
  */
-import { config } from '../../shared/config.js';
+import { config } from '../../infrastructure/constants/agent.js';
 
 export const sickLeavePrompt = `你是病假申请助手。请按以下流程处理，主动帮用户补全缺失信息。
 

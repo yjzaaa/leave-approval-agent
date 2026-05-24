@@ -4,7 +4,7 @@
  * 演示最简单的场景形态：只需要 prompt + 空 tools。
  * 适合智能助手、客服 Bot、闲聊等场景。
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 
 const systemPrompt = `你是一个友好、专业的智能助手。你的任务是：
 

@@ -22,7 +22,8 @@ import { runAgent, getDefaultModel } from '../agent/core/agent-factory.js';
 import { createTracer } from '../agent/tracing/mlflow-tracer.js';
 import type { HitlManager } from '../agent/hitl/hitl.js';
 import { getScenario, getDefaultScenario, registry } from '../scenarios/registry.js';
-import type { ChatMessage } from '../shared/types.js';
+import type { ChatMessage } from '../domain/models/ChatMessage.js';
+import type { CompactResponse, ExtractMemoriesResponse, ConfirmResponse, ApiErrorResponse } from '../domain/dto/ApiResponses.js';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple, getModel } from '@earendil-works/pi-ai';
 
@@ -91,9 +92,11 @@ ${messagesText}`;
     await agent.prompt(compactPrompt);
     await agent.waitForIdle();
 
-    res.json({ summary: summary.trim() });
+    const result: CompactResponse = { summary: summary.trim() };
+    res.json(result);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const errorResp: ApiErrorResponse = { error: err.message };
+    res.status(500).json(errorResp);
   }
 });
 
@@ -148,13 +151,15 @@ ${messagesText}`;
     // 尝试解析 JSON
     try {
       const jsonMatch = result.match(/\{[\s\S]*\}/);
-      const memories = jsonMatch ? JSON.parse(jsonMatch[0]) : { user: [], feedback: [], project: [], reference: [] };
-      res.json(memories);
+      const parsed: ExtractMemoriesResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { user: [], feedback: [], project: [], reference: [] };
+      res.json(parsed);
     } catch {
-      res.json({ user: [], feedback: [], project: [], reference: [] });
+      const empty: ExtractMemoriesResponse = { user: [], feedback: [], project: [], reference: [] };
+      res.json(empty);
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const errorResp: ApiErrorResponse = { error: err.message };
+    res.status(500).json(errorResp);
   }
 });
 app.post('/api/chat', async (req: Request, res: Response) => {
@@ -168,7 +173,10 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   const sessionId = (req.body as any).sessionId || 'default';
 
-  if (!message) return res.status(400).json({ error: 'message required' });
+  if (!message) {
+    const badReq: ApiErrorResponse = { error: 'message required' };
+    return res.status(400).json(badReq);
+  }
 
   // 根据请求选择场景
   const scenario = scenarioId ? getScenario(scenarioId) : getDefaultScenario();
@@ -215,15 +223,18 @@ app.post('/api/confirm', (req: Request, res: Response) => {
   const { approved, sessionId } = req.body;
   const hitl = hitlSessions.get(sessionId || 'default');
   if (!hitl) {
-    res.json({ ok: false, message: '无活跃会话' });
+    const noSession: ConfirmResponse = { ok: false, message: '无活跃会话' };
+    res.json(noSession);
     return;
   }
   if (approved) {
     const ok = hitl.approve();
-    res.json({ ok, message: ok ? '已确认' : '无待确认请求' });
+    const result: ConfirmResponse = { ok, message: ok ? '已确认' : '无待确认请求' };
+    res.json(result);
   } else {
     const ok = hitl.reject();
-    res.json({ ok, message: ok ? '已拒绝' : '无待确认请求' });
+    const result: ConfirmResponse = { ok, message: ok ? '已拒绝' : '无待确认请求' };
+    res.json(result);
   }
 });
 

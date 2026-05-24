@@ -4,7 +4,7 @@
  * 所有可用场景在此集中注册。
  * 通过 scenario ID 查找并注入 Agent 框架。
  */
-import type { ScenarioRegistry } from '../shared/scenario.js';
+import type { ScenarioRegistry } from '../domain/models/ScenarioRegistry.js';
 import { leaveScenario } from './leave-approval/index.js';
 import { expenseScenario } from './expense-approval/index.js';
 import { sickLeaveScenario } from './sick-leave/index.js';

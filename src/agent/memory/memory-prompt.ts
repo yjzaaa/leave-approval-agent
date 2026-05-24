@@ -4,7 +4,7 @@
  * 格式化为结构化的 system prompt 区块，
  * 让 Agent 了解用户画像、偏好和业务上下文。
  */
-import type { MemoryItem } from '../../shared/memory.js';
+import type { MemoryItem } from '../../domain/models/MemoryItem.js';
 
 /** 将记忆列表格式化为 system prompt 文本 */
 export function formatMemoriesForPrompt(memories: MemoryItem[]): string {

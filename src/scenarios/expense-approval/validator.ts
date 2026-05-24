@@ -1,7 +1,7 @@
 /**
  * 报销审批 — 表单校验规则
  */
-import type { ValidationResult } from '../../shared/scenario.js';
+import type { ValidationResult } from '../../domain/models/ValidationResult.js';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_CATEGORIES = ['差旅费', '办公用品', '招待费', '交通费', '通讯费', '其他'];

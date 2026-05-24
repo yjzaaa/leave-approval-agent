@@ -15,8 +15,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Message, ConfirmRequest, AgentPhase, ChatHistory } from '../types';
-import type { MemoryItem } from '../../shared/memory';
-import { MEMORY_LIMITS } from '../../shared/memory';
+import type { MemoryItem } from '../../domain/models/MemoryItem';
+import { MEMORY_LIMITS } from '../../infrastructure/constants/memory';
 
 /** 非 "server" 模式均视为 local */
 const isLocal = import.meta.env.MODE !== 'server';

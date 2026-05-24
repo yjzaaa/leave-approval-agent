@@ -1,7 +1,7 @@
 /**
  * 远程办公审批 — System Prompt 模板
  */
-import { config } from '../../shared/config.js';
+import { config } from '../../infrastructure/constants/agent.js';
 
 export const leavePrompt = `你是远程办公申请自动化审批助手。请按以下流程处理，主动帮用户补全缺失信息，用合理的默认值填充。
 

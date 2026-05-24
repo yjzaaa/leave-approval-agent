@@ -4,7 +4,8 @@ import { Trash2, X, User, Lightbulb, ClipboardList, Link, Brain, FileText, Globe
 import { Button } from '../../../components/ui/button';
 import { Tooltip } from '../ui/Tooltip';
 import { cn } from '../../../lib/utils';
-import type { MemoryStore, MemoryItem, MemoryType } from '../../../shared/memory';
+import type { MemoryStore, MemoryItem } from '../../../domain/models/MemoryItem';
+import type { MemoryType } from '../../../domain/enums/MemoryType';
 
 interface MemoryPanelProps {
   store: MemoryStore;

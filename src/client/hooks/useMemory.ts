@@ -8,11 +8,10 @@
  *   - 容量控制 (FIFO 淘汰)
  */
 import { useState, useCallback, useEffect } from 'react';
-import {
-  type MemoryStore, type MemoryItem, type MemoryType,
-  MEMORY_LIMITS,
-  createEmptyStore, getScenarioMemories,
-} from '../../shared/memory.js';
+import type { MemoryType } from '../../domain/enums/MemoryType.js';
+import type { MemoryItem, MemoryStore, SharedMemories, ScenarioMemories } from '../../domain/models/MemoryItem.js';
+import { MEMORY_LIMITS, MEMORY_STORAGE_KEY } from '../../infrastructure/constants/memory.js';
+import { createEmptyStore, getScenarioMemories } from '../../infrastructure/memory/store.js';
 
 /** 按用户 ID 生成 localStorage key */
 function getStorageKey(userId: string): string {

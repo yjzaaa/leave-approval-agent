@@ -9,7 +9,7 @@
  *
  * 注册到 registry 后即可被 Agent 框架加载。
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import { allLeaveTools } from './tools.js';
 import { leaveFields } from './fields.js';
 import { leavePrompt } from './prompt.js';

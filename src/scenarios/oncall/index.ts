@@ -4,7 +4,7 @@
  * 演示混合模式：查询类 tool 无需确认，操作类 tool 需要单步确认。
  * 适合排班查询、换班申请等场景。
  */
-import type { Scenario } from '../../shared/scenario.js';
+import type { Scenario } from '../../domain/interfaces/IScenario.js';
 import { allOncallTools } from './tools.js';
 
 const systemPrompt = `你是公司值班排班管理助手。你的职责是：

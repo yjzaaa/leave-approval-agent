@@ -1,7 +1,7 @@
 /**
  * 病假申请 — 表单字段定义
  */
-import type { FieldMeta } from '../../shared/scenario.js';
+import type { FieldMeta } from '../../domain/models/FieldMeta.js';
 
 export const sickLeaveFields: FieldMeta[] = [
   { key: 'applicantName',  label: '申请人',       type: 'text',     required: true },
