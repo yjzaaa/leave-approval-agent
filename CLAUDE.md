@@ -90,12 +90,15 @@
 
 ```bash
 npm run dev           # 全栈开发 (Vite + Express 单进程，端口 5173)
+npm run dev:mlflow    # MLflow 追踪服务 (端口 5000，可选)
 npm run build         # 生产构建
 npm run typecheck     # 类型检查
 npm test              # 运行测试
 ```
 
 **架构**: Express 通过 Vite `configureServer` 钩子注入，单进程同时提供 API 路由和前端 HMR。
+
+**MLflow 追踪** (可选): 设置 `MLFLOW_TRACKING_URI=http://localhost:5000` 后启动 `npm run dev:mlflow`，Agent 每次对话自动上报 trace 到 MLflow。不设置时自动 no-op，零开销。
 
 ## Git 规范
 

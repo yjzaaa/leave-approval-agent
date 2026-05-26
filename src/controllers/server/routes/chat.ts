@@ -56,7 +56,7 @@ export function createChatRouter(hitlSessions: Map<string, HitlManager>): Router
     });
 
     try {
-      const tracer = createTracer({
+      const tracer = await createTracer({
         scenario: scenario.id,
         userId,
         sessionId: resolvedSessionId,
