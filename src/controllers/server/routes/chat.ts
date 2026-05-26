@@ -6,7 +6,7 @@
  */
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { runAgent } from '../../../agent/core/agent-factory.js';
+import { startAgent } from '../../../agent/core/agent-factory.js';
 import { createTracer } from '../../../agent/tracing/index.js';
 import { getHitlSessions } from '../middleware/index.js';
 import { getScenario, getDefaultScenario } from '../../../models/scenarios/registry.js';
@@ -61,18 +61,21 @@ export function createChatRouter(): Router {
       });
 
       const hitlSessions = getHitlSessions(req.app);
+      const run = startAgent({
+        scenario,
+        message,
+        history,
+        memories,
+        summary,
+        onSSE: (event, data) => sendSSE(res, event, data),
+        tracer,
+      });
+
+      // 同步注册 HitlManager（在 agent.prompt 开始之前）
+      hitlSessions.set(resolvedSessionId, run.hitl);
 
       await tracer.run(async () => {
-        await runAgent({
-          scenario,
-          message,
-          history,
-          memories,
-          summary,
-          onSSE: (event, data) => sendSSE(res, event, data),
-          tracer,
-          onHitlCreated: (hitl) => { hitlSessions.set(resolvedSessionId, hitl); },
-        });
+        await run.completed;
       });
     } catch (err: unknown) {
       sendSSE(res, 'error', { message: err instanceof Error ? err.message : String(err) });

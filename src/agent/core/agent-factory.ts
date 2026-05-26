@@ -13,13 +13,15 @@ import { streamSimple } from '@earendil-works/pi-ai';
 import type { Scenario } from '../../models/domain/interfaces/IScenario.js';
 import type { ChatMessage } from '../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../models/domain/models/MemoryItem.js';
-import { HitlManager, HitlSession } from '../hitl/index.js';
-import { getDefaultModel, getModel } from '../model/index.js';
+import { HitlManager } from '../hitl/index.js';
+import { HitlSession } from '../hitl/index.js';
+import { getModel } from '../model/index.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from '../memory/memory-prompt.js';
 import type { ITracer } from '../../models/domain/interfaces/ITracer.js';
 import type { SSECallback } from './types.js';
 
-export interface AgentFactoryParams {
+/** Agent 运行参数 */
+export interface AgentRunParams {
   scenario: Scenario;
   message: string;
   history?: ChatMessage[];
@@ -30,8 +32,14 @@ export interface AgentFactoryParams {
   summary?: string;
   /** MLflow tracer（可选，启用时自动收集） */
   tracer?: ITracer;
-  /** HITL 管理器创建回调 — 在 agent.prompt() 之前触发，用于注册到会话映射 */
-  onHitlCreated?: (hitl: HitlManager) => void;
+}
+
+/** Agent 运行句柄 — 同步返回 HitlManager，异步等待完成 */
+export interface AgentRun {
+  /** HITL 管理器（立即可用，用于注册到会话映射） */
+  hitl: HitlManager;
+  /** Agent 运行完成 Promise */
+  completed: Promise<void>;
 }
 
 /** 获取字段标签映射 */
@@ -85,18 +93,20 @@ function buildInitialMessages(history: ChatMessage[], summary?: string) {
   return messages;
 }
 
-/** 创建并运行 Agent */
-export async function runAgent(params: AgentFactoryParams): Promise<HitlManager> {
-  const { scenario, message, history, onSSE, memories, summary, tracer, onHitlCreated } = params;
+/**
+ * 创建并启动 Agent
+ *
+ * 同步返回 AgentRun 句柄，hitl 立即可用于注册到会话映射，
+ * completed 是 Agent 运行完成的 Promise。
+ */
+export function startAgent(params: AgentRunParams): AgentRun {
+  const { scenario, message, history, onSSE, memories, summary, tracer } = params;
 
   const systemPrompt = buildSystemPrompt(scenario, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
   const fieldLabels = getFieldLabels(scenario);
 
   const hitlSession = new HitlSession(scenario, onSSE, fieldLabels, tracer);
-
-  // 立即注册 HitlManager（在 agent.prompt() 之前），消除 session 竞态
-  onHitlCreated?.(hitlSession.hitl);
 
   const model = getModel('chat');
   const agent = new Agent({
@@ -130,8 +140,10 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
     }
   });
 
-  await agent.prompt(message);
-  await agent.waitForIdle();
+  const completed = (async () => {
+    await agent.prompt(message);
+    await agent.waitForIdle();
+  })();
 
-  return hitlSession.hitl;
+  return { hitl: hitlSession.hitl, completed };
 }
