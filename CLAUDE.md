@@ -9,7 +9,7 @@
 3. **场景完全自主** — 每个场景自带 prompt + tools + api + validator
 4. **HITL 是可选能力** — 框架提供 `hitl/`，场景按需 import
 5. **前端零改动** — 新增场景或切换运行模式都不需要修改前端代码
-6. **后端可选** — Express 是可选组件，前端可通过 local 模式直接在浏览器中运行 Agent
+6. **单进程启动** — Express 通过 Vite `configureServer` 注入，`npm run dev` 一条命令搞定
 7. **结构化错误** — 统一 `AppError` 体系，按 `ErrorCode` 分类，前端按 code 处理
 8. **Service 编排** — 复杂业务逻辑（对话/记忆/场景发现）集中在 `services/` 层
 
@@ -21,7 +21,7 @@
 | `src/views/` | **View** | 纯展示 + UI 交互 (components/hooks/i18n/styles) | [CLAUDE.md](src/views/CLAUDE.md) |
 | `src/controllers/` | **Controller** | 编排 + 路由 (hooks/server/services) | [CLAUDE.md](src/controllers/CLAUDE.md) |
 | `src/agent/` | 基础设施 | Agent 框架（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
-| `src/infrastructure/` | 基础设施 | 工具函数/常量/错误体系 | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
+| `src/infrastructure/` | 基础设施 | 工具函数/常量/错误体系/API 客户端 | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
 
 ## 编码规范
 
@@ -89,21 +89,13 @@
 ## 运行命令
 
 ```bash
-npm run dev           # 前端 local 模式 (浏览器直接运行 Agent，无需后端)
-npm run dev:server    # Express 服务端
-npm run dev:all       # Server 模式 (Express :3000 + Vite :5173 代理)
+npm run dev           # 全栈开发 (Vite + Express 单进程，端口 5173)
 npm run build         # 生产构建
-npm run cli           # CLI 模式
-npm run cli -- --scenario=xxx  # 指定场景
+npm run typecheck     # 类型检查
+npm test              # 运行测试
 ```
 
-**运行模式**:
-
-| 命令 | 模式 | `import.meta.env.MODE` | 说明 |
-|------|------|------------------------|------|
-| `npm run dev` | local | `"development"` | Vite 独立运行，Agent 直接在浏览器中执行 |
-| `npm run dev:all` | server | `"server"` | Express + Vite，Vite 代理 `/api` → `:3000` |
-| `npm run dev:server` | 仅后端 | — | 只启动 Express，无前端 |
+**架构**: Express 通过 Vite `configureServer` 钩子注入，单进程同时提供 API 路由和前端 HMR。
 
 ## Git 规范
 
@@ -113,9 +105,8 @@ npm run cli -- --scenario=xxx  # 指定场景
 
 ## 端口
 
-- Express: `3000` / Vite dev: `5173`
-- Local 模式: 无代理，前端直接调用 Agent
-- Server 模式: Vite 代理 `/api` → `:3000` (由 `vite --mode server` 激活)
+- 开发: `5173` (Vite + Express 单进程)
+- 生产: Express 独立运行，默认 `3000`
 
 ## Post-Commit: Update CLAUDE.md
 

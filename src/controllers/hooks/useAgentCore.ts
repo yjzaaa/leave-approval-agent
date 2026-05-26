@@ -2,21 +2,21 @@
  * AgentSession — 纯业务编排逻辑（不依赖 React）
  *
  * 核心职责:
- *   1. SSE 流式对话管理（server 模式）/ 直接 Agent 调用（local 模式）
+ *   1. SSE 流式对话管理（通过 Express 路由）
  *   2. HITL 确认流程
  *   3. 阶段追踪
- *   4. 记忆注入 — 把用户记忆和对话摘要传给后端/Agent
+ *   4. 记忆注入 — 把用户记忆和对话摘要传给后端
  *   5. 压缩触发 — 消息数超阈值时执行对话压缩
  *
  * 设计原则:
  *   - 零 React 依赖，所有状态变化通过 onEvent 回调通知外部
  *   - 可被 React Hook、CLI、测试等任意宿主使用
+ *   - 前端通过 infrastructure/api 与后端通信，不直接使用 fetch
  */
 import type { MemoryItem } from '../../models/domain/models/MemoryItem';
 import { MEMORY_LIMITS } from '../../infrastructure/constants/memory';
-
-/** 非 "server" 模式均视为 local */
-const isLocal = import.meta.env.MODE !== 'server';
+import { api, createSSEStream } from '../../infrastructure/api/index.js';
+import type { SSEStream } from '../../infrastructure/api/index.js';
 
 // ══════════════════════════════════════════════
 // 事件类型定义
@@ -49,8 +49,6 @@ export interface AgentSessionOptions {
   userId?: string;
   /** 会话 ID（页面加载时生成，同一会话内所有请求共用） */
   sessionId: string;
-  /** 是否 local 模式 */
-  isLocal: boolean;
   /** 用户记忆 */
   memories: MemoryItem[];
   /** 对话摘要 */
@@ -74,6 +72,53 @@ export interface AgentSession {
 }
 
 // ══════════════════════════════════════════════
+// SSE 事件处理
+// ══════════════════════════════════════════════
+
+/** 处理 SSE 事件 */
+const handleSSE = (
+  fullText: { value: string },
+  eventType: string,
+  data: Record<string, unknown>,
+  onEvent: (event: AgentEvent) => void,
+  lastConfirmTool: { value: string | null },
+) => {
+  switch (eventType) {
+    case 'text':
+      fullText.value += data.content as string;
+      onEvent({ type: 'text', content: fullText.value });
+      break;
+
+    case 'confirm_required':
+      if (lastConfirmTool.value === data.tool) break;
+      onEvent({
+        type: 'confirm_required',
+        tool: data.tool as string,
+        label: data.label as string,
+        form: data.form as Record<string, string>,
+        fieldLabels: data.fieldLabels as Record<string, string>,
+      });
+      break;
+
+    case 'confirm_resolved':
+      onEvent({ type: 'confirm_resolved' });
+      break;
+
+    case 'tool_result':
+      break;
+
+    case 'done':
+      onEvent({ type: 'done' });
+      lastConfirmTool.value = null;
+      break;
+
+    case 'error':
+      onEvent({ type: 'error', message: data.message as string });
+      break;
+  }
+};
+
+// ══════════════════════════════════════════════
 // AgentSession 实现
 // ══════════════════════════════════════════════
 
@@ -95,142 +140,37 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
     onMemoriesExtracted,
   } = options;
 
-  let abortController: AbortController | null = null;
-  let hitlHandle: { approve: () => boolean; reject: () => boolean } | null = null;
-  let lastConfirmTool: string | null = null;
+  let activeStream: SSEStream | null = null;
+  let lastConfirmTool: { value: string | null } = { value: null };
 
-  // ── 压缩对话历史（server 模式: HTTP; local 模式: 进程内） ──
+  // ── 压缩对话历史（通过 axios POST） ──
 
   const compactHistory = async (oldMessages: SimpleMessage[]) => {
     if (oldMessages.length < MEMORY_LIMITS.compactThreshold) return;
     try {
-      let result: string | null = null;
-
-      if (isLocal) {
-        const { compactHistoryLocal } = await import('../../agent/local/local-utils.js');
-        result = await compactHistoryLocal(oldMessages);
-      } else {
-        const res = await fetch('/api/compact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: oldMessages,
-            scenario: scenarioId,
-          }),
-        });
-        const data = await res.json();
-        result = data.summary || null;
-      }
-
-      if (result && onSummaryUpdate) {
-        onSummaryUpdate(result, oldMessages.length);
+      const { data } = await api.post('/compact', {
+        messages: oldMessages,
+        scenario: scenarioId,
+      });
+      if (data.summary && onSummaryUpdate) {
+        onSummaryUpdate(data.summary, oldMessages.length);
       }
     } catch { /* 压缩失败不影响主流程 */ }
   };
 
-  // ── 提取记忆（server 模式: HTTP; local 模式: 进程内） ──
+  // ── 提取记忆（通过 axios POST） ──
 
   const extractMemories = async (recentMessages: SimpleMessage[]) => {
     if (!onMemoriesExtracted) return;
     try {
-      if (isLocal) {
-        const { extractMemoriesLocal } = await import('../../agent/local/local-utils.js');
-        const data = await extractMemoriesLocal(recentMessages);
+      const { data } = await api.post('/extract-memories', {
+        messages: recentMessages,
+        scenario: scenarioId,
+      });
+      if (data) {
         onMemoriesExtracted(data);
-      } else {
-        const res = await fetch('/api/extract-memories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: recentMessages,
-            scenario: scenarioId,
-          }),
-        });
-        const data = await res.json();
-        if (data && onMemoriesExtracted) {
-          onMemoriesExtracted(data);
-        }
       }
     } catch { /* 提取失败不影响主流程 */ }
-  };
-
-  // ── 处理 local 模式的 SSE 事件 ──
-
-  const handleLocalSSE = (fullText: { value: string }, event: string, data: Record<string, unknown>) => {
-    switch (event) {
-      case 'text':
-        fullText.value += data.content as string;
-        onEvent({ type: 'text', content: fullText.value });
-        break;
-
-      case 'confirm_required':
-        if (lastConfirmTool === data.tool) break;
-        onEvent({
-          type: 'confirm_required',
-          tool: data.tool as string,
-          label: data.label as string,
-          form: data.form as Record<string, string>,
-          fieldLabels: data.fieldLabels as Record<string, string>,
-        });
-        break;
-
-      case 'confirm_resolved':
-        onEvent({ type: 'confirm_resolved' });
-        break;
-
-      case 'tool_result':
-        break;
-
-      case 'done':
-        onEvent({ type: 'done' });
-        lastConfirmTool = null;
-        break;
-
-      case 'error':
-        onEvent({ type: 'error', message: data.message as string });
-        break;
-    }
-  };
-
-  // ── 处理 server 模式的 SSE 事件 ──
-
-  const handleServerSSE = (fullText: { value: string }, eventType: string, data: Record<string, unknown>) => {
-    switch (eventType) {
-      case 'text':
-        fullText.value += data.content;
-        onEvent({ type: 'text', content: fullText.value });
-        break;
-
-      case 'confirm_required':
-        if (lastConfirmTool === data.tool) {
-          console.log('[SSE] confirm_required ignored: duplicate');
-          break;
-        }
-        onEvent({
-          type: 'confirm_required',
-          tool: data.tool as string,
-          label: data.label as string,
-          form: data.form as Record<string, string>,
-          fieldLabels: data.fieldLabels as Record<string, string>,
-        });
-        break;
-
-      case 'confirm_resolved':
-        onEvent({ type: 'confirm_resolved' });
-        break;
-
-      case 'tool_result':
-        break;
-
-      case 'done':
-        onEvent({ type: 'done' });
-        lastConfirmTool = null;
-        break;
-
-      case 'error':
-        onEvent({ type: 'error', message: data.message as string });
-        break;
-    }
   };
 
   // ── sendMessage: 发送用户消息 ──
@@ -239,7 +179,7 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
     let newMessageCount = messageCount + 1;
 
     onEvent({ type: 'streaming', isStreaming: true });
-    lastConfirmTool = null;
+    lastConfirmTool.value = null;
 
     // 触发记忆提取 (每 N 轮)
     if (newMessageCount > 0 && newMessageCount % MEMORY_LIMITS.extractInterval === 0) {
@@ -251,116 +191,37 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
       compactHistory(allMessages.slice(0, -8));
     }
 
-    // ── Local 模式：直接调用 runAgent ──
-    if (isLocal) {
-      const fullText = { value: '' };
+    // ── SSE 流式请求 ──
+    const stream = createSSEStream({
+      url: '/api/chat',
+      body: {
+        message: text,
+        history,
+        scenario: scenarioId,
+        memories,
+        summary,
+        userId,
+        sessionId,
+      },
+    });
+    activeStream = stream;
 
-      try {
-        const [{ runAgent }, { getScenario }, { createTracer }] = await Promise.all([
-          import('../../agent/core/agent-factory.js'),
-          import('../../models/scenarios/registry.js'),
-          import('../../agent/tracing/mlflow-tracer.js'),
-        ]);
+    const fullText = { value: '' };
 
-        const scenario = getScenario(scenarioId);
-
-        const tracer = createTracer({
-          scenario: scenario.id,
-          userId: userId,
-          sessionId: `local-${Date.now()}`,
-          message: text,
-        });
-
-        await tracer.run(async () => {
-          return runAgent({
-            scenario,
-            message: text,
-            history,
-            memories,
-            summary,
-            onSSE: (event: string, data: Record<string, unknown>) => {
-              handleLocalSSE(fullText, event, data);
-            },
-            onHitlCreated: (h: { approve: () => boolean; reject: () => boolean }) => {
-              hitlHandle = h;
-            },
-            tracer,
-          });
-        });
-      } catch (err: unknown) {
-        // 用户拒绝 HITL 也会抛错，这是正常流程，不显示错误
-        if (err instanceof Error && err.message?.includes('用户拒绝')) {
-          onEvent({ type: 'done' });
-        } else {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          onEvent({ type: 'error', message: errMsg });
+    await stream.read({
+      onEvent: (eventType, data) => {
+        if (eventType !== 'text') {
+          console.log('[SSE] event:', eventType, JSON.stringify(data).slice(0, 100));
         }
-      } finally {
-        onEvent({ type: 'streaming', isStreaming: false });
-        hitlHandle = null;
-      }
-
-      return newMessageCount;
-    }
-
-    // ── Server 模式：SSE over HTTP ──
-    const controller = new AbortController();
-    abortController = controller;
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          history,
-          scenario: scenarioId,
-          memories,
-          summary,
-          userId,
-          sessionId,
-        }),
-        signal: controller.signal,
-      });
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      const fullText = { value: '' };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        let eventType = '';
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.slice(7).trim();
-            continue;
-          }
-          if (!line.startsWith('data: ')) continue;
-
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (eventType !== 'text') {
-              console.log('[SSE] event:', eventType, JSON.stringify(data).slice(0, 100));
-            }
-            handleServerSSE(fullText, eventType, data);
-          } catch { /* 跳过解析失败 */ }
-        }
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name !== 'AbortError') {
+        handleSSE(fullText, eventType, data, onEvent, lastConfirmTool);
+      },
+      onError: (err) => {
         onEvent({ type: 'error', message: err.message });
-      }
-    } finally {
-      onEvent({ type: 'streaming', isStreaming: false });
-      abortController = null;
-    }
+      },
+    });
+
+    onEvent({ type: 'streaming', isStreaming: false });
+    activeStream = null;
 
     return newMessageCount;
   };
@@ -368,35 +229,19 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
   // ── confirm: 处理 HITL 确认 ──
 
   const confirm = async (approved: boolean, tool: string) => {
-    lastConfirmTool = tool;
+    lastConfirmTool.value = tool;
 
-    // Local 模式：直接操作 HitlManager
-    if (isLocal && hitlHandle) {
-      if (approved) {
-        hitlHandle.approve();
-      } else {
-        hitlHandle.reject();
-      }
-      return;
-    }
-
-    // Server 模式：POST /api/confirm
     try {
-      await fetch('/api/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approved, sessionId }),
-      });
+      await api.post('/confirm', { approved, sessionId });
     } catch { /* 忽略 */ }
   };
 
   // ── destroy: 清理资源 ──
 
   const destroy = () => {
-    abortController?.abort();
-    abortController = null;
-    hitlHandle = null;
-    lastConfirmTool = null;
+    activeStream?.abort();
+    activeStream = null;
+    lastConfirmTool.value = null;
   };
 
   return {

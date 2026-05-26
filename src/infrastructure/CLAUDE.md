@@ -12,6 +12,7 @@
 
 ```
 infrastructure/
+├── api/           # API 客户端 (axios + SSE 流)
 ├── errors/        # 统一错误体系
 ├── utils/         # 纯工具函数
 └── constants/     # 全局常量
@@ -21,6 +22,10 @@ infrastructure/
 
 ```mermaid
 graph TD
+    subgraph API["api/"]
+        Axios["index.ts<br/>axios 实例 + SSE 流"]
+    end
+
     subgraph Errors["errors/"]
         AppError["AppError<br/>NetworkError<br/>BusinessError<br/>AuthError"]
         ErrorCode["ErrorCode 枚举"]
@@ -39,6 +44,7 @@ graph TD
 
     Errors -->|"引用"| ErrorCode
 
+    style API fill:#ebfbee,stroke:#495057,color:#1a1a1a
     style Errors fill:#ffe3e3,stroke:#495057,color:#1a1a1a
     style Utils fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Constants fill:#fff9db,stroke:#495057,color:#1a1a1a
@@ -49,6 +55,7 @@ graph TD
 ```mermaid
 graph LR
     subgraph Infra["infrastructure/"]
+        API["api/"]
         Errors["errors/"]
         Utils["utils/"]
         Constants["constants/"]
@@ -58,6 +65,7 @@ graph LR
     Controllers["controllers/"]
     Views["views/"]
 
+    Controllers -->|"api.post() / createSSEStream()"| API
     Agent -->|"MEMORY_LIMITS"| Constants
     Controllers -->|"envInt()"| Utils
     Views -->|"cn()"| Utils
@@ -84,6 +92,32 @@ sequenceDiagram
 ```
 
 ## 各子目录说明
+
+### api/ — 前端 API 客户端
+
+统一的 HTTP 通信层，前端所有后端请求都通过此模块。
+
+| 导出 | 说明 |
+|------|------|
+| `api` | axios 实例，baseURL `/api`，处理 JSON 请求 |
+| `createSSEStream()` | 创建 SSE 流式连接，返回 `{ read(), abort() }` |
+
+```ts
+// JSON 请求
+const { data } = await api.post('/compact', { messages, scenario });
+const { data } = await api.post('/extract-memories', { messages, scenario });
+await api.post('/confirm', { approved, sessionId });
+
+// SSE 流式请求
+const stream = createSSEStream({ url: '/api/chat', body: { message, history, ... } });
+await stream.read({
+  onEvent: (eventType, data) => { /* 处理 SSE 事件 */ },
+  onError: (err) => { /* 错误处理 */ },
+});
+stream.abort(); // 中断流
+```
+
+**为什么 SSE 不用 axios**: axios 不支持 `ReadableStream` 逐块读取，SSE 协议需要实时解析 `event:` / `data:` 行，只能用原生 fetch。
 
 ### errors/ — 统一错误体系
 

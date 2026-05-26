@@ -2,31 +2,28 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import 'dotenv/config';
+import { createApp } from './src/controllers/server/index.js';
 
-export default defineConfig(({ mode }) => {
-  /** server 模式: Express 代理 /api → :3000；local 模式: 浏览器直接运行 Agent */
-  const isLocal = mode !== 'server';
-
-  return {
-    define: {
-      /** DeepSeek API Key — 构建时从环境变量注入（local 模式需要在浏览器中使用） */
-      'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
-      /** MLflow — local/server 模式均支持，未设置时自动 no-op */
-      'process.env.MLFLOW_TRACKING_URI': JSON.stringify(process.env.MLFLOW_TRACKING_URI || ''),
-      'process.env.MLFLOW_EXPERIMENT_ID': JSON.stringify(process.env.MLFLOW_EXPERIMENT_ID || '0'),
+// https://vitejs.dev/config/
+export default defineConfig({
+  define: {
+    /** MLflow — 未设置时自动 no-op */
+    'process.env.MLFLOW_TRACKING_URI': JSON.stringify(process.env.MLFLOW_TRACKING_URI || ''),
+    'process.env.MLFLOW_EXPERIMENT_ID': JSON.stringify(process.env.MLFLOW_EXPERIMENT_ID || '0'),
+  },
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'express-middleware',
+      /** 开发时将 Express 路由注入 Vite dev server，单进程启动 */
+      configureServer(server) {
+        const { app } = createApp();
+        server.middlewares.use(app);
+      },
     },
-    plugins: [react(), tailwindcss()],
-    server: {
-      port: 5173,
-      // server 模式下代理 /api → Express；local 模式无需代理
-      ...(isLocal ? {} : {
-        proxy: {
-          '/api': {
-            target: 'http://localhost:3000',
-            changeOrigin: true,
-          },
-        },
-      }),
-    },
-  };
+  ],
+  server: {
+    port: 5173,
+  },
 });

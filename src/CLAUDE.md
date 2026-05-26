@@ -39,6 +39,7 @@ src/
 │   ├── tracing/              # MLflow 追踪
 │   └── CLAUDE.md
 ├── infrastructure/           # 基础设施（MVC 外）
+│   ├── api/                  # API 客户端 (axios + SSE 流)
 │   ├── constants/            # 全局常量
 │   ├── errors/               # 错误体系
 │   ├── utils/                # 工具函数 (env.ts, cn.ts)
@@ -71,7 +72,7 @@ graph TB
     end
 
     subgraph Controller["🎛️ Controller 层 (controllers/)"]
-        API["server/<br/>Express :3000"]
+        API["server/<br/>Express (Vite 中间件)"]
         CtrlHooks["hooks/<br/>useAgent, useAgentCore"]
         Services["services/<br/>chat/memory/scenarios"]
     end
@@ -94,10 +95,10 @@ graph TB
         Constants["constants/<br/>全局常量"]
     end
 
-    Browser --> API
-    Browser -.->|"local 模式"| CtrlHooks
+    Browser -->|"fetch /api/*"| API
     API --> Services
-    CtrlHooks --> AgentInfra
+    CtrlHooks -->|"fetch /api/*"| API
+    API --> Services
     Services --> AgentInfra
     Services --> Scenarios
     AgentInfra --> Scenarios
@@ -138,6 +139,146 @@ graph TD
     style Model fill:#ebfbee,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
+```
+
+## Vite + Express 单进程注入机制
+
+### 1. Express 工厂函数 (`controllers/server/index.ts`)
+
+`createApp()` 创建一个完整的 Express 应用，挂载所有 `/api` 路由，返回 `app` 实例供外部使用。不调用 `listen()`，由宿主环境决定如何运行。
+
+```ts
+// controllers/server/index.ts
+export function createApp() {
+  const app = express();
+  const hitlSessions = new Map<string, HitlManager>();
+
+  app.use(express.json());
+
+  // 挂载所有 API 路由
+  app.use('/api', createChatRouter(hitlSessions));     // POST /api/chat
+  app.use('/api', createConfirmRouter(hitlSessions));   // POST /api/confirm
+  app.use('/api', createCompactRouter());               // POST /api/compact
+  app.use('/api', createExtractMemoriesRouter());        // POST /api/extract-memories
+  app.use('/api', createScenariosRouter());             // GET  /api/scenarios
+
+  // 生产模式: 伺服 dist/ 静态文件
+  const staticDir = path.join(__dirname, '..', '..', 'dist');
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+  }
+
+  return { app, hitlSessions };
+}
+```
+
+### 2. Vite 插件注入 (`vite.config.ts`)
+
+通过自定义 Vite 插件的 `configureServer` 钩子，在开发模式启动时将 Express app 注入 Vite 的 Connect 中间件链。Express 兼容 Connect 的 `(req, res, next)` 签名，可直接作为中间件使用。
+
+```ts
+// vite.config.ts
+import { createApp } from './src/controllers/server/index.js';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'express-middleware',
+      configureServer(server) {
+        // createApp() 返回完整的 Express 实例
+        const { app } = createApp();
+        // 注入到 Vite 中间件链 — /api/* 请求由 Express 处理，其余由 Vite 处理
+        server.middlewares.use(app);
+      },
+    },
+  ],
+  server: { port: 5173 },
+});
+```
+
+**中间件链顺序**:
+
+```
+请求 → Vite :5173
+        ├── /api/* → Express app (路由匹配)
+        │             ├── POST /api/chat        → runAgent() → SSE 流
+        │             ├── POST /api/confirm     → hitl.approve/reject
+        │             ├── POST /api/compact     → mini Agent 压缩
+        │             ├── POST /api/extract-memories → mini Agent 提取
+        │             └── GET  /api/scenarios   → 场景列表 JSON
+        └── 其他     → Vite 自身处理 (HMR、静态资源、SPA fallback)
+```
+
+### 3. 前端调用 (`controllers/hooks/useAgentCore.ts`)
+
+前端通过标准 `fetch` 调用 `/api/*` 端点，不直接接触 Agent 框架。所有 AI 调用在服务端完成，API Key 不暴露给浏览器。
+
+#### 聊天请求 — SSE 流式读取
+
+```ts
+// controllers/hooks/useAgentCore.ts → sendMessage()
+import { createSSEStream } from '../../infrastructure/api/index.js';
+
+const stream = createSSEStream({
+  url: '/api/chat',
+  body: { message: text, history, scenario: scenarioId, memories, summary, userId, sessionId },
+});
+
+await stream.read({
+  onEvent: (eventType, data) => {
+    // eventType: "text" | "confirm_required" | "done" | "error"
+    // 触发 React 状态更新 → UI 渲染
+    handleSSE(fullText, eventType, data, onEvent, lastConfirmTool);
+  },
+  onError: (err) => { onEvent({ type: 'error', message: err.message }); },
+});
+```
+
+#### HITL 确认 — 独立 POST 请求
+
+```ts
+// controllers/hooks/useAgentCore.ts → confirm()
+import { api } from '../../infrastructure/api/index.js';
+
+await api.post('/confirm', { approved: true/false, sessionId });
+```
+
+#### 对话压缩 & 记忆提取 — 后台 POST
+
+```ts
+// 压缩: 消息数超阈值时自动触发
+const { data } = await api.post('/compact', { messages: oldMessages, scenario: scenarioId });
+
+// 提取记忆: 每 N 轮自动触发
+const { data } = await api.post('/extract-memories', { messages: recentMessages, scenario: scenarioId });
+```
+
+### 4. React Hook 桥接 (`controllers/hooks/useAgent.ts`)
+
+`useAgent` 是薄 React 包装，管理 React 状态并将 `useAgentCore` 的 `onEvent` 映射到 `setState`。
+
+```ts
+// controllers/hooks/useAgent.ts
+const session = createAgentSession({
+  scenarioId,
+  userId,
+  sessionId,
+  memories,
+  summary,
+  onEvent: (event) => {
+    switch (event.type) {
+      case 'text':    updateLastAssistant(event.content); break;
+      case 'confirm_required': setConfirmRequest({...});  break;
+      case 'done':    setPhase('done');                   break;
+      case 'error':   setError(event.message);            break;
+    }
+  },
+});
+
+// 发送消息 → 内部 fetch /api/chat → SSE 回调 onEvent → React setState → UI 更新
+session.sendMessage(text, history, allMessages, messageCount);
 ```
 
 ## 记忆系统
@@ -181,18 +322,20 @@ graph LR
 
 ## 聊天请求时序图
 
-**Server 模式** (Express 中转):
+**开发模式** (Vite + Express 单进程):
 
 ```mermaid
 sequenceDiagram
     actor User as 👤 用户
-    participant Browser as Browser
-    participant Express as Express :3000
+    participant Browser as Browser :5173
+    participant Vite as Vite Dev Server
+    participant Express as Express (注入中间件)
     participant Factory as agent-factory
     participant DeepSeek as DeepSeek API
 
     User->>Browser: 输入消息
-    Browser->>Express: POST /api/chat {message, scenario}
+    Browser->>Vite: POST /api/chat {message, scenario}
+    Vite->>Express: 路由转发
     Express->>Factory: runAgent({scenario, message, onSSE})
     Factory->>Factory: new Agent({tools: scenario.tools})
 
@@ -206,36 +349,13 @@ sequenceDiagram
     Express-->>Browser: SSE: done
 ```
 
-**Local 模式** (浏览器直接调用 Agent，无网络往返):
-
-```mermaid
-sequenceDiagram
-    actor User as 👤 用户
-    participant Browser as Browser
-    participant Factory as agent-factory (in-browser)
-    participant DeepSeek as DeepSeek API
-
-    User->>Browser: 输入消息
-    Browser->>Factory: runAgent({scenario, message, onSSE})
-    Factory->>Factory: new Agent({tools: scenario.tools})
-
-    loop 流式响应
-        Factory-->>Browser: onSSE('text', {content})
-        Browser-->>User: 流式渲染
-    end
-
-    Factory-->>Browser: onSSE('done', {})
-```
-
 ## HITL 确认流程时序图
 
-**Server 模式** (通过 HTTP):
-
 ```mermaid
 sequenceDiagram
     actor User as 👤 用户
-    participant Browser as Browser
-    participant Express as Express
+    participant Browser as Browser :5173
+    participant Express as Express (Vite 中间件)
     participant Hitl as HitlManager
     participant Tool as 场景 Tool
 
@@ -257,35 +377,6 @@ sequenceDiagram
         User->>Browser: 点击拒绝
         Browser->>Express: POST /api/confirm {approved: false}
         Express->>Hitl: reject()
-        Hitl-->>Tool: resolve(false)
-        Tool->>Tool: throw Error
-    end
-```
-
-**Local 模式** (直接操作 HitlManager):
-
-```mermaid
-sequenceDiagram
-    actor User as 👤 用户
-    participant Browser as Browser
-    participant Hitl as HitlManager
-    participant Tool as 场景 Tool
-
-    Note over Tool: tool.execute() 中
-    Tool->>Hitl: requestConfirm(toolName, form)
-    Note over Hitl: Promise 挂起 ⏳
-
-    Hitl-->>Browser: onEvent → React setState
-    Browser-->>User: 弹出确认卡片 📋
-
-    alt 用户确认 ✅
-        User->>Browser: 点击确认
-        Browser->>Hitl: hitl.approve() (直接调用)
-        Hitl-->>Tool: resolve(true)
-        Tool->>Tool: 执行 submitApi()
-    else 用户拒绝 ❌
-        User->>Browser: 点击拒绝
-        Browser->>Hitl: hitl.reject() (直接调用)
         Hitl-->>Tool: resolve(false)
         Tool->>Tool: throw Error
     end

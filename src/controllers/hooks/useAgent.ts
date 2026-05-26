@@ -26,9 +26,6 @@ interface UseAgentOptions {
   onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[] }) => void;
 }
 
-/** 非 "server" 模式均视为 local */
-const isLocal = import.meta.env.MODE !== 'server';
-
 export function useAgent(options?: UseAgentOptions) {
   const { t } = useTranslation();
   const scenarioId = options?.scenarioId;
@@ -136,7 +133,6 @@ export function useAgent(options?: UseAgentOptions) {
       scenarioId: scenarioIdRef.current,
       userId,
       sessionId: sessionIdRef.current,
-      isLocal,
       memories: memoriesRef.current,
       summary: summaryRef.current,
       onEvent: (event: AgentEvent) => {

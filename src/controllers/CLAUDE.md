@@ -55,7 +55,7 @@ graph TD
     end
 
     subgraph Server["server/ — Express 服务端"]
-        Index["index.ts<br/>Express 主入口"]
+        Index["index.ts<br/>Express 工厂 (createApp)"]
         CLI["cli.ts<br/>CLI 入口"]
         Routes["routes/<br/>路由定义"]
         MW["middleware/<br/>SSE + 错误处理"]
@@ -112,58 +112,21 @@ graph LR
     style ServerFlow fill:#fff9db,stroke:#495057,color:#1a1a1a
 ```
 
-## 时序图 — Local 模式 (浏览器直接调用)
+## 时序图 — Vite + Express 单进程模式
 
 ```mermaid
 sequenceDiagram
     actor User as 👤 用户
-    participant View as views/components
-    participant Hook as hooks/useAgent
-    participant Core as hooks/useAgentCore
-    participant Factory as agent-factory
-    participant API as DeepSeek API
-
-    User->>View: 输入消息
-    View->>Hook: sendMessage(message)
-    Hook->>Core: session.sendMessage(message)
-    Core->>Factory: runAgent({scenario, message, onEvent})
-    Factory->>API: stream 请求
-
-    loop 流式响应
-        API-->>Factory: text_delta
-        Factory-->>Core: onEvent('text')
-        Core-->>Hook: React setState
-        Hook-->>View: messages 更新
-        View-->>User: 流式渲染
-    end
-
-    alt HITL 确认
-        Factory-->>Core: onEvent('confirm_required')
-        Core-->>Hook: confirmRequest
-        Hook-->>View: 弹出 ConfirmCard
-        User->>View: 点击确认
-        View->>Hook: handleConfirm()
-        Hook->>Core: hitl.approve()
-        Core-->>Factory: resolve(true)
-    end
-
-    Factory-->>Core: onEvent('done')
-    Core-->>Hook: phase = 'idle'
-```
-
-## 时序图 — Server 模式 (Express 中转)
-
-```mermaid
-sequenceDiagram
-    actor User as 👤 用户
-    participant Browser as Browser
-    participant Express as Express :3000
+    participant Browser as Browser :5173
+    participant Vite as Vite Dev Server
+    participant Express as Express (中间件)
     participant Route as routes/chat.ts
     participant Factory as agent-factory
     participant API as DeepSeek API
 
     User->>Browser: 输入消息
-    Browser->>Express: POST /api/chat {message, scenario}
+    Browser->>Vite: POST /api/chat {message, scenario}
+    Vite->>Express: 路由转发
     Express->>Route: chatRouter.handle()
     Route->>Factory: runAgent({scenario, onSSE, onHitlCreated})
     Factory->>API: stream 请求
@@ -191,7 +154,7 @@ sequenceDiagram
 
 ### server/
 
-Express 服务端。路由拆分到 `routes/` 目录，中间件在 `middleware/`。支持 SSE 流式对话、HITL 确认、对话压缩、记忆提取。CLI 模式通过 `cli.ts` 独立启动。
+Express 服务端。`createApp()` 工厂函数供 Vite `configureServer` 和生产独立运行共用。路由拆分到 `routes/` 目录，中间件在 `middleware/`。支持 SSE 流式对话、HITL 确认、对话压缩、记忆提取。
 
 ### services/
 

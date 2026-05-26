@@ -6,7 +6,7 @@
 
 Express 服务端，HTTP 路由、SSE 流转发、场景注入。前端与 Agent 框架的桥梁。
 
-**Express 为可选项：前端支持 local 模式，跳过 Express 直接在浏览器调用 `runAgent()`。** Express 模式适用于生产部署和多客户端场景。
+**运行方式**: 开发时通过 Vite `configureServer` 钩子注入，单进程同时提供 API 和前端 HMR；生产时 Express 独立运行伺服 `dist/` 静态文件。
 
 ## 架构
 
@@ -23,7 +23,7 @@ controllers/server/
 │   └── index.ts
 ├── middleware/            # Express 中间件
 │   └── index.ts
-├── index.ts               # Express 主入口（app 组装 + 启动）
+├── index.ts               # Express 工厂 (createApp) + 独立运行入口
 └── cli.ts                 # CLI 入口（独立终端模式）
 ```
 
@@ -137,7 +137,7 @@ sequenceDiagram
 - ❌ 不定义业务逻辑
 - ❌ 不直接 import 具体场景
 - ✅ 只做路由转发和场景注入
-- ✅ Express 为可选项，前端 local 模式不依赖本层
+- ✅ 开发: Vite `configureServer` 注入，单进程；生产: Express 独立运行
 
 ---
 

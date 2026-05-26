@@ -9,13 +9,14 @@
  *   routes/compact.ts         — POST /api/compact 对话压缩
  *   routes/extract-memories.ts — POST /api/extract-memories 记忆提取
  *   routes/scenarios.ts       — GET /api/scenarios 场景列表
+ *
+ * 开发模式: Vite configureServer 钩子内嵌调用 createApp()
+ * 生产模式: 通过 cli.ts 独立运行，Express 伺服 dist/ 静态文件
  */
 import fs from 'node:fs';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDefaultModel } from '../../agent/core/agent-factory.js';
-import { getDefaultScenario } from '../../models/scenarios/registry.js';
 import type { HitlManager } from '../../agent/hitl/hitl.js';
 import {
   createChatRouter,
@@ -26,38 +27,28 @@ import {
 } from './routes/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = express();
-const PORT = process.env.PORT || 3000;
 
-/** sessionId → HitlManager 映射（支持并发会话） */
-const hitlSessions = new Map<string, HitlManager>();
+/** Express 应用工厂 — 供 Vite configureServer 和 CLI 共用 */
+export function createApp() {
+  const app = express();
+  /** sessionId → HitlManager 映射（支持并发会话） */
+  const hitlSessions = new Map<string, HitlManager>();
 
-app.use(express.json());
+  app.use(express.json());
 
-// ── 挂载路由 ──
-app.use('/api', createChatRouter(hitlSessions));
-app.use('/api', createConfirmRouter(hitlSessions));
-app.use('/api', createCompactRouter());
-app.use('/api', createExtractMemoriesRouter());
-app.use('/api', createScenariosRouter());
+  // ── 挂载路由 ──
+  app.use('/api', createChatRouter(hitlSessions));
+  app.use('/api', createConfirmRouter(hitlSessions));
+  app.use('/api', createCompactRouter());
+  app.use('/api', createExtractMemoriesRouter());
+  app.use('/api', createScenariosRouter());
 
-// ── 静态文件服务 ──
-// 开发: Vite dev server 独立运行; 生产: 从 dist/ 提供静态文件
-const staticDir = path.join(__dirname, '..', 'dist');
-if (fs.existsSync(staticDir)) {
-  app.use(express.static(staticDir));
-  console.log('[Static] serving from dist/');
+  // ── 生产模式: 伺服 dist/ 静态文件 ──
+  const staticDir = path.join(__dirname, '..', '..', 'dist');
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+    console.log('[Static] serving from dist/');
+  }
+
+  return { app, hitlSessions };
 }
-
-// ── 启动服务 ──
-app.listen(PORT, () => {
-  console.log('');
-  console.log('╔══════════════════════════════════════════════╗');
-  console.log('║  场景化审批 Agent (Web UI) v3.0              ║');
-  console.log('╠══════════════════════════════════════════════╣');
-  console.log(`║  地址: http://localhost:${PORT}                  ║`);
-  console.log(`║  模型: ${getDefaultModel().name.padEnd(34)}║`);
-  console.log(`║  场景: ${getDefaultScenario().displayName.padEnd(34)}║`);
-  console.log('╚══════════════════════════════════════════════╝');
-  console.log('');
-});
