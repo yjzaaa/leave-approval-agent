@@ -5,7 +5,8 @@
  */
 import { Router } from 'express';
 import { Agent } from '@earendil-works/pi-agent-core';
-import { streamSimple, getModel } from '@earendil-works/pi-ai';
+import { streamSimple } from '@earendil-works/pi-ai';
+import { getModel } from '../../../agent/model/index.js';
 import type { ExtractMemoriesResponse, ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
 
 /** 创建 extract-memories 路由 */
@@ -37,7 +38,7 @@ export function createExtractMemoriesRouter(): Router {
 对话记录:
 ${messagesText}`;
 
-      const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
+      const model = getModel('utility');
 
       let result = '';
       const agent = new Agent({

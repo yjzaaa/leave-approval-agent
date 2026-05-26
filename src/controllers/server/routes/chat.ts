@@ -7,8 +7,8 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { runAgent } from '../../../agent/core/agent-factory.js';
-import { createTracer } from '../../../agent/tracing/mlflow-tracer.js';
-import type { HitlManager } from '../../../agent/hitl/hitl.js';
+import { createTracer } from '../../../agent/tracing/index.js';
+import type { HitlManager } from '../../../agent/hitl/index.js';
 import { getScenario, getDefaultScenario } from '../../../models/scenarios/registry.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';

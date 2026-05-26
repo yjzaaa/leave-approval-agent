@@ -9,15 +9,15 @@
  */
 import { Agent } from '@earendil-works/pi-agent-core';
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
-import { streamSimple, getModel } from '@earendil-works/pi-ai';
+import { streamSimple } from '@earendil-works/pi-ai';
 import type { Scenario } from '../../models/domain/interfaces/IScenario.js';
 import type { ChatMessage } from '../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../models/domain/models/MemoryItem.js';
-import { HitlManager, wrapHitlTools } from '../hitl/hitl.js';
+import { HitlManager, HitlSession } from '../hitl/index.js';
+import { getDefaultModel, getModel } from '../model/index.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory } from '../memory/memory-prompt.js';
-import type { ITracer } from '../tracing/mlflow-tracer.js';
-
-export type SSECallback = (event: string, data: Record<string, unknown>) => void;
+import type { ITracer } from '../../models/domain/interfaces/ITracer.js';
+import type { SSECallback } from './types.js';
 
 export interface AgentFactoryParams {
   scenario: Scenario;
@@ -32,11 +32,6 @@ export interface AgentFactoryParams {
   tracer?: ITracer;
   /** HITL 管理器创建回调 — 在 agent.prompt() 之前触发，用于注册到会话映射 */
   onHitlCreated?: (hitl: HitlManager) => void;
-}
-
-/** 获取默认模型 */
-export function getDefaultModel() {
-  return getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
 }
 
 /** 获取字段标签映射 */
@@ -63,11 +58,9 @@ function buildSystemPrompt(scenario: Scenario, memories?: MemoryItem[]): string 
 }
 
 /** 构建初始消息列表 (摘要 + 历史) */
-/** 构建初始消息列表 (摘要 + 历史) */
 function buildInitialMessages(history: ChatMessage[], summary?: string) {
   const messages: unknown[] = [];
 
-  // 如果有摘要，作为 assistant 消息注入到最前面
   if (summary) {
     const summaryText = formatSummaryForHistory(summary);
     if (summaryText) {
@@ -79,7 +72,6 @@ function buildInitialMessages(history: ChatMessage[], summary?: string) {
     }
   }
 
-  // 历史消息
   for (const m of history) {
     messages.push({
       role: m.role as 'user' | 'assistant',
@@ -101,45 +93,17 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
   const initialMessages = buildInitialMessages(history || [], summary);
   const fieldLabels = getFieldLabels(scenario);
 
-  // 创建 HITL 管理器，事件驱动 SSE（替代轮询）
-  const hitl = new HitlManager({
-    onEvent: (event) => {
-      switch (event.type) {
-        case 'confirm_required':
-          tracer?.markHitl(event.tool);
-          onSSE('confirm_required', {
-            tool: event.tool,
-            label: event.label ?? '📋 确认操作',
-            form: scenario.formatFormForDisplay
-              ? scenario.formatFormForDisplay(event.form as Record<string, string>)
-              : event.form,
-            fieldLabels,
-          });
-          break;
-        case 'confirm_resolved':
-          onSSE('confirm_resolved', { tool: event.tool });
-          break;
-      }
-    },
-  });
-
-  // 自动包装 HITL tools（场景 tool 只含业务逻辑）
-  const tools = wrapHitlTools(
-    scenario.tools,
-    hitl,
-    scenario.confirmTools || [],
-  );
+  const hitlSession = new HitlSession(scenario, onSSE, fieldLabels, tracer);
 
   // 立即注册 HitlManager（在 agent.prompt() 之前），消除 session 竞态
-  onHitlCreated?.(hitl);
+  onHitlCreated?.(hitlSession.hitl);
 
-  const model = getDefaultModel();
+  const model = getModel('chat');
   const agent = new Agent({
     initialState: {
       systemPrompt,
-      tools,
+      tools: hitlSession.tools,
       model,
-      // ChatMessage 是前端简化格式，框架会兼容处理
       messages: initialMessages as AgentMessage[],
     },
     streamFn: streamSimple,
@@ -169,5 +133,5 @@ export async function runAgent(params: AgentFactoryParams): Promise<HitlManager>
   await agent.prompt(message);
   await agent.waitForIdle();
 
-  return hitl;
+  return hitlSession.hitl;
 }

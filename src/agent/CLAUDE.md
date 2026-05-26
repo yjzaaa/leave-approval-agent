@@ -12,18 +12,31 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 
 ```
 agent/
-├── core/             # 核心运行时
-│   ├── agent-factory.ts  # 创建 Agent、SSE 转发、HITL 注册
-│   └── types.ts          # 框架级类型
-├── hitl/             # HITL 确认
-│   └── hitl.ts           # HitlManager 类 + withConfirm 包装器
-├── tracing/          # 追踪
-│   └── mlflow-tracer.ts  # MLflow 追踪 (Strategy 模式，双环境兼容)
-├── memory/           # 记忆注入
-│   └── memory-prompt.ts  # 记忆格式化注入 system prompt
-└── local/            # 浏览器端辅助
-    └── local-utils.ts    # compact/extract-memories 辅助函数
+├── core/                 # 核心运行时
+│   ├── agent-factory.ts      # runAgent() 工厂 + AgentFactoryParams
+│   └── types.ts              # 框架内部类型 (CreateAgentParams)
+├── hitl/                 # HITL 确认
+│   ├── hitl-manager.ts       # HitlManager 类 (状态机)
+│   ├── hitl-session.ts       # HitlSession 类 (SSE 桥接 + tool 包装)
+│   ├── hitl-wrappers.ts      # withConfirm() + wrapHitlTools()
+│   └── index.ts              # 汇总导出
+├── model/                # 模型配置
+│   ├── model-registry.ts     # 声明式注册表 — getModel(role), ModelSpec, ModelRole
+│   ├── model-provider.ts     # getDefaultModel() — 兼容旧接口
+│   └── index.ts              # 汇总导出
+├── tracing/              # 追踪
+│   ├── tracer.ts             # RestTracer + NoopTracer + createTracer()
+│   └── index.ts              # 汇总导出
+├── memory/               # 记忆注入
+│   └── memory-prompt.ts      # 记忆格式化注入 system prompt
+└── local/                # 浏览器端辅助
+    └── local-utils.ts        # compact/extract-memories 辅助函数
 ```
+
+**纯类型定义在 `models/domain/interfaces/` 中:**
+- `ITracer.ts` — 追踪接口 + TracerOptions
+- `IHitl.ts` — HitlEvent + HitlEventCallback
+- `ISSE.ts` — SSECallback + SSEEventType + SSEPayload
 
 ## 模块架构图
 
@@ -31,15 +44,24 @@ agent/
 graph TD
     subgraph Core["core/"]
         Factory["agent-factory.ts<br/>runAgent()"]
-        Types["types.ts<br/>SSEEventType<br/>CreateAgentParams"]
+        Types["types.ts<br/>CreateAgentParams"]
     end
 
     subgraph Hitl["hitl/"]
-        HitlMgr["hitl.ts<br/>HitlManager<br/>withConfirm()"]
+        HitlMgr["hitl-manager.ts<br/>HitlManager"]
+        HitlSess["hitl-session.ts<br/>HitlSession"]
+        HitlWrap["hitl-wrappers.ts<br/>withConfirm()<br/>wrapHitlTools()"]
     end
 
+    subgraph Model["model/"]
+        ModelReg["model-registry.ts<br/>getModel(role)<br/>ModelSpec / ModelRole"]
+        ModelProv["model-provider.ts<br/>getDefaultModel()"]
+    end
+
+    ModelProv --> ModelReg
+
     subgraph Tracing["tracing/"]
-        Tracer["mlflow-tracer.ts<br/>ITracer<br/>createTracer()"]
+        Tracer["tracer.ts<br/>RestTracer<br/>NoopTracer<br/>createTracer()"]
     end
 
     subgraph Memory["memory/"]
@@ -50,15 +72,29 @@ graph TD
         LocalUtils["local-utils.ts<br/>compactHistoryLocal()<br/>extractMemoriesLocal()"]
     end
 
-    Factory --> HitlMgr
+    subgraph Domain["models/domain/interfaces/"]
+        ITracer["ITracer.ts"]
+        IHitl["IHitl.ts"]
+        ISSE["ISSE.ts"]
+    end
+
+    Factory --> HitlSess
+    HitlSess --> HitlMgr
+    HitlSess --> HitlWrap
     Factory --> MemPrompt
+    Factory --> ModelReg
     Factory -.->|import type| Tracer
+    Tracer -.->|import type| ITracer
+    HitlMgr -.->|import type| IHitl
+    Factory -.->|import type| ISSE
 
     style Core fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Hitl fill:#ffe3e3,stroke:#495057,color:#1a1a1a
     style Tracing fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Model fill:#ffe8cc,stroke:#495057,color:#1a1a1a
     style Memory fill:#ebfbee,stroke:#495057,color:#1a1a1a
     style Local fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+    style Domain fill:#f0f0f0,stroke:#495057,color:#1a1a1a
 ```
 
 ## Agent 运行时序图
@@ -167,48 +203,58 @@ stateDiagram-v2
 ### core/agent-factory.ts
 
 - `runAgent(params)` — 创建 Agent，订阅事件，SSE 转发
-  - `onHitlCreated` 回调在 `agent.prompt()` 之前触发，用于注册 HitlManager 到会话映射
-  - 返回 `Promise<HitlManager>`（流程结束后 resolve）
 - `getDefaultModel()` — DeepSeek 模型配置
-- 不 import 任何 tool，直接使用 `scenario.tools`
+- `AgentFactoryParams` — 工厂参数接口
 
 ### core/types.ts
 
-- 框架级类型定义（Agent 配置、运行参数、事件回调等）
+- `CreateAgentParams` — Agent 创建参数 (框架内部类型)
 
-### hitl/hitl.ts
+### hitl/hitl-manager.ts
 
-- `HitlManager` — HITL 确认管理器类
-  - `requestConfirm()` — 挂起 Promise，事件驱动 SSE
+- `HitlManager` — HITL 确认状态机
+  - `requestConfirm()` — 挂起 Promise
   - `approve()` / `reject()` — 解除挂起
-  - `pending` — 当前待确认项（只读）
-- `withConfirm()` — 声明式 HITL 工具包装器
-- `wrapHitlTools()` — 批量包装 HITL tools（agent-factory 使用）
 
-### local/local-utils.ts
+### hitl/hitl-session.ts
 
-- `compactHistoryLocal(messages)` — 浏览器端对话压缩，创建 mini Agent 生成摘要
-- `extractMemoriesLocal(messages)` — 浏览器端记忆提取，创建 mini Agent 返回结构化记忆
-- 替代 `/api/compact` 和 `/api/extract-memories` HTTP 端点
-- 仅 local 模式使用（通过 `useAgent` 动态 import）
+- `HitlSession` — HITL 会话封装 (HitlManager 创建 + SSE 桥接 + tool 包装)
 
-### tracing/mlflow-tracer.ts
+### hitl/hitl-wrappers.ts
 
-- **Strategy 模式**: `ITracer` 接口 + `FetchTracer` (REST API) + `NoopTracer` (空操作)
-- `createTracer(opts)` 工厂 — 有 `MLFLOW_TRACKING_URI` 时创建 FetchTracer，否则 NoopTracer
-- 纯 `fetch()` 实现，零 SDK 依赖，Node.js 和浏览器双环境兼容
-- `core/agent-factory` 通过 `import type { ITracer }` 引用接口（编译时擦除）
+- `withConfirm()` — 单个 tool 的 HITL 包装
+- `wrapHitlTools()` — 批量包装 confirmTools
+
+### model/model-registry.ts
+
+- `ModelSpec` — 模型配置项 (provider + modelId)
+- `ModelRole` — 模型角色 (`'chat'` | `'utility'`)
+- `getModel(role)` — 按角色获取模型，环境变量驱动
+  - `chat` — 主 Agent 推理 (MODEL_PROVIDER / MODEL_ID)
+  - `utility` — 压缩/提取等简单任务 (UTILITY_MODEL_* 回退到 MODEL_*)
+
+### model/model-provider.ts
+
+- `getDefaultModel()` — 兼容旧接口，委托给 `getModel('chat')`
+
+### tracing/tracer.ts
+
+- `RestTracer` — MLflow REST API 上报 (axios)
+- `NoopTracer` — 空操作
+- `createTracer()` — 工厂函数 (带连接预检)
 
 ### memory/memory-prompt.ts
 
-- `formatMemoriesForPrompt(memories)` — 将记忆列表格式化为 system prompt 区块
-- `formatSummaryForHistory(summary)` — 将对话摘要格式化为 history 注入
-- 按 user/feedback/project/reference 分组输出
+- `formatMemoriesForPrompt()` / `formatSummaryForHistory()` — 记忆注入格式化
+
+### local/local-utils.ts
+
+- `compactHistoryLocal()` / `extractMemoriesLocal()` — 浏览器端辅助
 
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- `models/domain/interfaces/` — `IScenario`, `ITracer` 等接口契约
+- `models/domain/interfaces/` — `IScenario`, `ITracer`, `IHitl`, `ISSE` 等接口契约
 - `models/domain/models/` — `ChatMessage`, `MemoryItem` 等领域实体
 - `models/memory/` — 记忆存储运行时
 
@@ -216,7 +262,10 @@ stateDiagram-v2
 
 - ❌ 不 import models/scenarios/ 下的任何模块
 - ❌ 不定义任何 tool
-- ✅ 只通过 IScenario 接口通信
+- ❌ 纯类型定义不放本层，统一放 `models/domain/interfaces/`
+- ✅ 本层只放实现类和工厂函数
+- ✅ 一个文件只放一个类或一组密切相关的纯函数
+- ✅ 模块入口 `index.ts` 只做汇总导出
 - ❌ 不 import controllers/ 或 views/
 
 ---

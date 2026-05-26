@@ -5,7 +5,7 @@
  */
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { HitlManager } from '../../../agent/hitl/hitl.js';
+import type { HitlManager } from '../../../agent/hitl/index.js';
 import type { ConfirmResponse } from '../../../models/domain/dto/ApiResponses.js';
 
 /**

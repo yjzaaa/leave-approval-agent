@@ -14,6 +14,9 @@ export interface PendingConfirm {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/** SSE 事件回调 */
+export type SSECallback = (event: string, data: Record<string, unknown>) => void;
+
 /** SSE 事件类型 */
 export type SSEEventType =
   | 'text'

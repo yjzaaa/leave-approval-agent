@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { HitlManager } from '../../agent/hitl/hitl.js';
+import type { HitlManager } from '../../agent/hitl/index.js';
 import {
   createChatRouter,
   createConfirmRouter,

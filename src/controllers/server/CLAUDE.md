@@ -127,7 +127,7 @@ sequenceDiagram
 
 - [agent/core/agent-factory.ts](../../agent/CLAUDE.md) — runAgent
 - [agent/hitl/hitl.ts](../../agent/CLAUDE.md) — HitlManager
-- [agent/tracing/mlflow-tracer.ts](../../agent/CLAUDE.md) — ITracer / createTracer
+- [agent/tracing/tracer.ts](../../agent/CLAUDE.md) — createTracer
 - [models/scenarios/registry.ts](../../models/scenarios/CLAUDE.md) — 场景注册表
 - [models/domain/interfaces/](../../models/domain/CLAUDE.md) — Scenario, ITracer
 - [models/domain/dto/](../../models/domain/CLAUDE.md) — ApiResponses

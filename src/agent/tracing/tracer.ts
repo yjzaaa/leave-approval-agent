@@ -1,17 +1,18 @@
 /**
- * MLflow Tracing 集成 — 纯 REST API 实现
+ * MLflow Tracing 实现 — 纯 REST API
  *
  * 基于 axios 调用 MLflow REST API，零 OpenTelemetry 依赖。
  * 适用于 Vite esbuild 环境，不受 Node.js native 绑定限制。
  *
  * 设计模式:
- *   ITracer (接口)
+ *   ITracer (接口, 在 domain 中定义)
  *     ├── RestTracer   — 有 MLFLOW_TRACKING_URI 时，通过 REST API 上报
  *     └── NoopTracer   — 无 MLFLOW_TRACKING_URI 时，空操作零开销
  *
  * 工厂: createTracer(opts) → ITracer
  */
 import axios from 'axios';
+import type { ITracer, TracerOptions } from '../../models/domain/interfaces/ITracer.js';
 
 /** 追踪 URI（从环境变量读取） */
 const TRACKING_URI: string =
@@ -43,15 +44,9 @@ function generateHexId(bytes: number): string {
   return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ═══ 类型 ═══
+// ═══ 内部类型 ═══
 
-export interface TracerOptions {
-  scenario: string;
-  userId?: string;
-  sessionId?: string;
-  message: string;
-}
-
+/** Span 数据结构（MLflow REST API 用） */
 interface SpanData {
   trace_id: string;
   span_id: string;
@@ -64,26 +59,22 @@ interface SpanData {
   events: Array<{ name: string; time_unix_nano: string; attributes: Record<string, unknown> }>;
 }
 
-/**
- * ITracer — Tracer 接口
- *
- * 所有 tracer 实现必须满足此接口。
- * 调用方不关心具体实现（RestTracer / NoopTracer），只依赖接口。
- */
-export interface ITracer {
-  /** 执行完整 trace 生命周期，返回 fn 的结果 */
-  run<T>(fn: () => Promise<T>): Promise<T>;
-  /** 接收 agent 事件 */
-  handleEvent(event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void;
-  /** 标记 HITL 触发 */
-  markHitl(toolName: string): void;
+/** Agent 事件形状（handleEvent 参数） */
+interface AgentEvent {
+  type: string;
+  toolName?: string;
+  isError?: boolean;
+  errorMessage?: string;
+  args?: unknown;
+  result?: unknown;
+  assistantMessageEvent?: { type: string; delta?: string };
 }
 
 // ═══ NoopTracer — 无 MLFLOW_TRACKING_URI 时的空操作 ═══
 
 class NoopTracer implements ITracer {
   async run<T>(fn: () => Promise<T>): Promise<T> { return fn(); }
-  handleEvent(_event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void { /* no-op */ }
+  handleEvent(_event: AgentEvent): void { /* no-op */ }
   markHitl(_toolName: string): void { /* no-op */ }
 }
 
@@ -160,7 +151,7 @@ class RestTracer implements ITracer {
   }
 
   /** 接收 agent 事件 */
-  handleEvent(event: { type: string; toolName?: string; isError?: boolean; errorMessage?: string; args?: unknown; result?: unknown; assistantMessageEvent?: { type: string; delta?: string } }): void {
+  handleEvent(event: AgentEvent): void {
     try {
       switch (event.type) {
         case 'tool_execution_start': {

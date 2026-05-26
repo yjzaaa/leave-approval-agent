@@ -5,7 +5,8 @@
  */
 import { Router } from 'express';
 import { Agent } from '@earendil-works/pi-agent-core';
-import { streamSimple, getModel } from '@earendil-works/pi-ai';
+import { streamSimple } from '@earendil-works/pi-ai';
+import { getModel } from '../../../agent/model/index.js';
 import { getScenario } from '../../../models/scenarios/registry.js';
 import type { CompactResponse, ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
 
@@ -29,7 +30,7 @@ export function createCompactRouter(): Router {
 ${messagesText}`;
 
       // 直接调用模型生成摘要（不走 Agent）
-      const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
+      const model = getModel('utility');
 
       let summary = '';
       const agent = new Agent({

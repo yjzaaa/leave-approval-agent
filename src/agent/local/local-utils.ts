@@ -5,7 +5,8 @@
  * 无 HTTP 往返，复用同一组 pi-agent / pi-ai 依赖。
  */
 import { Agent } from '@earendil-works/pi-agent-core';
-import { streamSimple, getModel } from '@earendil-works/pi-ai';
+import { streamSimple } from '@earendil-works/pi-ai';
+import { getModel } from '../model/index.js';
 
 /** 对话压缩 — 返回摘要文本 */
 export async function compactHistoryLocal(messages: Array<{ role: string; content: string }>): Promise<string> {
@@ -18,7 +19,7 @@ export async function compactHistoryLocal(messages: Array<{ role: string; conten
 对话记录:
 ${messagesText}`;
 
-  const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
+  const model = getModel('utility');
 
   let summary = '';
   const agent = new Agent({
@@ -71,7 +72,7 @@ export async function extractMemoriesLocal(messages: Array<{ role: string; conte
 对话记录:
 ${messagesText}`;
 
-  const model = getModel('deepseek', 'deepseek-v4-pro' as Parameters<typeof getModel>[1]);
+  const model = getModel('utility');
 
   let result = '';
   const agent = new Agent({
