@@ -6,105 +6,111 @@
 
 ```
 src/
-├── domain/            # 🧱 领域模型 (models/DTO/VO/interfaces) — 零外部依赖
-├── infrastructure/    # 🏗️ 基础设施 (errors/utils/constants/memory)
-├── shared/            # ⚠️ 弃用中 → 迁移到 domain/ + infrastructure/
-├── agent/             # ⚙️ Agent 框架层 (业务无关)
-│   ├── core/              # agent-factory, types
-│   ├── hitl/              # HITL 确认状态机
-│   ├── tracing/           # MLflow 追踪
-│   ├── memory/            # 记忆注入 prompt
-│   └── local/             # 浏览器端辅助
-├── services/          # 🔀 业务编排 (对话/记忆/场景发现)
-├── scenarios/         # 📦 业务场景 (完全自主: prompt + tools + api + validator)
-├── client/            # 🎨 前端 UI 壳 (React + Vite)
-├── server/            # 🔧 Express 服务端 (可选)
-├── i18n/              # 🌐 多语言翻译 (i18next)
-├── App.tsx            # 主应用组件
-└── App.css            # 墨韵设计系统样式
+├── models/                    # Model 层 — 数据 + 业务逻辑
+│   ├── domain/               # 纯领域类型 (dto/enums/interfaces/models/vo)
+│   ├── scenarios/            # 业务场景 (6 个场景 + registry.ts)
+│   ├── memory/               # 记忆存储运行时
+│   └── CLAUDE.md
+├── views/                    # View 层 — 纯展示 + UI 交互
+│   ├── components/           # React UI 组件
+│   │   ├── approval/         # 审批相关组件
+│   │   ├── auth/             # 登录认证组件
+│   │   ├── chat/             # 聊天界面组件
+│   │   ├── layout/           # 布局组件
+│   │   ├── legal/            # 法律声明组件
+│   │   ├── memory/           # 记忆面板组件
+│   │   └── ui/               # 基础 UI 组件
+│   ├── hooks/                # 纯 UI Hooks (useAuth, useMemory)
+│   ├── i18n/                 # 国际化 (i18next + locales)
+│   ├── data/                 # 静态数据
+│   ├── styles/               # 样式文件
+│   ├── types.ts              # View 层类型
+│   └── CLAUDE.md
+├── controllers/              # Controller 层 — 编排 + 路由
+│   ├── hooks/                # 业务 Hooks (useAgent, useAgentCore)
+│   ├── server/               # Express 服务端 (routes/controllers/middleware 已拆分)
+│   ├── services/             # 业务编排服务 (chat/memory/plugins/scenarios)
+│   └── CLAUDE.md
+├── agent/                    # Agent 框架（MVC 外的基础设施）
+│   ├── core/                 # agent-factory
+│   ├── hitl/                 # HITL 确认状态机
+│   ├── local/                # 浏览器端辅助
+│   ├── memory/               # 记忆注入 prompt
+│   ├── tracing/              # MLflow 追踪
+│   └── CLAUDE.md
+├── infrastructure/           # 基础设施（MVC 外）
+│   ├── constants/            # 全局常量
+│   ├── errors/               # 错误体系
+│   ├── utils/                # 工具函数 (env.ts, cn.ts)
+│   └── CLAUDE.md
+├── App.tsx                   # 入口壳 (登录 + MainApp)
+├── main.tsx                  # Vite 入口
+└── vite-env.d.ts
 ```
 
 ## 子目录文档
 
-| 层 | 目录 | 文档 | 说明 |
-|---|------|------|------|
-| 🧱 | `domain/` | [CLAUDE.md](domain/CLAUDE.md) | 领域模型 — models/DTO/VO/接口 |
-| 🏗️ | `infrastructure/` | [CLAUDE.md](infrastructure/CLAUDE.md) | 基础设施 — 错误/工具/常量/记忆运行时 |
-| ⚙️ | `agent/` | [CLAUDE.md](agent/CLAUDE.md) | Agent 框架层 (业务无关) |
-| 🔀 | `services/` | [CLAUDE.md](services/CLAUDE.md) | 服务层 — 业务逻辑编排 |
-| 📦 | `scenarios/` | [CLAUDE.md](scenarios/CLAUDE.md) | 业务场景层 |
-| 🎨 | `client/` | [CLAUDE.md](client/CLAUDE.md) | 前端 UI 壳层 |
-| 🔧 | `server/` | [CLAUDE.md](server/CLAUDE.md) | Express 服务端 |
-| 🌐 | `i18n/` | — | 多语言翻译 (i18next) |
+| MVC 层 | 目录 | 文档 | 说明 |
+|--------|------|------|------|
+| **Model** | `models/` | [CLAUDE.md](models/CLAUDE.md) | 数据 + 业务逻辑 — domain/scenarios/memory |
+| **View** | `views/` | [CLAUDE.md](views/CLAUDE.md) | 纯展示 + UI 交互 — components/hooks/i18n/styles |
+| **Controller** | `controllers/` | [CLAUDE.md](controllers/CLAUDE.md) | 编排 + 路由 — hooks/server/services |
+| 基础设施 | `agent/` | [CLAUDE.md](agent/CLAUDE.md) | Agent 框架 (业务无关) |
+| 基础设施 | `infrastructure/` | [CLAUDE.md](infrastructure/CLAUDE.md) | 工具函数/常量/错误体系 |
 
 ## 系统架构图
 
 ```mermaid
 graph TB
-    subgraph UI["🖥️ UI 层"]
+    subgraph View["👁️ View 层 (views/)"]
         Browser["🌐 Browser<br/>React + Vite"]
-        CLI["⌨️ CLI<br/>Node.js"]
+        Components["components/<br/>UI 组件"]
+        ViewHooks["hooks/<br/>useAuth, useMemory"]
+        I18n["i18n/<br/>国际化"]
+        Styles["styles/<br/>墨韵设计系统"]
     end
 
-    subgraph Server["🔧 服务层"]
-        API["Express :3000<br/>POST /api/chat<br/>POST /api/confirm"]
-        SSE["SSE Bridge<br/>EventSource 流"]
+    subgraph Controller["🎛️ Controller 层 (controllers/)"]
+        API["server/<br/>Express :3000"]
+        CtrlHooks["hooks/<br/>useAgent, useAgentCore"]
+        Services["services/<br/>chat/memory/scenarios"]
     end
 
-    subgraph Services["🔀 业务编排"]
-        ChatSvc["chat/service.ts<br/>对话编排"]
-        MemSvc["memory/service.ts<br/>记忆编排"]
-        ScenarioSvc["scenarios/service.ts<br/>场景发现"]
+    subgraph Model["📦 Model 层 (models/)"]
+        Domain["domain/<br/>纯领域类型"]
+        Scenarios["scenarios/<br/>6 个业务场景"]
+        Memory["memory/<br/>记忆存储运行时"]
     end
 
-    subgraph Agent["⚙️ 框架层 (业务无关)"]
-        Factory["agent-factory.ts<br/>创建 Agent"]
-        HitlMgr["hitl.ts<br/>HITL 状态机"]
-        Tracer["mlflow-tracer.ts<br/>MLflow 追踪"]
+    subgraph AgentInfra["⚙️ Agent 框架 (agent/)"]
+        Factory["core/<br/>agent-factory"]
+        HitlMgr["hitl/<br/>HITL 状态机"]
+        Tracer["tracing/<br/>MLflow 追踪"]
     end
 
-    subgraph Scenarios["📦 场景层"]
-        Leave["远程办公审批"]
-        Expense["报销审批"]
-        Sick["病假申请"]
-    end
-
-    subgraph Domain["🧱 领域层"]
-        Models["models/<br/>领域实体"]
-        DTOs["dto/<br/>数据传输"]
-        VOs["vo/<br/>视图对象"]
-        Interfaces["interfaces/<br/>契约接口"]
-    end
-
-    subgraph Infra["🏗️ 基础设施"]
+    subgraph Infra["🏗️ 基础设施 (infrastructure/)"]
         Errors["errors/<br/>错误体系"]
         Utils["utils/<br/>工具函数"]
         Constants["constants/<br/>全局常量"]
-        MemoryRT["memory/<br/>记忆运行时"]
     end
 
     Browser --> API
-    Browser -.->|"local 模式"| Services
-    CLI --> Services
-    API --> SSE
-    SSE --> Services
-    Services --> Agent
+    Browser -.->|"local 模式"| CtrlHooks
+    API --> Services
+    CtrlHooks --> AgentInfra
+    Services --> AgentInfra
     Services --> Scenarios
-    Agent --> Scenarios
-    Agent --> Infra
+    AgentInfra --> Scenarios
+    Components --> Domain
     Scenarios --> Domain
     Services --> Domain
-    Server --> Domain
-    UI --> Domain
-    Agent --> Domain
-    Infra --> Domain
+    AgentInfra --> Infra
+    AgentInfra --> Domain
 
-    style UI fill:#dbe4ff,stroke:#495057,color:#1a1a1a
-    style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
-    style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
-    style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Scenarios fill:#fff4e6,stroke:#495057,color:#1a1a1a
-    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style View fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style Controller fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Model fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style AgentInfra fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
 ```
 
@@ -112,67 +118,56 @@ graph TB
 
 ```mermaid
 graph TD
-    Domain["domain/<br/>模型·DTO·VO·接口"]
-    Infra["infrastructure/<br/>错误·工具·常量·记忆运行时"]
-    Agent["agent/<br/>Agent 运行时"]
-    Scenarios["scenarios/<br/>业务场景"]
-    Services["services/<br/>业务编排"]
-    Server["server/<br/>Express 路由"]
-    Client["client/<br/>React 前端"]
+    subgraph MVC
+        View["views/<br/>React UI + Hooks"]
+        Controller["controllers/<br/>编排 + 路由"]
+        Model["models/<br/>数据 + 业务逻辑"]
+    end
+    Agent["agent/<br/>Agent 框架"]
+    Infra["infrastructure/<br/>工具/常量/错误"]
 
-    Domain --> Infra
-    Server -->|"依赖"| Services
-    Services -->|"依赖"| Agent
-    Agent -->|"依赖"| Scenarios
-    Agent -->|"依赖"| Infra
-    Scenarios -->|"依赖"| Domain
-    Services -->|"依赖"| Domain
-    Server -->|"依赖"| Domain
-    Client -->|"依赖"| Domain
-    Client -.->|"local 模式"| Services
+    View -->|"UI Hooks 调用"| Controller
+    Controller -->|"读取"| Model
+    Controller -->|"驱动"| Agent
+    Agent -->|"执行场景"| Model
+    Agent -->|"使用"| Infra
+    Model -->|"零外部依赖"| Infra
 
-    style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a
-    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
-    style Services fill:#f3f0ff,stroke:#495057,color:#1a1a1a
+    style View fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style Controller fill:#fff9db,stroke:#495057,color:#1a1a1a
+    style Model fill:#ebfbee,stroke:#495057,color:#1a1a1a
     style Agent fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Scenarios fill:#fff4e6,stroke:#495057,color:#1a1a1a
-    style Server fill:#fff9db,stroke:#495057,color:#1a1a1a
-    style Client fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
 ```
 
 ## 记忆系统
 
 ```mermaid
 graph LR
-    subgraph Frontend["🖥️ 前端"]
+    subgraph View["👁️ View 层"]
         LS["localStorage<br/>MemoryStore"]
-        Hook["useMemory.ts"]
-        Panel["MemoryPanel.tsx"]
+        Hook["views/hooks/<br/>useMemory"]
+        Panel["views/components/<br/>MemoryPanel"]
     end
 
-    subgraph AgentLayer["⚙️ 框架层"]
+    subgraph AgentLayer["⚙️ Agent 框架"]
         Format["agent/memory/<br/>memory-prompt.ts"]
     end
 
-    subgraph Infra["🏗️ 基础设施"]
-        Types["infrastructure/memory/<br/>运行时函数"]
-    end
-
-    subgraph DomainLayer["🧱 领域层"]
-        MemTypes["domain/models/<br/>记忆类型+常量"]
+    subgraph Model["📦 Model 层"]
+        MemRT["models/memory/<br/>记忆运行时"]
+        MemTypes["models/domain/models/<br/>记忆类型+常量"]
     end
 
     Hook --> LS
     Hook --> Panel
-    Hook --> Types
-    Format --> Types
-    AgentLayer --> Format
-    Types --> DomainLayer
+    Hook --> MemRT
+    Format --> MemRT
+    MemRT --> MemTypes
 
-    style Frontend fill:#dbe4ff,stroke:#495057,color:#1a1a1a
+    style View fill:#dbe4ff,stroke:#495057,color:#1a1a1a
     style AgentLayer fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Infra fill:#f8f9fa,stroke:#495057,color:#1a1a1a
-    style DomainLayer fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style Model fill:#ebfbee,stroke:#495057,color:#1a1a1a
 ```
 
 **设计原则**: 服务端无状态，前端 localStorage 持久化。

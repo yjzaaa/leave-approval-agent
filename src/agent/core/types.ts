@@ -4,7 +4,7 @@
  * 与具体业务无关的通用类型。
  * 业务特定类型定义在 domain/interfaces/ 和各 scenario 中。
  */
-import type { Scenario } from '../../domain/interfaces/IScenario.js';
+import type { Scenario } from '../../models/domain/interfaces/IScenario.js';
 
 /** 待确认项 */
 export interface PendingConfirm {

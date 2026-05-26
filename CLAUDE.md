@@ -13,18 +13,15 @@
 7. **结构化错误** — 统一 `AppError` 体系，按 `ErrorCode` 分类，前端按 code 处理
 8. **Service 编排** — 复杂业务逻辑（对话/记忆/场景发现）集中在 `services/` 层
 
-## 目录职责
+## 目录职责 (MVC 三层 + 基础设施)
 
-| 目录 | 职责 | 详细文档 |
-|------|------|---------|
-| `src/domain/` | 领域模型 (models/DTO/VO/interfaces) | [CLAUDE.md](src/domain/CLAUDE.md) |
-| `src/infrastructure/` | 基础设施 (errors/utils/constants/memory) | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
-| `src/agent/` | Agent 框架层（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
-| `src/services/` | 服务层 — 业务逻辑编排 | [CLAUDE.md](src/services/CLAUDE.md) |
-| `src/scenarios/` | 业务场景层（完全自主） | [CLAUDE.md](src/scenarios/CLAUDE.md) |
-| `src/client/` | 前端 UI 壳 | [CLAUDE.md](src/client/CLAUDE.md) |
-| `src/server/` | Express 服务端 | [CLAUDE.md](src/server/CLAUDE.md) |
-| `src/i18n/` | 多语言翻译 (i18next) | — |
+| 目录 | MVC 层 | 职责 | 详细文档 |
+|------|--------|------|---------|
+| `src/models/` | **Model** | 数据 + 业务逻辑 (domain/scenarios/memory) | [CLAUDE.md](src/models/CLAUDE.md) |
+| `src/views/` | **View** | 纯展示 + UI 交互 (components/hooks/i18n/styles) | [CLAUDE.md](src/views/CLAUDE.md) |
+| `src/controllers/` | **Controller** | 编排 + 路由 (hooks/server/services) | [CLAUDE.md](src/controllers/CLAUDE.md) |
+| `src/agent/` | 基础设施 | Agent 框架（业务无关） | [CLAUDE.md](src/agent/CLAUDE.md) |
+| `src/infrastructure/` | 基础设施 | 工具函数/常量/错误体系 | [CLAUDE.md](src/infrastructure/CLAUDE.md) |
 
 ## 编码规范
 
@@ -125,14 +122,12 @@ npm run cli -- --scenario=xxx  # 指定场景
 After every commit, review the diff and update the corresponding CLAUDE.md file(s) to reflect what changed.
 
 Mapping:
-- `src/domain/**` → `src/domain/CLAUDE.md`
-- `src/infrastructure/**` → `src/infrastructure/CLAUDE.md`
+- `src/models/**` → `src/models/CLAUDE.md` + 对应子目录 CLAUDE.md
+- `src/views/**` → `src/views/CLAUDE.md`
+- `src/controllers/**` → `src/controllers/CLAUDE.md`
 - `src/agent/**` → `src/agent/CLAUDE.md`
-- `src/services/**` → `src/services/CLAUDE.md`
-- `src/scenarios/**` → `src/scenarios/CLAUDE.md` + the specific scenario's `CLAUDE.md`
-- `src/client/**` → `src/client/CLAUDE.md`
-- `src/server/**` → `src/server/CLAUDE.md`
-- `src/App.tsx`, `src/App.css` → `src/client/CLAUDE.md`
+- `src/infrastructure/**` → `src/infrastructure/CLAUDE.md`
+- `src/App.tsx`, `src/main.tsx` → `src/CLAUDE.md`
 - Root-level files → root `CLAUDE.md`
 
 What to update:

@@ -13,7 +13,7 @@
  *   4. 服务端通过 hitl.approve() / hitl.reject() 响应用户操作
  */
 import type { AgentTool } from '@earendil-works/pi-agent-core';
-import type { ConfirmToolConfig } from '../../domain/interfaces/ConfirmToolConfig.js';
+import type { ConfirmToolConfig } from '../../models/domain/interfaces/ConfirmToolConfig.js';
 
 /** HITL 事件 */
 export type HitlEvent =

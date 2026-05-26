@@ -1,6 +1,6 @@
 # Agent 框架层
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md) · 📋 被引用: [server/](../server/CLAUDE.md) · [client/](../client/CLAUDE.md)
+> ⬆️ [返回 src/](../CLAUDE.md) · 📋 依赖: [models/domain/](../models/domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md) · 📋 被引用: [controllers/](../controllers/CLAUDE.md) · [views/](../views/CLAUDE.md)
 
 ## 职责
 
@@ -67,7 +67,7 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant Server as server/index.ts
+    participant Server as controllers/server/index.ts
     participant Factory as agent-factory
     participant Agent as Pi Agent
     participant API as DeepSeek API
@@ -99,7 +99,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Browser as useAgent.ts
+    participant Browser as controllers/hooks/useAgent.ts
     participant Factory as agent-factory
     participant Agent as Pi Agent
     participant API as DeepSeek API
@@ -208,17 +208,17 @@ stateDiagram-v2
 ## 依赖
 
 - `@earendil-works/pi-agent-core` / `@earendil-works/pi-ai`
-- `domain/interfaces/` — `IScenario`, `ITracer` 等接口契约
-- `domain/models/` — `ChatMessage`, `MemoryItem` 等领域实体
-- `infrastructure/memory/` — 记忆存储运行时
+- `models/domain/interfaces/` — `IScenario`, `ITracer` 等接口契约
+- `models/domain/models/` — `ChatMessage`, `MemoryItem` 等领域实体
+- `models/memory/` — 记忆存储运行时
 
 ## 约束
 
-- ❌ 不 import scenarios/ 下的任何模块
+- ❌ 不 import models/scenarios/ 下的任何模块
 - ❌ 不定义任何 tool
 - ✅ 只通过 IScenario 接口通信
-- ❌ 不 import server/ 或 client/
+- ❌ 不 import controllers/ 或 views/
 
 ---
 
-> ⬆️ [返回项目根目录](../../CLAUDE.md) · 📋 依赖: [domain/](../domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md)
+> ⬆️ [返回 src/](../CLAUDE.md) · 📋 依赖: [models/domain/](../models/domain/CLAUDE.md) · [infrastructure/](../infrastructure/CLAUDE.md)
