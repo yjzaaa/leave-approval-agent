@@ -5,19 +5,18 @@
  */
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { HitlManager } from '../../../agent/hitl/index.js';
+import { getHitlSessions } from '../middleware/index.js';
 import type { ConfirmResponse } from '../../../models/domain/dto/ApiResponses.js';
 
-/**
- * 创建 confirm 路由
- * @param hitlSessions sessionId → HitlManager 映射
- */
-export function createConfirmRouter(hitlSessions: Map<string, HitlManager>): Router {
+/** 创建 confirm 路由 */
+export function createConfirmRouter(): Router {
   const router = Router();
 
   router.post('/confirm', (req: Request, res: Response) => {
     const { approved, sessionId } = req.body;
+    const hitlSessions = getHitlSessions(req.app);
     const hitl = hitlSessions.get(sessionId || 'default');
+
     if (!hitl) {
       const noSession: ConfirmResponse = { ok: false, message: '无活跃会话' };
       res.json(noSession);

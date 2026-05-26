@@ -8,7 +8,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { runAgent } from '../../../agent/core/agent-factory.js';
 import { createTracer } from '../../../agent/tracing/index.js';
-import type { HitlManager } from '../../../agent/hitl/index.js';
+import { getHitlSessions } from '../middleware/index.js';
 import { getScenario, getDefaultScenario } from '../../../models/scenarios/registry.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';
@@ -19,11 +19,8 @@ function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-/**
- * 创建 chat 路由
- * @param hitlSessions sessionId → HitlManager 映射（支持并发会话）
- */
-export function createChatRouter(hitlSessions: Map<string, HitlManager>): Router {
+/** 创建 chat 路由 */
+export function createChatRouter(): Router {
   const router = Router();
 
   router.post('/chat', async (req: Request, res: Response) => {
@@ -62,6 +59,8 @@ export function createChatRouter(hitlSessions: Map<string, HitlManager>): Router
         sessionId: resolvedSessionId,
         message,
       });
+
+      const hitlSessions = getHitlSessions(req.app);
 
       await tracer.run(async () => {
         await runAgent({

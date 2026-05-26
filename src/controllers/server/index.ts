@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { HitlManager } from '../../agent/hitl/index.js';
+import { initHitlSessions } from './middleware/index.js';
 import {
   createChatRouter,
   createConfirmRouter,
@@ -31,14 +31,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Express 应用工厂 — 供 Vite configureServer 和 CLI 共用 */
 export function createApp() {
   const app = express();
-  /** sessionId → HitlManager 映射（支持并发会话） */
-  const hitlSessions = new Map<string, HitlManager>();
+
+  // HITL 会话存储挂载到 app.locals，路由通过 getHitlSessions(req.app) 访问
+  initHitlSessions(app);
 
   app.use(express.json());
 
   // ── 挂载路由 ──
-  app.use('/api', createChatRouter(hitlSessions));
-  app.use('/api', createConfirmRouter(hitlSessions));
+  app.use('/api', createChatRouter());
+  app.use('/api', createConfirmRouter());
   app.use('/api', createCompactRouter());
   app.use('/api', createExtractMemoriesRouter());
   app.use('/api', createScenariosRouter());
@@ -50,5 +51,5 @@ export function createApp() {
     console.log('[Static] serving from dist/');
   }
 
-  return { app, hitlSessions };
+  return { app };
 }
