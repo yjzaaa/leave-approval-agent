@@ -387,6 +387,165 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
   };
 
   // ════════════════════════════════════════════════
+  // 计算层 — 封装成本分摊（避免模型手写 SQL 漏算 Allocation）
+  // ════════════════════════════════════════════════
+
+  /** 参数校验 */
+  function validateCostParams(params: {
+    year: string; scenario: string; function: string; cc?: string; bl?: string;
+  }): string | null {
+    if (!params.year) return 'year 不能为空';
+    if (!params.scenario) return 'scenario 不能为空';
+    if (!params.function) return 'function 不能为空';
+    if (params.cc && params.bl) return 'cc 和 bl 不能同时指定';
+    return null;
+  }
+
+  /** 从 schema 缓存中查找表名（按关键字匹配，兼容不同 Excel 文件的 sheet 命名） */
+  function resolveTable(cache: TableMeta[], keywords: string[]): string | null {
+    const name = cache.find((t) =>
+      keywords.every((kw) => t.name.toLowerCase().includes(kw.toLowerCase())),
+    );
+    return name ? name.name : null;
+  }
+
+  /** 封装成本分摊计算 — 自动 JOIN + 分离正向/Allocation 抵消 */
+  const calculateFunctionCostTool: AgentTool = {
+    name: 'calculate_function_cost',
+    label: '计算功能成本分摊',
+    description:
+      '计算指定 Function 在某财年/场景下分摊到某 CC 或业务线的净成本。'
+      + '自动处理 CostDataBase + Rate 的 JOIN，分离正向费用和 Allocation 抵消项，返回净分摊。'
+      + '需要按 CC 或 BL 对比两个时间点时，分别调用两次然后对比结果。'
+      + '禁止自己写 SQL 来做成本分摊，必须使用此 Tool。',
+    parameters: Type.Object({
+      year: Type.String({ description: '财年，如 FY26' }),
+      scenario: Type.String({ description: '场景名，如 Budget1 / Actual' }),
+      function: Type.String({ description: 'Function 名称，如 HR / IT' }),
+      cc: Type.Optional(Type.String({ description: '成本中心代码（可选），如 413001' })),
+      bl: Type.Optional(Type.String({ description: '业务线（可选），如 XP。与 cc 二选一' })),
+    }),
+    execute: async (_id, params) => {
+      const { year, scenario, function: func, cc, bl } = params as {
+        year: string; scenario: string; function: string; cc?: string; bl?: string;
+      };
+
+      const cache = getCachedSchema();
+      if (!cache) {
+        return { content: [{ type: 'text' as const, text: '数据源未连接，请先调用 connect_datasource' }], details: null };
+      }
+
+      const paramErr = validateCostParams({ year, scenario, function: func, cc, bl });
+      if (paramErr) {
+        return { content: [{ type: 'text' as const, text: paramErr }], details: null };
+      }
+
+      // 从 schema 动态解析表名（兼容不同 Excel 文件的 sheet 命名）
+      const costTable = resolveTable(cache, ['cost']);
+      const rateTable = resolveTable(cache, ['rate']);
+      const mappingTable = resolveTable(cache, ['cc', 'mapping']);
+
+      if (!costTable || !rateTable) {
+        return {
+          content: [{ type: 'text' as const, text: `无法定位数据表。Cost: ${costTable}, Rate: ${rateTable}。可用: ${cache.map((t) => t.name).join(', ')}` }],
+          details: null,
+        };
+      }
+
+      const safe = (s: string) => s.replace(/'/g, "''");
+
+      let joinClause = '';
+      let whereExtra: string;
+
+      if (cc) {
+        whereExtra = ` AND r.CC = '${safe(cc)}'`;
+      } else if (bl) {
+        if (!mappingTable) {
+          return {
+            content: [{ type: 'text' as const, text: `无法定位 CC Mapping 表。可用: ${cache.map((t) => t.name).join(', ')}` }],
+            details: null,
+          };
+        }
+        joinClause = ` JOIN [${mappingTable}] cm ON r.CC = cm.CC`;
+        whereExtra = ` AND cm.[Business Line] = '${safe(bl)}'`;
+      } else {
+        whereExtra = '';
+      }
+
+      const sql = [
+        'SELECT',
+        '  c.[Cost text] AS cost_text,',
+        '  c.[Function] AS func,',
+        '  SUM(c.Amount * r.RateNo) AS allocated_amount',
+        `FROM [${costTable}] c`,
+        `JOIN [${rateTable}] r ON c.Year = r.Year`,
+        '  AND c.Scenario = r.Scenario',
+        '  AND c.Month = r.Month',
+        '  AND LOWER(c.[Key]) = LOWER(r.[Key])',
+        joinClause,
+        `WHERE c.Year = '${safe(year)}'`,
+        `  AND c.Scenario = '${safe(scenario)}'`,
+        `  AND c.[Function] = '${safe(func)}'`,
+        whereExtra,
+        'GROUP BY c.[Cost text], c.[Function]',
+      ].filter(Boolean).join('\n');
+
+      const result = await dataSource.query(sql);
+      const rows = result.rows as Array<{ cost_text: string; func: string; allocated_amount: number }>;
+
+      if (rows.length === 0) {
+        const label = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '指定条件';
+        return {
+          content: [{ type: 'text' as const, text: `${year} ${scenario} 中 ${label} 的 ${func} Function 无数据` }],
+          details: { positiveItems: [], allocationItems: [], totalPositive: 0, totalAllocation: 0, netTotal: 0, sql },
+        };
+      }
+
+      const positiveItems: Array<{ costText: string; amount: number }> = [];
+      const allocationItems: Array<{ costText: string; amount: number }> = [];
+
+      for (const row of rows) {
+        const item = { costText: row.cost_text, amount: Math.round(row.allocated_amount) };
+        if (row.cost_text.toLowerCase().includes('allocation')) {
+          allocationItems.push(item);
+        } else {
+          positiveItems.push(item);
+        }
+      }
+
+      const totalPositive = positiveItems.reduce((s, i) => s + i.amount, 0);
+      const totalAllocation = allocationItems.reduce((s, i) => s + i.amount, 0);
+      const netTotal = totalPositive + totalAllocation;
+
+      const scope = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '全部';
+
+      let text = `## ${func} Function 成本分摊 — ${year} ${scenario} (${scope})\n\n`;
+
+      if (positiveItems.length > 0) {
+        text += '| Cost Text | 分摊金额 |\n|-----------|--------|\n';
+        for (const item of positiveItems) {
+          text += `| ${item.costText} | ${item.amount.toLocaleString()} |\n`;
+        }
+        text += `| **正向合计** | **${totalPositive.toLocaleString()}** |\n\n`;
+      }
+
+      if (allocationItems.length > 0) {
+        for (const item of allocationItems) {
+          text += `| ${item.costText} | ${item.amount.toLocaleString()} |\n`;
+        }
+        text += `| **Allocation 抵消** | **${totalAllocation.toLocaleString()}** |\n\n`;
+      }
+
+      text += `| **净分摊** | **${netTotal.toLocaleString()}** |`;
+
+      return {
+        content: [{ type: 'text' as const, text }],
+        details: { positiveItems, allocationItems, totalPositive, totalAllocation, netTotal, sql },
+      };
+    },
+  };
+
+  // ════════════════════════════════════════════════
   // 输出层 (1)
   // ════════════════════════════════════════════════
 
@@ -437,6 +596,7 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
     // 计算层
     calculateFieldsTool,
     generateCostRateSqlTool,
+    calculateFunctionCostTool,
     // 输出层
     generateChartTool,
   ];
