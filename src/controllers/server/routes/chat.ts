@@ -1,15 +1,11 @@
 /**
  * 路由 — POST /api/chat SSE 流式对话（场景化）
- *
- * 支持通过 body.scenario 指定使用哪个业务场景，默认使用 leave_approval。
- * Agent 创建和事件转换全部委托给 agent-factory。
  */
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { startAgent } from '../../../agent/core/agent-factory.js';
-import { createTracer } from '../../../agent/tracing/index.js';
-import { getHitlSessions } from '../middleware/index.js';
-import { getScenario, getDefaultScenario } from '../../../models/scenarios/registry.js';
+import type { AppContext } from '../../../infrastructure/di/context.js';
+import type { ChatService } from '../../di.js';
+import type { ScenarioResolver } from '../../../models/scenarios/di.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';
 import type { ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
@@ -19,9 +15,11 @@ function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-/** 创建 chat 路由 */
-export function createChatRouter(): Router {
+/** 创建 chat 路由 — 从 ctx 解析依赖 */
+export function createChatRouter(ctx: AppContext): Router {
   const router = Router();
+  const chatService = ctx.get<ChatService>('chatService');
+  const scenarioResolver = ctx.get<ScenarioResolver>('scenarioResolver');
 
   router.post('/chat', async (req: Request, res: Response) => {
     const { message, history, scenario: scenarioId, memories, summary, sessionId, userId } = req.body as {
@@ -41,10 +39,8 @@ export function createChatRouter(): Router {
       return res.status(400).json(badReq);
     }
 
-    // 根据请求选择场景
-    const scenario = scenarioId ? getScenario(scenarioId) : getDefaultScenario();
+    const scenario = scenarioId ? scenarioResolver.getScenario(scenarioId) : scenarioResolver.getDefaultScenario();
 
-    // 设置 SSE 响应头
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -53,29 +49,15 @@ export function createChatRouter(): Router {
     });
 
     try {
-      const tracer = await createTracer({
-        scenario: scenario.id,
-        userId,
-        sessionId: resolvedSessionId,
-        message,
-      });
-
-      const hitlSessions = getHitlSessions(req.app);
-      const run = startAgent({
+      await chatService.run({
         scenario,
         message,
         history,
         memories,
         summary,
+        sessionId: resolvedSessionId,
+        userId,
         onSSE: (event, data) => sendSSE(res, event, data),
-        tracer,
-      });
-
-      // 同步注册 HitlManager（在 agent.prompt 开始之前）
-      hitlSessions.set(resolvedSessionId, run.hitl);
-
-      await tracer.run(async () => {
-        await run.completed;
       });
     } catch (err: unknown) {
       sendSSE(res, 'error', { message: err instanceof Error ? err.message : String(err) });

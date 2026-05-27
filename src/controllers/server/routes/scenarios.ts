@@ -1,23 +1,18 @@
 /**
  * 路由 — GET /api/scenarios 获取可用场景列表
- *
- * 前端可据此渲染场景选择器，或通过 URL 参数指定场景。
  */
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { registry } from '../../../models/scenarios/registry.js';
+import type { AppContext } from '../../../infrastructure/di/context.js';
+import type { ScenarioResolver } from '../../../models/scenarios/di.js';
 
-/** 创建 scenarios 路由 */
-export function createScenariosRouter(): Router {
+/** 创建 scenarios 路由 — 从 ctx 解析依赖 */
+export function createScenariosRouter(ctx: AppContext): Router {
   const router = Router();
+  const scenarioResolver = ctx.get<ScenarioResolver>('scenarioResolver');
 
   router.get('/scenarios', (_req: Request, res: Response) => {
-    const list = Object.entries(registry).map(([id, p]) => ({
-      id,
-      displayName: p.displayName,
-      fieldCount: p.fields?.length || 0,
-      suggestions: p.suggestions || [],
-    }));
+    const list = scenarioResolver.listScenarios();
     res.json({ scenarios: list });
   });
 

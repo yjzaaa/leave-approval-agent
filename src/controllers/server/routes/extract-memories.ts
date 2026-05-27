@@ -1,17 +1,17 @@
 /**
  * 路由 — POST /api/extract-memories 记忆提取
- *
- * 从对话中提取用户记忆，一次性返回不存储。调用 mini Agent 生成结构化记忆。
  */
 import { Router } from 'express';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
-import { getModel } from '../../../agent/model/index.js';
+import type { AppContext } from '../../../infrastructure/di/context.js';
+import type { ModelProvider } from '../../../infrastructure/di/index.js';
 import type { ExtractMemoriesResponse, ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
 
-/** 创建 extract-memories 路由 */
-export function createExtractMemoriesRouter(): Router {
+/** 创建 extract-memories 路由 — 从 ctx 解析依赖 */
+export function createExtractMemoriesRouter(ctx: AppContext): Router {
   const router = Router();
+  const modelProvider = ctx.get<ModelProvider>('modelProvider');
 
   router.post('/extract-memories', async (req, res) => {
     try {
@@ -38,7 +38,7 @@ export function createExtractMemoriesRouter(): Router {
 对话记录:
 ${messagesText}`;
 
-      const model = getModel('utility');
+      const model = modelProvider('utility');
 
       let result = '';
       const agent = new Agent({
@@ -60,7 +60,6 @@ ${messagesText}`;
       await agent.prompt(extractPrompt);
       await agent.waitForIdle();
 
-      // 尝试解析 JSON
       try {
         const jsonMatch = result.match(/\{[\s\S]*\}/);
         const parsed: ExtractMemoriesResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : { user: [], feedback: [], project: [], reference: [] };

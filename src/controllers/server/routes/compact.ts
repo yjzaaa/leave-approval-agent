@@ -1,25 +1,25 @@
 /**
  * 路由 — POST /api/compact 对话压缩
- *
- * 前端一次性调用，服务端不存储。调用 mini Agent 生成摘要。
  */
 import { Router } from 'express';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
-import { getModel } from '../../../agent/model/index.js';
-import { getScenario } from '../../../models/scenarios/registry.js';
+import type { AppContext } from '../../../infrastructure/di/context.js';
+import type { ModelProvider } from '../../../infrastructure/di/index.js';
+import type { ScenarioResolver } from '../../../models/scenarios/di.js';
 import type { CompactResponse, ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
 
-/** 创建 compact 路由 */
-export function createCompactRouter(): Router {
+/** 创建 compact 路由 — 从 ctx 解析依赖 */
+export function createCompactRouter(ctx: AppContext): Router {
   const router = Router();
+  const modelProvider = ctx.get<ModelProvider>('modelProvider');
+  const scenarioResolver = ctx.get<ScenarioResolver>('scenarioResolver');
 
   router.post('/compact', async (req, res) => {
     try {
       const { messages, scenario: scenarioId } = req.body;
-      const scenario = getScenario(scenarioId || 'leave_approval');
+      const scenario = scenarioId ? scenarioResolver.getScenario(scenarioId) : scenarioResolver.getDefaultScenario();
 
-      // 构建压缩 prompt
       const messagesText = messages
         .map((m: { role: string; content: unknown }) => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
         .join('\n');
@@ -29,8 +29,7 @@ export function createCompactRouter(): Router {
 对话记录:
 ${messagesText}`;
 
-      // 直接调用模型生成摘要（不走 Agent）
-      const model = getModel('utility');
+      const model = modelProvider('utility');
 
       let summary = '';
       const agent = new Agent({
