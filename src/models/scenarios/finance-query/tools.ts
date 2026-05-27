@@ -387,7 +387,7 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
   };
 
   // ════════════════════════════════════════════════
-  // 计算层 — 封装成本分摊（避免模型手写 SQL 漏算 Allocation）
+  // 计算层 — 封装成本分摊
   // ════════════════════════════════════════════════
 
   /** 参数校验 */
@@ -409,13 +409,13 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
     return name ? name.name : null;
   }
 
-  /** 封装成本分摊计算 — 自动 JOIN + 分离正向/Allocation 抵消 */
+  /** 封装成本分摊计算 — 分摊 = CostDataBase.Amount × Rate.RateNo */
   const calculateFunctionCostTool: AgentTool = {
     name: 'calculate_function_cost',
     label: '计算功能成本分摊',
     description:
-      '计算指定 Function 在某财年/场景下分摊到某 CC 或业务线的净成本。'
-      + '自动处理 CostDataBase + Rate 的 JOIN，分离正向费用和 Allocation 抵消项，返回净分摊。'
+      '计算指定 Function 在某财年/场景下分摊到某 CC 或业务线的成本。'
+      + '分摊公式: CostDataBase.Amount × Rate.RateNo，自动处理 JOIN。'
       + '需要按 CC 或 BL 对比两个时间点时，分别调用两次然后对比结果。'
       + '禁止自己写 SQL 来做成本分摊，必须使用此 Tool。',
     parameters: Type.Object({
@@ -454,96 +454,120 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
 
       const safe = (s: string) => s.replace(/'/g, "''");
 
-      let joinClause = '';
-      let whereExtra: string;
-
-      if (cc) {
-        whereExtra = ` AND r.CC = '${safe(cc)}'`;
-      } else if (bl) {
+      // BL 模式：先查 CC Mapping 获取该 BL 下所有 CC
+      let blCcs: string[] = [];
+      if (bl) {
         if (!mappingTable) {
           return {
             content: [{ type: 'text' as const, text: `无法定位 CC Mapping 表。可用: ${cache.map((t) => t.name).join(', ')}` }],
             details: null,
           };
         }
-        joinClause = ` JOIN [${mappingTable}] cm ON r.CC = cm.CC`;
-        whereExtra = ` AND cm.[Business Line] = '${safe(bl)}'`;
-      } else {
-        whereExtra = '';
-      }
-
-      const sql = [
-        'SELECT',
-        '  c.[Cost text] AS cost_text,',
-        '  c.[Function] AS func,',
-        '  SUM(c.Amount * r.RateNo) AS allocated_amount',
-        `FROM [${costTable}] c`,
-        `JOIN [${rateTable}] r ON c.Year = r.Year`,
-        '  AND c.Scenario = r.Scenario',
-        '  AND c.Month = r.Month',
-        '  AND LOWER(c.[Key]) = LOWER(r.[Key])',
-        joinClause,
-        `WHERE c.Year = '${safe(year)}'`,
-        `  AND c.Scenario = '${safe(scenario)}'`,
-        `  AND c.[Function] = '${safe(func)}'`,
-        whereExtra,
-        'GROUP BY c.[Cost text], c.[Function]',
-      ].filter(Boolean).join('\n');
-
-      const result = await dataSource.query(sql);
-      const rows = result.rows as Array<{ cost_text: string; func: string; allocated_amount: number }>;
-
-      if (rows.length === 0) {
-        const label = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '指定条件';
-        return {
-          content: [{ type: 'text' as const, text: `${year} ${scenario} 中 ${label} 的 ${func} Function 无数据` }],
-          details: { positiveItems: [], allocationItems: [], totalPositive: 0, totalAllocation: 0, netTotal: 0, sql },
-        };
-      }
-
-      const positiveItems: Array<{ costText: string; amount: number }> = [];
-      const allocationItems: Array<{ costText: string; amount: number }> = [];
-
-      for (const row of rows) {
-        const item = { costText: row.cost_text, amount: Math.round(row.allocated_amount) };
-        if (row.cost_text.toLowerCase().includes('allocation')) {
-          allocationItems.push(item);
-        } else {
-          positiveItems.push(item);
+        const mappingSql = `SELECT CC FROM [${mappingTable}] WHERE [Business Line] = '${safe(bl)}'`;
+        try {
+          const mappingResult = await dataSource.query(mappingSql);
+          blCcs = (mappingResult.rows as Array<{ CC: string | number }>).map((r) => String(r.CC).trim());
+        } catch {
+          blCcs = [];
+        }
+        if (blCcs.length === 0) {
+          return {
+            content: [{ type: 'text' as const, text: `${year} ${scenario} 中 Business Line ${bl} 在 CC Mapping 中无匹配 CC` }],
+            details: { items: [], total: 0, costSql: '', rateSql: '', diagnostic: `Mapping SQL: ${mappingSql || 'N/A'}` },
+          };
         }
       }
 
-      const totalPositive = positiveItems.reduce((s, i) => s + i.amount, 0);
-      const totalAllocation = allocationItems.reduce((s, i) => s + i.amount, 0);
-      const netTotal = totalPositive + totalAllocation;
+      // CostDataBase 查询（按 year/scenario/function 过滤）
+      const costSql = [
+        'SELECT c.[Key] AS cost_key, c.[Cost text] AS cost_text,',
+        '  c.[Function] AS func, c.Amount, c.Month',
+        `FROM [${costTable}] c`,
+        `WHERE c.Year = '${safe(year)}'`,
+        `  AND c.Scenario = '${safe(scenario)}'`,
+        `  AND c.[Function] = '${safe(func)}'`,
+      ].join('\n');
+
+      // Rate 查询（按 year/scenario 过滤，不 JOIN CC Mapping）
+      const rateSql = [
+        'SELECT r.[Key] AS rate_key, r.RateNo, r.CC, r.Month',
+        `FROM [${rateTable}] r`,
+        `WHERE r.Year = '${safe(year)}'`,
+        `  AND r.Scenario = '${safe(scenario)}'`,
+      ].join('\n');
+      const costResult = await dataSource.query(costSql);
+      const rateResult = await dataSource.query(rateSql);
+      const costRows = costResult.rows as Array<{ cost_key: string; cost_text: string; func: string; Amount: number; Month: string }>;
+      const rateRows = rateResult.rows as Array<{ rate_key: string; RateNo: number; CC: string | number; Month: string }>;
+
+      if (costRows.length === 0 || rateRows.length === 0) {
+        const label = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '指定条件';
+        return {
+          content: [{ type: 'text' as const, text: `${year} ${scenario} 中 ${label} 的 ${func} Function 无数据。\nCost SQL: ${costSql}\n\nRate SQL: ${rateSql}\n\nCost rows: ${costRows.length}, Rate rows: ${rateRows.length}` }],
+          details: { items: [], total: 0, costSql, rateSql },
+        };
+      }
+
+      // JS 端匹配（大小写不敏感 Key + 可选 CC/BL 过滤）
+      const agg: Record<string, number> = {};
+      for (const cost of costRows) {
+        for (const rate of rateRows) {
+          // Key 大小写不敏感匹配
+          if (String(cost.cost_key).toLowerCase() !== String(rate.rate_key).toLowerCase()) continue;
+          // Month 精确匹配
+          if (cost.Month !== rate.Month) continue;
+          // CC 过滤
+          if (cc && String(rate.CC).trim() !== cc) continue;
+          // BL 过滤（通过 blCcs 列表）
+          if (bl && !blCcs.includes(String(rate.CC).trim())) continue;
+
+          const allocated = cost.Amount * rate.RateNo;
+          const key = cost.cost_text;
+          agg[key] = (agg[key] || 0) + allocated;
+        }
+      }
+
+      const items = Object.entries(agg).map(([costText, amount]) => ({
+        costText,
+        amount: Math.round(amount),
+      }));
+      const total = items.reduce((s, i) => s + i.amount, 0);
+
+      if (items.length === 0) {
+        const label = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '指定条件';
+        const ccList = bl ? `BL ${bl} 下的 CC: ${blCcs.join(', ')}` : '';
+        const diag = `Cost Key 样本: ${[...new Set(costRows.map((r) => r.cost_key))].join(', ')}. ` +
+          `Rate Key 样本: ${[...new Set(rateRows.map((r) => r.rate_key))].join(', ')}. ` +
+          `Rate CC 样本: ${[...new Set(rateRows.map((r) => String(r.CC).trim()))].join(', ')}. ${ccList}`;
+        return {
+          content: [{ type: 'text' as const, text: `${year} ${scenario} 中 ${label} 的 ${func} Function Key/CC 不匹配。\n${diag}\n\nCost SQL: ${costSql}\n\nRate SQL: ${rateSql}` }],
+          details: { items: [], total: 0, costSql, rateSql, diagnostic: diag },
+        };
+      }
 
       const scope = cc ? `CC ${cc}` : bl ? `BL ${bl}` : '全部';
 
       let text = `## ${func} Function 成本分摊 — ${year} ${scenario} (${scope})\n\n`;
-
-      if (positiveItems.length > 0) {
-        text += '| Cost Text | 分摊金额 |\n|-----------|--------|\n';
-        for (const item of positiveItems) {
-          text += `| ${item.costText} | ${item.amount.toLocaleString()} |\n`;
-        }
-        text += `| **正向合计** | **${totalPositive.toLocaleString()}** |\n\n`;
+      text += '| Cost Text | 分摊金额 |\n|-----------|--------|\n';
+      for (const item of items) {
+        text += `| ${item.costText} | ${item.amount.toLocaleString()} |\n`;
       }
+      text += `| **合计** | **${total.toLocaleString()}** |`;
 
-      if (allocationItems.length > 0) {
-        for (const item of allocationItems) {
-          text += `| ${item.costText} | ${item.amount.toLocaleString()} |\n`;
-        }
-        text += `| **Allocation 抵消** | **${totalAllocation.toLocaleString()}** |\n\n`;
-      }
-
-      text += `| **净分摊** | **${netTotal.toLocaleString()}** |`;
+      const diagnostic = `CostDataBase Key 样本: ${[...new Set(costRows.map((r) => r.cost_key))].join(', ')}. ` +
+        `Rate Key 样本: ${[...new Set(rateRows.map((r) => r.rate_key))].join(', ')}. ` +
+        (bl ? `BL ${bl} CC 列表: ${blCcs.join(', ')}` : '');
 
       return {
         content: [{ type: 'text' as const, text }],
-        details: { positiveItems, allocationItems, totalPositive, totalAllocation, netTotal, sql },
+        details: { items, total, costSql, rateSql, diagnostic },
       };
     },
   };
+
+
+
+
 
   // ════════════════════════════════════════════════
   // 输出层 (1)
