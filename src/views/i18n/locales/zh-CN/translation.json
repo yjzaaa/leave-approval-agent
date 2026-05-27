@@ -83,6 +83,7 @@
     "typeFeedback": "反馈偏好",
     "typeProject": "业务上下文",
     "typeReference": "外部资源",
+    "typeLearnings": "领域知识",
     "tabShared": "共享 ({{count}})",
     "tabScenario": "场景 ({{count}})",
     "emptyShared": "暂无共享记忆",

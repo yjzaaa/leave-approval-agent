@@ -23,7 +23,9 @@ interface UseAgentOptions {
   memories?: MemoryItem[];
   summary?: string;
   onSummaryUpdate?: (summary: string, messageCount: number) => void;
-  onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[] }) => void;
+  onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[]; learnings: string[] }) => void;
+  /** 已有的领域知识（传入提取 prompt 用于迭代合并） */
+  existingLearnings?: string[];
 }
 
 export function useAgent(options?: UseAgentOptions) {
@@ -190,6 +192,7 @@ export function useAgent(options?: UseAgentOptions) {
       },
       onSummaryUpdate,
       onMemoriesExtracted,
+      existingLearnings: options?.existingLearnings,
     });
 
     sessionRef.current = session;

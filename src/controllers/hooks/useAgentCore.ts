@@ -59,7 +59,9 @@ export interface AgentSessionOptions {
   /** 对话压缩完成回调 */
   onSummaryUpdate?: (summary: string, messageCount: number) => void;
   /** 记忆提取完成回调 */
-  onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[] }) => void;
+  onMemoriesExtracted?: (memories: { user: string[]; feedback: string[]; project: string[]; reference: string[]; learnings: string[] }) => void;
+  /** 已有的领域知识（传入提取 prompt 用于迭代合并） */
+  existingLearnings?: string[];
 }
 
 /** Agent 会话接口 — 封装单次会话的完整生命周期 */
@@ -143,6 +145,7 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
     onEvent,
     onSummaryUpdate,
     onMemoriesExtracted,
+    existingLearnings,
   } = options;
 
   let activeStream: SSEStream | null = null;
@@ -171,6 +174,7 @@ export function createAgentSession(options: AgentSessionOptions): AgentSession {
       const { data } = await api.post('/extract-memories', {
         messages: recentMessages,
         scenario: scenarioId,
+        existingLearnings,
       });
       if (data) {
         onMemoriesExtracted(data);

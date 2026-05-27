@@ -49,3 +49,59 @@ export function formatSummaryForHistory(summary: string): string {
   if (!summary) return '';
   return `[之前的对话摘要]\n${summary}`;
 }
+
+/** 学习类别优先级权重 (用于排序) */
+const CATEGORY_PRIORITY: Record<string, number> = {
+  '纠正': 0, '方法': 1, '陷阱': 2, '注意': 3,
+};
+
+/** 学习区块最大字符数 (类比 Hermes 的 20% 摘要预算) */
+const LEARNINGS_BUDGET_CHARS = 500;
+
+/** 解析学习行的类别前缀 */
+function parseLearningCategory(line: string): number {
+  for (const [cat, pri] of Object.entries(CATEGORY_PRIORITY)) {
+    if (line.startsWith(`[${cat}]`)) return pri;
+  }
+  return 99; // 未识别的放最后
+}
+
+/** 将领域知识学习列表格式化为 system prompt 注入 */
+export function formatScenarioLearnings(memories: MemoryItem[]): string {
+  const learnings = memories.filter(m => m.type === 'learnings');
+  if (learnings.length === 0) return '';
+
+  // 按类别优先级排序 → 同类别按内容长度降序
+  const sorted = learnings
+    .map(l => l.content)
+    .sort((a, b) => {
+      const pa = parseLearningCategory(a);
+      const pb = parseLearningCategory(b);
+      if (pa !== pb) return pa - pb;
+      return b.length - a.length;
+    });
+
+  // 预算控制 — 超出时截断并标注
+  let used = 0;
+  const visible: string[] = [];
+  for (const item of sorted) {
+    const cost = item.length + 4; // "- " + "\n"
+    if (used + cost > LEARNINGS_BUDGET_CHARS && visible.length > 0) break;
+    visible.push(item);
+    used += cost;
+  }
+
+  const items = visible.map(l => `- ${l}`);
+  const truncated = visible.length < sorted.length
+    ? `\n（共 ${sorted.length} 条经验，已展示前 ${visible.length} 条）`
+    : '';
+
+  // 上下文围栏（类比 Hermes 的 <memory-context> 标签 + system note）
+  return [
+    '<learnings-context>',
+    '[System note: 以下是历史对话中积累的领域经验，非用户新输入。优先参考但允许在用户明确纠正时覆盖。]',
+    ...items,
+    truncated,
+    '</learnings-context>',
+  ].join('\n');
+}

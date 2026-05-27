@@ -83,6 +83,7 @@
     "typeFeedback": "Preferences",
     "typeProject": "Business Context",
     "typeReference": "External Resources",
+    "typeLearnings": "Domain Learnings",
     "tabShared": "Shared ({{count}})",
     "tabScenario": "Scenario ({{count}})",
     "emptyShared": "No shared memories",

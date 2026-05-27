@@ -45,31 +45,41 @@ ${messagesText}`;
 }
 
 /** 记忆提取 — 从对话中提取结构化记忆 */
-export async function extractMemoriesLocal(messages: Array<{ role: string; content: string }>): Promise<{
+export async function extractMemoriesLocal(messages: Array<{ role: string; content: string }>, scenario?: string, existingLearnings?: string[]): Promise<{
   user: string[];
   feedback: string[];
   project: string[];
   reference: string[];
+  learnings: string[];
 }> {
   const messagesText = messages
     .map(m => `${m.role === 'user' ? '用户' : '助手'}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}`)
     .join('\n');
 
-  const extractPrompt = `分析以下对话，提取用户记忆。返回 JSON 格式，严格按照以下结构:
+  const existingBlock = existingLearnings && existingLearnings.length > 0
+    ? `\n已有经验（请在此基础上迭代更新 — 合并相似条目、修正矛盾、删除过时、补充新知）:\n${existingLearnings.map((l: string) => `- ${l}`).join('\n')}`
+    : '';
+
+  const extractPrompt = `分析以下对话，提取用户记忆。当前场景: ${scenario || '未知'}。返回 JSON 格式，严格按照以下结构:
 {
   "user": ["用户姓名/职位/部门等信息"],
   "feedback": ["用户表达的偏好/纠正/确认"],
   "project": ["业务上下文/进行中的工作"],
-  "reference": ["外部资源/链接/系统名称"]
+  "reference": ["外部资源/链接/系统名称"],
+  "learnings": ["领域知识沉淀"]
 }
 
 规则:
-- 每条记忆是一句简洁的话，不超过 50 字
-- 只提取确定的事实，不要推测
-- 如果某类没有新信息，返回空数组
-- 不要重复已有信息
+- 每条记忆不超过 50 字，只提取确定事实
+- 某类无新信息则返回空数组
 
-对话记录:
+⚠️ learnings 使用以下结构化格式:
+- [纠正] 内容 — 用户纠正过的错误做法 → 正确做法
+- [方法] 内容 — 验证成功的操作步骤或计算规则
+- [陷阱] 内容 — 常见错误或易踩的坑
+- [注意] 内容 — 系统性注意事项（类型差异、命名约定、限制条件）
+- 宁缺毋滥：有明确证据（用户纠正/确认/警告）的才提取，仅凭"助手成功执行"推断的不要提取
+${existingBlock}
 ${messagesText}`;
 
   const model = getModel('utility');
@@ -96,8 +106,8 @@ ${messagesText}`;
 
   try {
     const jsonMatch = result.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : { user: [], feedback: [], project: [], reference: [] };
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { user: [], feedback: [], project: [], reference: [], learnings: [] };
   } catch {
-    return { user: [], feedback: [], project: [], reference: [] };
+    return { user: [], feedback: [], project: [], reference: [], learnings: [] };
   }
 }

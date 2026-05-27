@@ -55,4 +55,6 @@ export interface ExtractMemoriesResponse {
   feedback: string[];
   project: string[];
   reference: string[];
+  /** 领域知识沉淀 */
+  learnings: string[];
 }

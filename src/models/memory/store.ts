@@ -13,14 +13,15 @@ export function createEmptyStore(): MemoryStore {
   };
 }
 
-/** 获取指定场景的记忆（含共享 + 隔离） */
+/** 获取指定场景的记忆（含共享 + 隔离 + 领域知识） */
 export function getScenarioMemories(store: MemoryStore, scenarioId: string): MemoryItem[] {
   const byScenario = store.byScenario || {};
-  const scenario: ScenarioMemories = byScenario[scenarioId] || { project: [], reference: [] };
+  const scenario: ScenarioMemories = byScenario[scenarioId] || { project: [], reference: [], learnings: [] };
   return [
     ...store.shared.user,
     ...store.shared.feedback,
     ...scenario.project,
     ...scenario.reference,
+    ...scenario.learnings,
   ];
 }

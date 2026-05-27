@@ -16,7 +16,7 @@ import type { MemoryItem } from '../../models/domain/models/MemoryItem.js';
 import { HitlManager } from '../hitl/index.js';
 import { HitlSession } from '../hitl/index.js';
 import { getModel } from '../model/index.js';
-import { formatMemoriesForPrompt, formatSummaryForHistory } from '../memory/memory-prompt.js';
+import { formatMemoriesForPrompt, formatSummaryForHistory, formatScenarioLearnings } from '../memory/memory-prompt.js';
 import type { ITracer } from '../../models/domain/interfaces/ITracer.js';
 import type { SSECallback } from './types.js';
 
@@ -53,7 +53,7 @@ function getFieldLabels(scenario: Scenario): Record<string, string> {
   return map;
 }
 
-/** 拼接 system prompt (场景 prompt + 用户记忆) */
+/** 拼接 system prompt (场景 prompt + 用户记忆 + 领域知识) */
 function buildSystemPrompt(scenario: Scenario, memories?: MemoryItem[]): string {
   let prompt = scenario.systemPrompt;
 
@@ -61,6 +61,11 @@ function buildSystemPrompt(scenario: Scenario, memories?: MemoryItem[]): string 
     const memoryBlock = formatMemoriesForPrompt(memories);
     if (memoryBlock) {
       prompt = `${prompt}\n\n${memoryBlock}`;
+    }
+
+    const learningsBlock = formatScenarioLearnings(memories);
+    if (learningsBlock) {
+      prompt = `${prompt}\n\n${learningsBlock}`;
     }
   }
 

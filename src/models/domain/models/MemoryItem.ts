@@ -21,10 +21,12 @@ export interface SharedMemories {
   feedback: MemoryItem[];
 }
 
-/** 按场景隔离的记忆 (project + reference) */
+/** 按场景隔离的记忆 (project + reference + learnings) */
 export interface ScenarioMemories {
   project: MemoryItem[];
   reference: MemoryItem[];
+  /** 领域知识沉淀 — 从历史对话中提取的正确参数、方法论、常见陷阱 */
+  learnings: MemoryItem[];
 }
 
 /** 完整记忆存储 */

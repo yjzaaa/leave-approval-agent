@@ -47,6 +47,7 @@ function getLimit(type: MemoryType): number {
     case 'feedback': return MEMORY_LIMITS.maxFeedbackMemories;
     case 'project': return MEMORY_LIMITS.maxProjectMemories;
     case 'reference': return MEMORY_LIMITS.maxReferenceMemories;
+    case 'learnings': return MEMORY_LIMITS.maxLearningsMemories;
   }
 }
 
@@ -63,8 +64,8 @@ export interface UseMemoryReturn {
   getMemories: (scenarioId: string) => MemoryItem[];
   /** 添加共享记忆 (user/feedback) */
   addSharedMemory: (type: 'user' | 'feedback', content: string) => void;
-  /** 添加场景隔离记忆 (project/reference) */
-  addScenarioMemory: (scenarioId: string, type: 'project' | 'reference', content: string) => void;
+  /** 添加场景隔离记忆 (project/reference/learnings) */
+  addScenarioMemory: (scenarioId: string, type: 'project' | 'reference' | 'learnings', content: string) => void;
   /** 删除指定记忆 */
   removeMemory: (type: MemoryType, index: number, scenarioId?: string) => void;
   /** 更新对话摘要 */
@@ -103,11 +104,11 @@ export function useMemory(userId: string): UseMemoryReturn {
     });
   }, []);
 
-  const addScenarioMemory = useCallback((scenarioId: string, type: 'project' | 'reference', content: string) => {
+  const addScenarioMemory = useCallback((scenarioId: string, type: 'project' | 'reference' | 'learnings', content: string) => {
     setStore(prev => {
       const now = Date.now();
       const item: MemoryItem = { content, type, createdAt: now, updatedAt: now };
-      const scenarioMem = prev.byScenario[scenarioId] || { project: [], reference: [] };
+      const scenarioMem = prev.byScenario[scenarioId] || { project: [], reference: [], learnings: [] };
       const list = [...scenarioMem[type], item];
       return {
         ...prev,

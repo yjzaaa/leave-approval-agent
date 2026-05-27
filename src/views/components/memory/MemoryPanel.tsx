@@ -20,6 +20,7 @@ const TYPE_CONFIG: Record<MemoryType, { labelKey: string; icon: React.ReactNode;
   feedback: { labelKey: 'memory.typeFeedback', icon: <Lightbulb className="h-3.5 w-3.5" />, color: '#fff9db' },
   project: { labelKey: 'memory.typeProject', icon: <ClipboardList className="h-3.5 w-3.5" />, color: '#fff4e6' },
   reference: { labelKey: 'memory.typeReference', icon: <Link className="h-3.5 w-3.5" />, color: '#ebfbee' },
+  learnings: { labelKey: 'memory.typeLearnings', icon: <Brain className="h-3.5 w-3.5" />, color: '#f3f0ff' },
 };
 
 function MemoryCard({ item, index, type, scenarioId, onRemove }: {
@@ -55,9 +56,9 @@ function MemoryCard({ item, index, type, scenarioId, onRemove }: {
 export function MemoryPanel({ store, scenarioId, onRemove, onClearAll, onClose }: MemoryPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'shared' | 'scenario'>('shared');
-  const scenarioMem = store.byScenario[scenarioId] || { project: [], reference: [] };
+  const scenarioMem = store.byScenario[scenarioId] || { project: [], reference: [], learnings: [] };
   const sharedCount = store.shared.user.length + store.shared.feedback.length;
-  const scenarioCount = scenarioMem.project.length + scenarioMem.reference.length;
+  const scenarioCount = scenarioMem.project.length + scenarioMem.reference.length + scenarioMem.learnings.length;
   const totalCount = sharedCount + scenarioCount;
 
   return (
@@ -118,7 +119,7 @@ export function MemoryPanel({ store, scenarioId, onRemove, onClearAll, onClose }
               {store.shared.feedback.map((item, i) => <MemoryCard key={`f-${i}`} item={item} index={i} type="feedback" onRemove={onRemove} />)}
             </>)
           ) : (
-            scenarioMem.project.length === 0 && scenarioMem.reference.length === 0 ? (
+            scenarioMem.project.length === 0 && scenarioMem.reference.length === 0 && scenarioMem.learnings.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground">{t('memory.emptyScenario')}</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">{t('memory.emptyScenarioHint')}</p>
@@ -126,6 +127,7 @@ export function MemoryPanel({ store, scenarioId, onRemove, onClearAll, onClose }
             ) : (<>
               {scenarioMem.project.map((item, i) => <MemoryCard key={`p-${i}`} item={item} index={i} type="project" scenarioId={scenarioId} onRemove={onRemove} />)}
               {scenarioMem.reference.map((item, i) => <MemoryCard key={`r-${i}`} item={item} index={i} type="reference" scenarioId={scenarioId} onRemove={onRemove} />)}
+              {scenarioMem.learnings.map((item, i) => <MemoryCard key={`l-${i}`} item={item} index={i} type="learnings" scenarioId={scenarioId} onRemove={onRemove} />)}
             </>)
           )}
         </div>

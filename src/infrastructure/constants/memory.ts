@@ -8,6 +8,7 @@ export const MEMORY_LIMITS = {
   maxFeedbackMemories: 15,
   maxProjectMemories: 10,
   maxReferenceMemories: 10,
+  maxLearningsMemories: 20,
   maxMemoryTotalTokens: 2000,
   maxSummaryLength: 1000,
   compactThreshold: 16,
