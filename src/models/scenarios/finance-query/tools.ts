@@ -424,10 +424,11 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
       function: Type.String({ description: 'Function 名称，如 HR / IT' }),
       cc: Type.Optional(Type.String({ description: '成本中心代码（可选），如 413001' })),
       bl: Type.Optional(Type.String({ description: '业务线（可选），如 XP。与 cc 二选一' })),
+      key: Type.Optional(Type.String({ description: '分摊键（可选），如 480055 Cycle。指定时精确匹配该 Key' })),
     }),
     execute: async (_id, params) => {
-      const { year, scenario, function: func, cc, bl } = params as {
-        year: string; scenario: string; function: string; cc?: string; bl?: string;
+      const { year, scenario, function: func, cc, bl, key } = params as {
+        year: string; scenario: string; function: string; cc?: string; bl?: string; key?: string;
       };
 
       const cache = getCachedSchema();
@@ -516,14 +517,17 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
           if (String(cost.cost_key).toLowerCase() !== String(rate.rate_key).toLowerCase()) continue;
           // Month 精确匹配
           if (cost.Month !== rate.Month) continue;
+          // Key 精确筛选（指定 key 时两端都按大小写不敏感匹配）
+          if (key && String(cost.cost_key).toLowerCase() !== key.toLowerCase()) continue;
+          if (key && String(rate.rate_key).toLowerCase() !== key.toLowerCase()) continue;
           // CC 过滤
           if (cc && String(rate.CC).trim() !== cc) continue;
           // BL 过滤（通过 blCcs 列表）
           if (bl && !blCcs.includes(String(rate.CC).trim())) continue;
 
           const allocated = cost.Amount * rate.RateNo;
-          const key = cost.cost_text;
-          agg[key] = (agg[key] || 0) + allocated;
+          const costText = cost.cost_text;
+          agg[costText] = (agg[costText] || 0) + allocated;
         }
       }
 
