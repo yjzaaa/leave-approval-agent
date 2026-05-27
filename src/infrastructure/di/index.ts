@@ -10,6 +10,8 @@ import { createTracer } from '../../agent/tracing/index.js';
 import type { HitlManager } from '../../agent/hitl/index.js';
 import type { Model, Api } from '@earendil-works/pi-ai';
 import type { ITracer, TracerOptions } from '../../models/domain/interfaces/ITracer.js';
+import { ExcelDataSource } from '../datasource/index.js';
+import type { IDataSource } from '../../models/domain/interfaces/IDataSource.js';
 
 /** 模型提供者 — 按角色获取模型 */
 export type ModelProvider = (role?: 'chat' | 'utility') => Model<Api>;
@@ -25,4 +27,5 @@ export const registerInfrastructure: Plugin = (ctx) => {
   ctx.singleton<ModelProvider>('modelProvider', () => getModel);
   ctx.singleton<TracerFactory>('tracerFactory', () => createTracer);
   ctx.singleton<HitlSessionStore>('sessionStore', () => new Map());
+  ctx.singleton<IDataSource>('dataSource', () => new ExcelDataSource());
 };
