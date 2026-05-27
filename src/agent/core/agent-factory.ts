@@ -32,6 +32,8 @@ export interface AgentRunParams {
   summary?: string;
   /** MLflow tracer（可选，启用时自动收集） */
   tracer?: ITracer;
+  /** 模型实例（由外部注入，未传时走默认） */
+  model?: ReturnType<typeof getModel>;
 }
 
 /** Agent 运行句柄 — 同步返回 HitlManager，异步等待完成 */
@@ -104,11 +106,9 @@ export function startAgent(params: AgentRunParams): AgentRun {
 
   const systemPrompt = buildSystemPrompt(scenario, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
-  const fieldLabels = getFieldLabels(scenario);
+  const hitlSession = new HitlSession(scenario, onSSE, getFieldLabels(scenario), tracer);
 
-  const hitlSession = new HitlSession(scenario, onSSE, fieldLabels, tracer);
-
-  const model = getModel('chat');
+  const model = params.model || getModel('chat');
   const agent = new Agent({
     initialState: {
       systemPrompt,

@@ -6,31 +6,8 @@
  */
 import type { Scenario } from '../../models/domain/interfaces/IScenario.js';
 
-/** 待确认项 */
-export interface PendingConfirm {
-  resolve: (approved: boolean) => void;
-  tool: string;
-  data: unknown;
-  timer: ReturnType<typeof setTimeout>;
-}
-
-/** SSE 事件回调 */
-export type SSECallback = (event: string, data: Record<string, unknown>) => void;
-
-/** SSE 事件类型 */
-export type SSEEventType =
-  | 'text'
-  | 'tool_result'
-  | 'confirm_required'
-  | 'confirm_resolved'
-  | 'done'
-  | 'error';
-
-/** SSE 事件负载 */
-export interface SSEPayload {
-  event: SSEEventType;
-  data: Record<string, unknown>;
-}
+// 重导出 domain 中的 SSECallback，保持向后兼容
+export type { SSECallback } from '../../models/domain/interfaces/ISSE.js';
 
 /** Agent 创建参数 */
 export interface CreateAgentParams {
