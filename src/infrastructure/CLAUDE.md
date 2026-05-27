@@ -13,6 +13,7 @@
 ```
 infrastructure/
 ├── api/           # API 客户端 (axios + SSE 流)
+├── di/            # DI 容器 + 注册函数
 ├── errors/        # 统一错误体系
 ├── utils/         # 纯工具函数
 └── constants/     # 全局常量
@@ -24,6 +25,11 @@ infrastructure/
 graph TD
     subgraph API["api/"]
         Axios["index.ts<br/>axios 实例 + SSE 流"]
+    end
+
+    subgraph DI["di/"]
+        Context["context.ts<br/>AppContext 容器"]
+        RegFunc["index.ts<br/>registerInfrastructure"]
     end
 
     subgraph Errors["errors/"]
@@ -45,6 +51,7 @@ graph TD
     Errors -->|"引用"| ErrorCode
 
     style API fill:#ebfbee,stroke:#495057,color:#1a1a1a
+    style DI fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Errors fill:#ffe3e3,stroke:#495057,color:#1a1a1a
     style Utils fill:#e7f5ff,stroke:#495057,color:#1a1a1a
     style Constants fill:#fff9db,stroke:#495057,color:#1a1a1a
@@ -119,6 +126,24 @@ stream.abort(); // 中断流
 
 **为什么 SSE 不用 axios**: axios 不支持 `ReadableStream` 逐块读取，SSE 协议需要实时解析 `event:` / `data:` 行，只能用原生 fetch。
 
+### di/ — 依赖注入容器
+
+手动 DI 容器，提供单例/工厂注册、懒加载解析、循环依赖检测。
+
+| 文件 | 说明 |
+|------|------|
+| `context.ts` | `AppContext` 容器类 — `singleton()` / `factory()` / `get()` / `use()` / `build()` |
+| `index.ts` | `registerInfrastructure` — 注册 `modelProvider` / `tracerFactory` / `sessionStore` |
+
+```ts
+// 使用模式
+const ctx = createContext()
+  .use(registerInfrastructure)
+  .use(registerScenarios)
+  .build();
+const model = ctx.get<ModelProvider>('modelProvider')('chat');
+```
+
 ### errors/ — 统一错误体系
 
 用结构化错误替代字符串 throw。
@@ -164,7 +189,7 @@ class AuthError extends AppError { ... }
 
 - ✅ 可以 import `models/domain/` (类型)
 - ✅ 可以 import npm 工具包 (`clsx`, `tailwind-merge` 等)
-- ❌ 不 import `agent/`, `models/scenarios/`, `controllers/`, `views/`
+- ❌ 不 import `agent/`, `models/scenarios/`, `controllers/`, `views/`（`di/` 除外 — 作为组合根模块可跨层 import）
 - ❌ 函数保持纯净，不包含业务逻辑
 
 ---

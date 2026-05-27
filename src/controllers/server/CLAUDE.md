@@ -21,9 +21,7 @@ controllers/server/
 │   └── scenarios.ts           # GET /api/scenarios — 场景列表
 ├── controllers/           # 路由处理器
 │   └── index.ts
-├── middleware/            # Express 中间件
-│   └── index.ts
-├── index.ts               # Express 工厂 (createApp) + 独立运行入口
+├── index.ts               # Express 工厂 (createApp) + DI 组合根
 └── cli.ts                 # CLI 入口（独立终端模式）
 ```
 
@@ -31,25 +29,23 @@ controllers/server/
 
 ```mermaid
 graph TD
-    Index["index.ts<br/>Express 主入口"]
+    Index["index.ts<br/>Express 组合根"]
     CLI["cli.ts<br/>CLI 入口"]
     Routes["routes/<br/>路由定义"]
-    Middleware["middleware/<br/>SSE + 错误处理"]
     Controllers["controllers/<br/>业务编排"]
+    DIContainer["infrastructure/di/<br/>AppContext 容器"]
 
-    Index --> Routes
-    Index --> Middleware
-    Routes --> Controllers
-    Controllers -->|"调用"| AgentFactory["agent/core/agent-factory"]
-    Controllers -->|"调用"| Registry["models/scenarios/registry"]
-
-    CLI --> AgentFactory
+    Index -->|"createContext().use().build()"| DIContainer
+    Index -->|"createXxxRouter(ctx)"| Routes
+    Routes -->|"ctx.get()"| DIContainer
+    Routes -->|"chatService.run()"| Controllers
+    CLI -->|"createContext().build()"| DIContainer
 
     style Index fill:#fff9db,stroke:#495057,color:#1a1a1a
     style CLI fill:#fff9db,stroke:#495057,color:#1a1a1a
     style Routes fill:#e7f5ff,stroke:#495057,color:#1a1a1a
-    style Middleware fill:#f3f0ff,stroke:#495057,color:#1a1a1a
     style Controllers fill:#fff4e6,stroke:#495057,color:#1a1a1a
+    style DIContainer fill:#f3f0ff,stroke:#495057,color:#1a1a1a
 ```
 
 ## 数据流
@@ -57,12 +53,12 @@ graph TD
 ```mermaid
 graph LR
     Request["HTTP Request<br/>POST /api/chat"] --> Parse["JSON 解析"]
-    Parse --> Plugin["getScenario(id)<br/>场景查找"]
-    Plugin --> Factory["runAgent()<br/>Agent 创建"]
-    Factory -->|SSE| Stream["text/event-stream<br/>流式响应"]
+    Parse --> Resolver["ctx.get('scenarioResolver')<br/>场景查找"]
+    Resolver --> Service["ctx.get('chatService')<br/>对话编排"]
+    Service -->|SSE| Stream["text/event-stream<br/>流式响应"]
     Stream --> Browser["Browser<br/>EventSource"]
 
-    ConfirmReq["POST /api/confirm"] --> Session["hitlSessions<br/>Map 查找"]
+    ConfirmReq["POST /api/confirm"] --> Session["ctx.get('sessionStore')<br/>Map 查找"]
     Session --> Hitl["hitl.approve()<br/>/ reject()"]
 
     style Request fill:#dbe4ff,stroke:#495057,color:#1a1a1a
@@ -77,25 +73,28 @@ sequenceDiagram
     actor User as 👤
     participant Browser as Browser
     participant Express as Express :3000
-    participant Factory as agent-factory
+    participant Service as ChatService
+    participant Agent as agent-factory
     participant Hitl as HitlManager
 
     Note over User,Hitl: 聊天请求
     User->>Browser: 发送消息
     Browser->>Express: POST /api/chat {message, scenario}
-    Express->>Express: getScenario() → registry
-    Express->>Factory: runAgent({scenario, onSSE, onHitlCreated})
-    Factory-->>Express: onHitlCreated(hitl) → sessions
-    Factory-->>Express: SSE 流
+    Express->>Express: ctx.get('scenarioResolver') → 场景
+    Express->>Service: chatService.run({scenario, ...})
+    Service->>Agent: startAgent({scenario, ...})
+    Agent-->>Service: AgentRun {hitl, completed}
+    Service->>Service: sessionStore.set(sessionId, hitl)
+    Agent-->>Express: SSE 流
     Express-->>Browser: text/event-stream
     Browser-->>User: 流式渲染
 
     Note over User,Hitl: HITL 确认
     User->>Browser: 点击确认
     Browser->>Express: POST /api/confirm {approved, sessionId}
-    Express->>Hitl: hitlSessions.get(sessionId).approve() / .reject()
-    Hitl-->>Factory: resolve
-    Factory-->>Express: 继续执行
+    Express->>Hitl: sessionStore.get(sessionId).approve() / .reject()
+    Hitl-->>Agent: resolve
+    Agent-->>Express: 继续执行
 ```
 
 ## API 端点
@@ -113,7 +112,7 @@ sequenceDiagram
 
 ### 并发会话隔离
 
-`hitlSessions: Map<sessionId, HitlManager>` — 每个会话独立管理 HITL 状态，通过 `onHitlCreated` 回调在 `agent.prompt()` 之前注册（避免竞态条件）。
+`sessionStore: Map<sessionId, HitlManager>` — 每个会话独立管理 HITL 状态。存储在 DI 容器的 `sessionStore` 中（`ctx.get('sessionStore')`），通过 ChatService 在 Agent 启动时自动注册。
 
 ### MLflow Tracing
 
@@ -125,10 +124,10 @@ sequenceDiagram
 
 ## 依赖
 
-- [agent/core/agent-factory.ts](../../agent/CLAUDE.md) — runAgent
-- [agent/hitl/hitl.ts](../../agent/CLAUDE.md) — HitlManager
-- [agent/tracing/tracer.ts](../../agent/CLAUDE.md) — createTracer
-- [models/scenarios/registry.ts](../../models/scenarios/CLAUDE.md) — 场景注册表
+- [infrastructure/di/](../../infrastructure/CLAUDE.md) — AppContext 容器 + registerInfrastructure
+- [agent/di.ts](../../agent/CLAUDE.md) — AgentRunner, HitlSessionFactory
+- [controllers/di.ts](../CLAUDE.md) — IChatService
+- [models/scenarios/di.ts](../../models/scenarios/CLAUDE.md) — ScenarioResolver
 - [models/domain/interfaces/](../../models/domain/CLAUDE.md) — Scenario, ITracer
 - [models/domain/dto/](../../models/domain/CLAUDE.md) — ApiResponses
 
