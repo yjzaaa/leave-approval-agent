@@ -39,7 +39,16 @@ export function createChatRouter(ctx: AppContext): Router {
       return res.status(400).json(badReq);
     }
 
-    const scenario = scenarioId ? scenarioResolver.getScenario(scenarioId) : scenarioResolver.getDefaultScenario();
+    // 场景 ID 规范化：连字符 → 下划线，避免 finance-query vs finance_query 不匹配
+    const normalizedId = scenarioId?.replace(/-/g, '_');
+
+    let scenario;
+    try {
+      scenario = normalizedId ? scenarioResolver.getScenario(normalizedId) : scenarioResolver.getDefaultScenario();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(400).json({ error: msg } as ApiErrorResponse);
+    }
 
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
