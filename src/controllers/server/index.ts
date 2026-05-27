@@ -1,6 +1,9 @@
 /**
  * Express Web 服务 — 场景化 SSE 流式 Agent
  *
+ * 组合根: createContext() → .use(registerXxx) → .build()
+ * 路由通过 ctx 解析依赖，不再直接 import 具体实现。
+ *
  * 架构: 浏览器 → Express → Agent 框架 → 业务场景 → DeepSeek API
  *
  * 路由拆分到 routes/ 目录:
@@ -17,7 +20,11 @@ import fs from 'node:fs';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initHitlSessions } from './middleware/index.js';
+import { createContext } from '../../infrastructure/di/context.js';
+import { registerInfrastructure } from '../../infrastructure/di/index.js';
+import { registerScenarios } from '../../models/scenarios/di.js';
+import { registerAgent } from '../../agent/di.js';
+import { registerControllers } from '../di.js';
 import {
   createChatRouter,
   createConfirmRouter,
@@ -30,26 +37,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Express 应用工厂 — 供 Vite configureServer 和 CLI 共用 */
 export function createApp() {
-  const app = express();
+  const ctx = createContext()
+    .use(registerInfrastructure)
+    .use(registerScenarios)
+    .use(registerAgent)
+    .use(registerControllers)
+    .build();
 
-  // HITL 会话存储挂载到 app.locals，路由通过 getHitlSessions(req.app) 访问
-  initHitlSessions(app);
+  const app = express();
 
   app.use(express.json());
 
-  // ── 挂载路由 ──
-  app.use('/api', createChatRouter());
-  app.use('/api', createConfirmRouter());
-  app.use('/api', createCompactRouter());
-  app.use('/api', createExtractMemoriesRouter());
-  app.use('/api', createScenariosRouter());
+  // 路由接收 ctx 自行解析依赖
+  app.use('/api', createChatRouter(ctx));
+  app.use('/api', createConfirmRouter(ctx));
+  app.use('/api', createCompactRouter(ctx));
+  app.use('/api', createExtractMemoriesRouter(ctx));
+  app.use('/api', createScenariosRouter(ctx));
 
   // ── 生产模式: 伺服 dist/ 静态文件 ──
   const staticDir = path.join(__dirname, '..', '..', 'dist');
   if (fs.existsSync(staticDir)) {
     app.use(express.static(staticDir));
-    console.log('[Static] serving from dist/');
   }
 
-  return { app };
+  return { app, ctx };
 }
