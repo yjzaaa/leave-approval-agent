@@ -125,6 +125,13 @@ export function startAgent(params: AgentRunParams): AgentRun {
     switch (event.type) {
       case 'tool_execution_end':
         onSSE('tool_result', { tool: event.toolName, error: event.isError });
+        // 提取 tool 结果中的 ContentBlock 并推送为 content SSE 事件
+        if ((event.result as Record<string, unknown> | null)?.details &&
+            (event.result as Record<string, unknown>).details &&
+            ((event.result as Record<string, unknown>).details as Record<string, unknown>).blocks) {
+          const detail = (event.result as Record<string, unknown>).details as Record<string, unknown>;
+          onSSE('content', { blocks: detail.blocks });
+        }
         break;
       case 'message_update': {
         const ev = event.assistantMessageEvent;
