@@ -20,14 +20,14 @@ export interface LearningEntry {
 const LEARNING_LINE_RE = /^\[(纠正|方法|陷阱|注意)\]\s+(.+)$/;
 
 /** 解析单行学习文本为结构化条目 */
-function parseLearningLine(line: string): LearningEntry | null {
+export function parseLearningLine(line: string): LearningEntry | null {
   const m = line.match(LEARNING_LINE_RE);
   if (!m) return null;
   return { category: m[1] as LearningCategory, content: m[2].trim() };
 }
 
 /** 将结构化条目序列化为文本行 */
-function formatLearningLine(entry: LearningEntry): string {
+export function formatLearningLine(entry: LearningEntry): string {
   return `[${entry.category}] ${entry.content}`;
 }
 
@@ -51,7 +51,7 @@ function textSimilarity(a: string, b: string): number {
  *
  * 策略（类比 Hermes 迭代更新）：
  * 1. 同类别的学习检查语义相似度
- * 2. 相似度 > 0.6 → 保留更长的（信息更丰富）
+ * 2. 相似度 > 0.45 → 保留更长的（信息更丰富）
  * 3. 同类别的矛盾内容 → 保留新的（用户最新确认优先）
  * 4. 去重后按类别分组排序
  *
@@ -73,7 +73,7 @@ export function mergeLearnings(existing: string[], incoming: string[]): string[]
   for (const inc of incomingEntries) {
     // 在同类别中找相似条目
     const sameCategory = merged.filter(e => e.category === inc.category);
-    const similar = sameCategory.find(e => textSimilarity(e.content, inc.content) > 0.6);
+    const similar = sameCategory.find(e => textSimilarity(e.content, inc.content) > 0.45);
 
     if (similar) {
       // 保留内容更长的（信息更丰富）

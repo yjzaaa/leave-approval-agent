@@ -22,6 +22,6 @@ export function getScenarioMemories(store: MemoryStore, scenarioId: string): Mem
     ...store.shared.feedback,
     ...scenario.project,
     ...scenario.reference,
-    ...scenario.learnings,
+    ...(scenario.learnings || []),
   ];
 }
