@@ -11,6 +11,7 @@ import { sickLeaveScenario } from './sick-leave/index.js';
 import { pureChatScenario } from './pure-chat/index.js';
 import { faqScenario } from './faq/index.js';
 import { oncallScenario } from './oncall/index.js';
+import { financeQueryScenario } from './finance-query/index.js';
 
 export const registry: ScenarioRegistry = {
   // 审批类 (两步 HITL)
@@ -23,6 +24,8 @@ export const registry: ScenarioRegistry = {
   faq: faqScenario,
   // 值班排班 (查询无 HITL + 换班单步 HITL)
   oncall: oncallScenario,
+  // 财务问数 (11 个 Tool、无 HITL)
+  finance_query: financeQueryScenario,
 };
 
 /** 根据 ID 获取场景 */

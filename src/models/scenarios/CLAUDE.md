@@ -12,6 +12,7 @@
 | 智能助手 | [pure-chat/CLAUDE.md](pure-chat/CLAUDE.md) | 纯聊天 | 无 |
 | 政策咨询 | [faq/CLAUDE.md](faq/CLAUDE.md) | FAQ 咨询 | 无 |
 | 值班排班 | [oncall/CLAUDE.md](oncall/CLAUDE.md) | 混合型 | 1 步 |
+| 财务问数 | [finance-query/CLAUDE.md](finance-query/CLAUDE.md) | 查询分析型 | 无 |
 
 ## 职责
 
@@ -22,6 +23,11 @@
 ```
 scenarios/
 ├── registry.ts              # 场景注册表 — getScenario() / getDefaultScenario()
+├── finance-query/           # 财务问数
+│   ├── index.ts                 # Scenario 导出
+│   ├── tools.ts                 # 11 个 Tool 定义
+│   ├── prompt.ts                # System Prompt
+│   └── validator.ts             # 校验规则
 ├── leave-approval/          # 远程办公审批
 │   ├── index.ts                 # Scenario 导出
 │   ├── tools.ts                 # Tool 定义
