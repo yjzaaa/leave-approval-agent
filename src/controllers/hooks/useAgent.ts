@@ -53,6 +53,7 @@ export function useAgent(options?: UseAgentOptions) {
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contentBlocks, setContentBlocks] = useState<Array<{ type: string; data: Record<string, unknown> }>>([]);
 
   // ── Refs ──
 
@@ -177,6 +178,10 @@ export function useAgent(options?: UseAgentOptions) {
           case 'streaming':
             setIsStreaming(event.isStreaming);
             break;
+
+          case 'content':
+            setContentBlocks(event.blocks);
+            break;
         }
       },
       onSummaryUpdate,
@@ -246,7 +251,7 @@ export function useAgent(options?: UseAgentOptions) {
 
   return {
     messages, phase, phaseText, confirmRequest,
-    isStreaming, error,
+    isStreaming, error, contentBlocks,
     sendMessage, confirm, reset,
   };
 }

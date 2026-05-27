@@ -29,7 +29,8 @@ export type AgentEvent =
   | { type: 'confirm_resolved' }
   | { type: 'done' }
   | { type: 'error'; message: string }
-  | { type: 'streaming'; isStreaming: boolean };
+  | { type: 'streaming'; isStreaming: boolean }
+  | { type: 'content'; blocks: Array<{ type: string; data: Record<string, unknown> }> };
 
 /** 简化消息结构（不包含 UI 层 id/timestamp 等字段） */
 export interface SimpleMessage {
@@ -102,6 +103,10 @@ const handleSSE = (
 
     case 'confirm_resolved':
       onEvent({ type: 'confirm_resolved' });
+      break;
+
+    case 'content':
+      onEvent({ type: 'content', blocks: data.blocks as Array<{ type: string; data: Record<string, unknown> }> });
       break;
 
     case 'tool_result':
