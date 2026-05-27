@@ -32,17 +32,21 @@ export function createFinanceQueryTools(dataSource: IDataSource): AgentTool[] {
   // 连接层 (2)
   // ════════════════════════════════════════════════
 
+  /** 默认数据文件路径 */
+  const DEFAULT_DATASOURCE_PATH = 'test-data/function-cost-allocation.xlsx';
+
   /** 加载 Excel 文件并返回表结构 */
   const connectDatasourceTool: AgentTool = {
     name: 'connect_datasource',
     label: '连接数据源',
-    description: '加载 Excel 数据文件，返回所有可用表的名称、列结构和行数。所有查询之前必须先调用此工具。',
+    description: '加载 Excel 数据文件。不传 filePath 则自动使用默认数据源。所有查询之前必须先调用此工具。',
     parameters: Type.Object({
-      filePath: Type.String({ description: 'Excel 文件路径' }),
+      filePath: Type.Optional(Type.String({ description: 'Excel 文件路径，不传则使用默认数据源' })),
     }),
     execute: async (_id, params) => {
-      const { filePath } = params as { filePath: string };
-      const tables = await dataSource.connect(filePath);
+      const { filePath } = params as { filePath?: string };
+      const path = filePath || DEFAULT_DATASOURCE_PATH;
+      const tables = await dataSource.connect(path);
       setCachedSchema(tables);
       const summary = tables.map((t) =>
         `${t.name}: ${t.columns.map((c) => `${c.name}(${c.type})`).join(', ')} (${t.rowCount} 行)`,

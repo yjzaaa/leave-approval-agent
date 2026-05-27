@@ -37,7 +37,7 @@ export const financeQueryPrompt = [
   '6. 复杂查询可调用 sql_query 直接执行 SQL',
   '',
   '## 规则',
-  '- 必须先 connect_datasource，再执行其他操作',
+  '- 必须先 connect_datasource，再执行其他操作。不传 filePath 即自动加载默认数据源，禁止编造文件名',
   '- 先用 get_schema 了解列名和类型，再写查询条件',
   '- 计算交给 calculate_fields，不要自己算',
   '- 图表用 generate_chart，不要手动描述数据',
