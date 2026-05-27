@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { AppContext } from '../../../infrastructure/di/context.js';
-import type { ChatService } from '../../di.js';
+import type { IChatService } from '../../di.js';
 import type { ScenarioResolver } from '../../../models/scenarios/di.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';
@@ -18,7 +18,7 @@ function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
 /** 创建 chat 路由 — 从 ctx 解析依赖 */
 export function createChatRouter(ctx: AppContext): Router {
   const router = Router();
-  const chatService = ctx.get<ChatService>('chatService');
+  const chatService = ctx.get<IChatService>('chatService');
   const scenarioResolver = ctx.get<ScenarioResolver>('scenarioResolver');
 
   router.post('/chat', async (req: Request, res: Response) => {
