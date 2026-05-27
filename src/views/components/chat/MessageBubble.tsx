@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '../../types';
+import { ContentRenderer } from '../content-renderer';
+import type { ContentBlockData } from '../content-renderer';
 
 interface Props { message: Message; }
 
@@ -63,6 +65,9 @@ export const MessageBubble: React.FC<Props> = ({ message }) => {
         ) : (
           <div className="bg-secondary text-secondary-foreground rounded-2xl px-5 py-2.5 max-w-[75%] text-sm leading-relaxed break-words">
             <div className="msg-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>
+            {message.contentBlocks && message.contentBlocks.length > 0 && (
+              <ContentRenderer blocks={message.contentBlocks as ContentBlockData[]} />
+            )}
           </div>
         )}
         {time && (

@@ -53,7 +53,6 @@ export function useAgent(options?: UseAgentOptions) {
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contentBlocks, setContentBlocks] = useState<Array<{ type: string; data: Record<string, unknown> }>>([]);
 
   // ── Refs ──
 
@@ -180,7 +179,12 @@ export function useAgent(options?: UseAgentOptions) {
             break;
 
           case 'content':
-            setContentBlocks(event.blocks);
+            setMessages(prev => {
+              if (prev.length === 0) return prev;
+              const last = prev[prev.length - 1];
+              if (last.role !== 'assistant') return prev;
+              return [...prev.slice(0, -1), { ...last, contentBlocks: event.blocks }];
+            });
             break;
         }
       },
@@ -251,7 +255,7 @@ export function useAgent(options?: UseAgentOptions) {
 
   return {
     messages, phase, phaseText, confirmRequest,
-    isStreaming, error, contentBlocks,
+    isStreaming, error,
     sendMessage, confirm, reset,
   };
 }

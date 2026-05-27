@@ -13,6 +13,8 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  /** 关联的内容块（图表/表格/卡片），由 SSE content 事件填充 */
+  contentBlocks?: Array<{ type: string; data: Record<string, unknown> }>;
 }
 
 /**
