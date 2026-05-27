@@ -51,6 +51,7 @@ graph TD
         Chat["pure-chat"]
         FAQ["faq"]
         Oncall["oncall"]
+        Finance["finance-query"]
     end
 
     subgraph MemRuntime["memory/ — 运行时"]
@@ -63,9 +64,11 @@ graph TD
     Registry --> Chat
     Registry --> FAQ
     Registry --> Oncall
+    Registry --> Finance
 
     Leave -->|"import type"| Ifaces
     Leave -->|"import type"| Models
+    Finance -->|"import type"| Ifaces
     Store -->|"import type"| Models
 
     style Domain fill:#ebfbee,stroke:#495057,color:#1a1a1a

@@ -22,6 +22,11 @@ views/
 │   │   ├── ChatContainer.tsx          # 聊天主容器
 │   │   ├── InputBar.tsx               # 消息输入栏
 │   │   └── MessageBubble.tsx          # 消息气泡
+│   ├── content-renderer/          # 内容块渲染
+│   │   ├── index.tsx                  # ContentRenderer 注册表
+│   │   ├── ChartBlock.tsx             # ECharts 图表渲染
+│   │   ├── TableBlock.tsx             # 数据表格渲染
+│   │   └── CardBlock.tsx              # 卡片列表渲染
 │   ├── layout/                    # 布局相关
 │   │   ├── Header.tsx                 # 顶部导航栏
 │   │   ├── MainApp.tsx                # 主应用组件（场景切换 + Agent 集成）
@@ -69,6 +74,13 @@ graph TD
         MessageBubble["MessageBubble.tsx"]
     end
 
+    subgraph ContentRender["内容渲染"]
+        ContentRenderer["ContentRenderer/index.tsx"]
+        ChartBlock["ChartBlock.tsx"]
+        TableBlock["TableBlock.tsx"]
+        CardBlock["CardBlock.tsx"]
+    end
+
     subgraph Approval["审批区"]
         ConfirmCard["ConfirmCard.tsx"]
         StatusBar["StatusBar.tsx"]
@@ -97,8 +109,9 @@ graph TD
     MainApp --> ChatContainer
     MainApp --> Header
     MainApp --> ScenarioDD
-    ChatContainer --> InputBar
     ChatContainer --> MessageBubble
+    MessageBubble --> ContentRenderer
+    ChatContainer --> InputBar
     ChatContainer --> ConfirmCard
     ChatContainer --> StatusBar
 

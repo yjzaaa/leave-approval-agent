@@ -13,6 +13,7 @@
 ```
 infrastructure/
 ├── api/           # API 客户端 (axios + SSE 流)
+├── datasource/    # 数据源实现 (ExcelDataSource → IDataSource)
 ├── di/            # DI 容器 + 注册函数
 ├── errors/        # 统一错误体系
 ├── utils/         # 纯工具函数
@@ -30,6 +31,11 @@ graph TD
     subgraph DI["di/"]
         Context["context.ts<br/>AppContext 容器"]
         RegFunc["index.ts<br/>registerInfrastructure"]
+    end
+
+    subgraph DS["datasource/"]
+        ExcelSrc["excel-source.ts<br/>ExcelDataSource"]
+        DSIndex["index.ts<br/>re-export"]
     end
 
     subgraph Errors["errors/"]

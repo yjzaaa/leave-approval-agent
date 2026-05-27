@@ -146,11 +146,13 @@ sequenceDiagram
 
 ### hooks/useAgentCore.ts
 
-纯业务编排，零 React 依赖。管理 SSE/Agent 会话，处理 HITL 确认流程，记忆注入和压缩触发。所有状态变化通过 `onEvent` 回调通知外部。可被 React Hook、CLI、测试等任意宿主使用。
+纯业务编排，零 React 依赖。管理 SSE/Agent 会话，处理 HITL 确认流程、content 内容块转发、记忆注入和压缩触发。所有状态变化通过 `onEvent` 回调通知外部。可被 React Hook、CLI、测试等任意宿主使用。
+
+SSE 事件映射: `text` → 流式文本, `confirm_required` → HITL 确认, `content` → ContentBlock 可视化数据, `done` → 完成。
 
 ### hooks/useAgent.ts
 
-薄 React Hook 包装。管理 React 状态（messages, phase, confirmRequest），持久化聊天历史到 localStorage，将 `useAgentCore` 的 `onEvent` 映射到 `setState`。
+薄 React Hook 包装。管理 React 状态（messages, phase, confirmRequest），将 `content` 事件的 ContentBlock 挂载到对应 assistant 消息上，持久化聊天历史到 localStorage，将 `useAgentCore` 的 `onEvent` 映射到 `setState`。
 
 ### server/
 
