@@ -1,12 +1,17 @@
-﻿/**
+/**
  * CLI 入口 — 场景化 Agent 命令行交互
+ *
+ * 通过 DI 容器获取模型和场景。
  */
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { streamSimple } from '@earendil-works/pi-ai';
-import { getScenario } from '../../models/scenarios/registry.js';
-import { getDefaultModel } from '../../agent/model/index.js';
+import { createContext } from '../../infrastructure/di/context.js';
+import { registerInfrastructure } from '../../infrastructure/di/index.js';
+import { registerScenarios } from '../../models/scenarios/di.js';
+import type { ScenarioResolver } from '../../models/scenarios/di.js';
+import type { ModelProvider } from '../../infrastructure/di/index.js';
 
 function banner(displayName: string): void {
   console.log('');
@@ -36,16 +41,24 @@ function extractText(messages: Array<{ role: string; content?: string | Array<{ 
 }
 
 async function main(): Promise<void> {
+  const ctx = createContext()
+    .use(registerInfrastructure)
+    .use(registerScenarios)
+    .build();
+
+  const scenarioResolver = ctx.get<ScenarioResolver>('scenarioResolver');
+  const modelProvider = ctx.get<ModelProvider>('modelProvider');
+
   const scenarioArg = process.argv.find(a => a.startsWith('--scenario='));
   const scenarioId = scenarioArg?.split('=')[1] || 'leave_approval';
-  const scenario = getScenario(scenarioId);
+  const scenario = scenarioResolver.getScenario(scenarioId);
   banner(scenario.displayName);
 
   const rl = readline.createInterface({ input, output });
 
   let model;
   try {
-    model = getDefaultModel();
+    model = modelProvider('chat');
     console.log(`🤖 模型: ${model.name} | Provider: ${model.provider}`);
   } catch (err: unknown) {
     console.error(`❌ 模型加载失败: ${err instanceof Error ? err.message : String(err)}`);
