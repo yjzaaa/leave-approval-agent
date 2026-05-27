@@ -40,7 +40,12 @@
 - 样式: 墨韵设计系统，CSS Variables token，禁止蓝紫渐变
 - 字体: Crimson Pro + Noto Serif SC + IBM Plex Mono + Noto Sans SC
 - 主题: 墨韵 (warm paper + ink-dark + vermillion accent)，dark/light/system
-- 依赖注入: 通过 `Scenario` 接口，禁止直接 import 具体业务
+- 依赖注入: 手动 DI 容器 `AppContext`，禁止直接 import 具体实现
+  - **容器**: `infrastructure/di/context.ts` — `AppContext` 提供 `singleton`/`factory` 注册 + `get()` 懒加载解析 + 循环依赖检测
+  - **注册模式**: 每层导出 `register*` 函数 (类型 `Plugin`)，在自己层内注册该层提供的依赖
+  - **组合根**: `createApp()` 通过 `createContext().use(a).use(b).build()` 链式串联，注册顺序 = 依赖层级顺序 (infrastructure → scenarios → agent → controllers)
+  - **路由**: `createXxxRouter(ctx)` 从容器自行解析所需依赖，不 import 具体实现
+  - **命名约定**: 依赖名用 `camelCase` 字符串，类型用泛型约束 — `ctx.get<SomeType>('someDep')`
 - **禁止裸 JSON 返回值** — tool / API / 函数返回结构化数据时，必须使用 `interface` 或 `type` 约束，禁止直接返回 `{ success: true, processId, message: '...' }` 等未类型化的对象字面量。所有返回结构必须在 `domain/` 中定义对应类型
 - **禁止使用 `any`** — 禁止在类型注解、函数参数、返回值、泛型参数中使用 `any`。必须使用具体类型、泛型或 `unknown`
 - **接口与实现分离** — 接口、事件类型、数据模型等纯类型定义必须与实现代码分文件存放:

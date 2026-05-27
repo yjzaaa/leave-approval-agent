@@ -11,3 +11,4 @@ test-results/
 *.png
 .claude/
 study/
+.omc/
