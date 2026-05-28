@@ -13,8 +13,11 @@ Agent 框架层是运行时核心，创建和管理 Pi Agent 实例、SSE 事件
 ```
 agent/
 ├── core/                 # 核心运行时
-│   ├── agent-factory.ts      # runAgent() 工厂 + AgentFactoryParams
+│   ├── agent-factory.ts      # startAgent() 工厂 + AgentFactoryParams
 │   └── types.ts              # 框架内部类型 (CreateAgentParams)
+├── events/               # 事件总线
+│   ├── event-bus.ts          # AgentEventBus — 类型安全的 emit/on
+│   └── index.ts              # 汇总导出
 ├── hitl/                 # HITL 确认
 │   ├── hitl-manager.ts       # HitlManager 类 (状态机)
 │   ├── hitl-session.ts       # HitlSession 类 (SSE 桥接 + tool 包装)
@@ -108,27 +111,27 @@ sequenceDiagram
     participant Agent as Pi Agent
     participant API as DeepSeek API
 
-    Server->>Factory: runAgent({scenario, message, onSSE, onHitlCreated})
-    Factory->>Server: onHitlCreated(hitl) ← 立即注册
-    Factory->>Agent: new Agent({tools: scenario.tools})
+    Server->>Factory: startAgent({scenario, message, eventBus})
+    Factory->>Factory: new HitlSession(scenario, eventBus, ...)
+    Factory->>Agent: new Agent({tools: hitlSession.tools})
     Factory->>Agent: agent.prompt(message)
     Agent->>API: stream 请求
 
     loop 流式响应
         API-->>Agent: text_delta
         Agent-->>Factory: message_update
-        Factory-->>Server: onSSE('text')
+        Factory-->>Server: eventBus.emit('text')
     end
 
     alt tool 调用 (在 confirmTools 中)
         Agent->>Factory: tool_execution_start
-        Factory-->>Server: onSSE('confirm_required')
+        Factory-->>Server: eventBus.emit('confirm_required')
         Server-->>Factory: POST /api/confirm → hitl.approve()
         Factory->>Agent: continue
     end
 
     Agent-->>Factory: agent_end
-    Factory-->>Server: onSSE('done')
+    Factory-->>Server: eventBus.emit('done')
 ```
 
 **Local 模式** (浏览器直接调用):
@@ -140,7 +143,7 @@ sequenceDiagram
     participant Agent as Pi Agent
     participant API as DeepSeek API
 
-    Browser->>Factory: runAgent({scenario, message, onSSE, onHitlCreated})
+    Browser->>Factory: startAgent({scenario, message, eventBus})
     Factory->>Browser: onHitlCreated(hitl) ← 保存 hitlRef
     Factory->>Agent: new Agent({tools: scenario.tools})
     Factory->>Agent: agent.prompt(message)
@@ -149,18 +152,18 @@ sequenceDiagram
     loop 流式响应
         API-->>Agent: text_delta
         Agent-->>Factory: message_update
-        Factory-->>Browser: onSSE('text') → React setState
+        Factory-->>Browser: eventBus.emit('text') → React setState
     end
 
     alt tool 调用 (在 confirmTools 中)
         Agent->>Factory: tool_execution_start
-        Factory-->>Browser: onSSE('confirm_required')
+        Factory-->>Browser: eventBus.emit('confirm_required')
         Browser-->>Factory: hitlRef.approve() (直接调用)
         Factory->>Agent: continue
     end
 
     Agent-->>Factory: agent_end
-    Factory-->>Browser: onSSE('done')
+    Factory-->>Browser: eventBus.emit('done')
 ```
 
 ## HITL 状态机
@@ -189,9 +192,26 @@ stateDiagram-v2
     Idle --> Idle : tool 不在 confirmTools → 直接执行
 ```
 
+## EventBus 事件总线
+
+替代原有的 `onSSE` 回调链。每个 HTTP 请求一个 `AgentEventBus` 实例，Express 路由创建并订阅，各组件通过 `emit()` 发布事件。
+
+| 事件 | 发布者 | 负载 |
+|------|--------|------|
+| `text` | agent-factory (agent.subscribe) | `{ content: string }` |
+| `tool_result` | agent-factory (agent.subscribe) | `{ tool: string; isError?: boolean }` |
+| `content` | agent-factory (agent.subscribe) | `{ blocks: ContentBlock[] }` |
+| `done` | agent-factory (agent.subscribe) | `{}` |
+| `error` | Express route (catch) | `{ message: string }` |
+| `confirm_required` | HitlSession → HitlManager | `{ tool, label, form, fieldLabels }` |
+| `confirm_resolved` | HitlSession → HitlManager | `{ tool: string }` |
+
+类型定义: `models/domain/interfaces/IEventBus.ts` — `AgentEventMap` + `IAgentEventBus`
+实现: `agent/events/event-bus.ts` — Node EventEmitter 封装
+
 ## SSE 事件转换
 
-| Pi Agent 事件 | SSE 事件 | 前端行为 |
+| Pi Agent 事件 | EventBus 事件 | 前端行为 |
 |--------------|---------|---------|
 | message_update (text_delta) | `text { content }` | 流式渲染 |
 | tool_execution_start (confirmTools) | `confirm_required` | 弹确认卡片 |
