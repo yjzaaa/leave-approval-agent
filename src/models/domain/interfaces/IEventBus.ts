@@ -8,7 +8,7 @@
 /** Agent 会话事件映射（类型安全的 emit/on） */
 export interface AgentEventMap {
   text:             { content: string };
-  tool_result:      { tool: string; error?: string };
+  tool_result:      { tool: string; isError?: boolean };
   content:          { blocks: Array<{ type: string; data: Record<string, unknown> }> };
   done:             Record<string, never>;
   error:            { message: string };

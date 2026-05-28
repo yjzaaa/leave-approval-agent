@@ -129,7 +129,7 @@ export function startAgent(params: AgentRunParams): AgentRun {
 
     switch (event.type) {
       case 'tool_execution_end':
-        eventBus.emit('tool_result', { tool: event.toolName, error: event.isError ? String(event.isError) : undefined });
+        eventBus.emit('tool_result', { tool: event.toolName, isError: event.isError });
         // 提取 tool 结果中的 ContentBlock 并推送为 content SSE 事件
         if ((event.result as Record<string, unknown> | null)?.details &&
             (event.result as Record<string, unknown>).details &&
