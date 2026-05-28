@@ -6,7 +6,7 @@
  */
 import type { AgentTool } from '@earendil-works/pi-agent-core';
 import type { Scenario } from '../../models/domain/interfaces/IScenario.js';
-import type { SSECallback } from '../../models/domain/interfaces/ISSE.js';
+import type { IAgentEventBus } from '../../models/domain/interfaces/IEventBus.js';
 import type { ITracer } from '../../models/domain/interfaces/ITracer.js';
 import { HitlManager } from './hitl-manager.js';
 import { wrapHitlTools } from './hitl-wrappers.js';
@@ -27,7 +27,7 @@ export class HitlSession {
 
   constructor(
     scenario: Scenario,
-    onSSE: SSECallback,
+    eventBus: IAgentEventBus,
     fieldLabels: Record<string, string>,
     tracer?: ITracer,
   ) {
@@ -36,17 +36,17 @@ export class HitlSession {
         switch (event.type) {
           case 'confirm_required':
             tracer?.markHitl(event.tool);
-            onSSE('confirm_required', {
+            eventBus.emit('confirm_required', {
               tool: event.tool,
               label: event.label ?? '📋 确认操作',
               form: scenario.formatFormForDisplay
                 ? scenario.formatFormForDisplay(event.form as Record<string, string>)
-                : event.form,
+                : (event.form as Record<string, string>),
               fieldLabels,
             });
             break;
           case 'confirm_resolved':
-            onSSE('confirm_resolved', { tool: event.tool });
+            eventBus.emit('confirm_resolved', { tool: event.tool });
             break;
         }
       },
