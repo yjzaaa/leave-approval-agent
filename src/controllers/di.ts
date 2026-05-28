@@ -7,7 +7,6 @@
 import type { Plugin } from '../infrastructure/di/context.js';
 import type { AgentRunner } from '../agent/di.js';
 import type { TracerFactory, HitlSessionStore } from '../infrastructure/di/index.js';
-import type { SSECallback } from '../models/domain/interfaces/ISSE.js';
 import { ChatService } from './services/chat/index.js';
 import type { ChatRunParams } from './services/chat/index.js';
 

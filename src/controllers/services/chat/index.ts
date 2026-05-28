@@ -9,7 +9,7 @@ import type { HitlSessionStore } from '../../../infrastructure/di/index.js';
 import type { Scenario } from '../../../models/domain/interfaces/IScenario.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';
-import type { SSECallback } from '../../../models/domain/interfaces/ISSE.js';
+import type { IAgentEventBus } from '../../../models/domain/interfaces/IEventBus.js';
 
 /** 对话运行参数 */
 export interface ChatRunParams {
@@ -20,7 +20,7 @@ export interface ChatRunParams {
   summary?: string;
   sessionId: string;
   userId?: string;
-  onSSE: SSECallback;
+  eventBus: IAgentEventBus;
 }
 
 /** 对话服务 — 编排一次完整的 Agent 对话 */
@@ -33,7 +33,7 @@ export class ChatService {
 
   /** 运行一次 Agent 对话（SSE 流式） */
   async run(params: ChatRunParams): Promise<void> {
-    const { scenario, message, history, memories, summary, sessionId, userId, onSSE } = params;
+    const { scenario, message, history, memories, summary, sessionId, userId, eventBus } = params;
 
     const tracer = await this.tracerFactory({
       scenario: scenario.id,
@@ -48,7 +48,7 @@ export class ChatService {
       history,
       memories,
       summary,
-      onSSE,
+      eventBus,
       tracer,
     });
 
