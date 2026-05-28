@@ -128,17 +128,18 @@ sequenceDiagram
     Browser->>Vite: POST /api/chat {message, scenario}
     Vite->>Express: 路由转发
     Express->>Route: chatRouter.handle()
-    Route->>Factory: runAgent({scenario, onSSE, onHitlCreated})
+    Route->>Route: new AgentEventBus() + 订阅
+    Route->>Factory: startAgent({scenario, eventBus})
     Factory->>API: stream 请求
 
     loop 流式响应
         API-->>Factory: text_delta
-        Factory-->>Express: onSSE('text')
+        Factory-->>Express: eventBus.emit('text')
         Express-->>Browser: SSE: text
         Browser-->>User: 流式渲染
     end
 
-    Factory-->>Express: onSSE('done')
+    Factory-->>Express: eventBus.emit('done')
     Express-->>Browser: SSE: done
 ```
 
