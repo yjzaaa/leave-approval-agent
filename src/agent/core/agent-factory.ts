@@ -18,14 +18,14 @@ import { HitlSession } from '../hitl/index.js';
 import { getModel } from '../model/index.js';
 import { formatMemoriesForPrompt, formatSummaryForHistory, formatScenarioLearnings } from '../memory/memory-prompt.js';
 import type { ITracer } from '../../models/domain/interfaces/ITracer.js';
-import type { SSECallback } from './types.js';
+import type { IAgentEventBus } from '../../models/domain/interfaces/IEventBus.js';
 
 /** Agent 运行参数 */
 export interface AgentRunParams {
   scenario: Scenario;
   message: string;
   history?: ChatMessage[];
-  onSSE: SSECallback;
+  eventBus: IAgentEventBus;
   /** 用户记忆列表 (前端注入) */
   memories?: MemoryItem[];
   /** 对话摘要 (前端注入) */
@@ -107,11 +107,11 @@ function buildInitialMessages(history: ChatMessage[], summary?: string) {
  * completed 是 Agent 运行完成的 Promise。
  */
 export function startAgent(params: AgentRunParams): AgentRun {
-  const { scenario, message, history, onSSE, memories, summary, tracer } = params;
+  const { scenario, message, history, eventBus, memories, summary, tracer } = params;
 
   const systemPrompt = buildSystemPrompt(scenario, memories);
   const initialMessages = buildInitialMessages(history || [], summary);
-  const hitlSession = new HitlSession(scenario, onSSE, getFieldLabels(scenario), tracer);
+  const hitlSession = new HitlSession(scenario, eventBus, getFieldLabels(scenario), tracer);
 
   const model = params.model || getModel('chat');
   const agent = new Agent({
@@ -129,25 +129,25 @@ export function startAgent(params: AgentRunParams): AgentRun {
 
     switch (event.type) {
       case 'tool_execution_end':
-        onSSE('tool_result', { tool: event.toolName, error: event.isError });
+        eventBus.emit('tool_result', { tool: event.toolName, error: event.isError ? String(event.isError) : undefined });
         // 提取 tool 结果中的 ContentBlock 并推送为 content SSE 事件
         if ((event.result as Record<string, unknown> | null)?.details &&
             (event.result as Record<string, unknown>).details &&
             ((event.result as Record<string, unknown>).details as Record<string, unknown>).blocks) {
           const detail = (event.result as Record<string, unknown>).details as Record<string, unknown>;
-          onSSE('content', { blocks: detail.blocks });
+          eventBus.emit('content', { blocks: detail.blocks as Array<{ type: string; data: Record<string, unknown> }> });
         }
         break;
       case 'message_update': {
         const ev = event.assistantMessageEvent;
         if (ev.type === 'text_delta') {
-          onSSE('text', { content: ev.delta });
+          eventBus.emit('text', { content: ev.delta });
         }
         break;
       }
       case 'message_end': break;
       case 'agent_end':
-        onSSE('done', {});
+        eventBus.emit('done', {});
         break;
     }
   });
