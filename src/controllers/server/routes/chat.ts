@@ -9,6 +9,7 @@ import type { ScenarioResolver } from '../../../models/scenarios/di.js';
 import type { ChatMessage } from '../../../models/domain/models/ChatMessage.js';
 import type { MemoryItem } from '../../../models/domain/models/MemoryItem.js';
 import type { ApiErrorResponse } from '../../../models/domain/dto/ApiResponses.js';
+import { AgentEventBus } from '../../../agent/events/index.js';
 
 /** SSE 辅助：写入一条命名事件 */
 function sendSSE(res: Response, event: string, data: Record<string, unknown>) {
@@ -57,6 +58,17 @@ export function createChatRouter(ctx: AppContext): Router {
       'X-Accel-Buffering': 'no',
     });
 
+    const eventBus = new AgentEventBus();
+
+    // 订阅事件 → SSE 写入
+    eventBus.on('text', (data) => sendSSE(res, 'text', data));
+    eventBus.on('tool_result', (data) => sendSSE(res, 'tool_result', data));
+    eventBus.on('content', (data) => sendSSE(res, 'content', data));
+    eventBus.on('confirm_required', (data) => sendSSE(res, 'confirm_required', data));
+    eventBus.on('confirm_resolved', (data) => sendSSE(res, 'confirm_resolved', data));
+    eventBus.on('done', () => { sendSSE(res, 'done', {}); eventBus.destroy(); });
+    eventBus.on('error', (data) => { sendSSE(res, 'error', data); eventBus.destroy(); });
+
     try {
       await chatService.run({
         scenario,
@@ -66,10 +78,10 @@ export function createChatRouter(ctx: AppContext): Router {
         summary,
         sessionId: resolvedSessionId,
         userId,
-        onSSE: (event, data) => sendSSE(res, event, data),
+        eventBus,
       });
     } catch (err: unknown) {
-      sendSSE(res, 'error', { message: err instanceof Error ? err.message : String(err) });
+      eventBus.emit('error', { message: err instanceof Error ? err.message : String(err) });
     } finally {
       res.end();
     }
